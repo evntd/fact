@@ -2,7 +2,13 @@ defmodule Fact.EventDataIndexerManager do
   use GenServer
   require Logger
 
-  defstruct [:index_dir, :supervisor]
+  @type indexer_status :: :not_started | :building | :ready
+
+  defstruct [
+    :supervisor,  # The pid of the DynamicSupervisor
+    :index_dir,   # The base path for event data indices
+    indexers: %{} # %{ key => %{pid: pid, status: status}}
+   ]
 
   def start_link(opts) do
     {start_opts, index_opts} = Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
@@ -16,6 +22,10 @@ defmodule Fact.EventDataIndexerManager do
     start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
 
     GenServer.start_link(__MODULE__, state, start_opts)
+  end
+
+  def status(key) do
+    GenServer.call(__MODULE__, {:indexer_status, key})
   end
 
   def start_indexer(key) do
@@ -40,17 +50,39 @@ defmodule Fact.EventDataIndexerManager do
     {:noreply, state}
   end
 
-  def handle_cast({:start_indexer, key}, %{index_dir: index_dir, supervisor: supervisor} = state) do
+  def handle_cast({:start_indexer, key}, %__MODULE__{index_dir: index_dir, supervisor: supervisor, indexers: indexers} = state) do
 
     case Registry.lookup(Fact.EventDataIndexerRegistry, key) do
       [] ->
         spec = {Fact.EventDataIndexer, key: key, index_dir: index_dir}
-        {:ok, _pid} = DynamicSupervisor.start_child(supervisor, spec)
-        {:noreply, state}
+        {:ok, pid} = DynamicSupervisor.start_child(supervisor, spec)
+        new_indexers = Map.put(indexers, key, %{pid: pid, status: :building})
+        {:noreply, %__MODULE__{ state | indexers: new_indexers }}
 
       [{_pid, _}] ->
         {:noreply, state}
     end
+  end
+
+  def handle_call({:indexer_status, key}, _from, %__MODULE__{indexers: indexers} = state) do
+    status =
+      case Map.get(indexers, key) do
+        nil -> :not_started
+        %{status: s} -> s
+      end
+
+    {:reply, status, state}
+  end
+
+  def handle_info({:indexer_ready, pid, key}, state) do
+
+    Logger.debug("#{__MODULE__} received :indexer_ready for #{key} from #{inspect(pid)}")
+
+    indexers = Map.update!(state.indexers, key, fn info ->
+      %{info | status: :ready}
+    end)
+
+    {:noreply, %__MODULE__{ state | indexers: indexers } }
   end
 
 end

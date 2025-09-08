@@ -47,6 +47,10 @@ defmodule Fact.EventDataIndexer do
 
     Logger.debug("#{__MODULE__} joining :fact_indexers group")
     :ok = :pg.join(:fact_indexers, self())
+
+    # Inform the manager this indexer is ready to rock
+    send(Fact.EventDataIndexerManager, {:indexer_ready, self(), key})
+
     {:noreply, state}
   end
 
