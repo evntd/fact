@@ -76,7 +76,7 @@ defmodule Fact.EventDataIndexerManager do
 
   def handle_info({:indexer_ready, pid, key}, state) do
 
-    Logger.debug("#{__MODULE__} received :indexer_ready for #{key} from #{inspect(pid)}")
+    Logger.debug("#{__MODULE__} received :indexer_ready from Elixir.Fact.EventDataIndexer[#{key}] at #{inspect(pid)}")
 
     indexers = Map.update!(state.indexers, key, fn info ->
       %{info | status: :ready}

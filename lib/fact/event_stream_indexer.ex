@@ -27,7 +27,7 @@ defmodule Fact.EventStreamIndexer do
     last_pos = load_checkpoint(state)
 
 
-    Logger.debug("#{__MODULE__} rebuilding from #{last_pos}")
+    Logger.debug("#{__MODULE__} building index from #{last_pos}")
 
     Fact.EventReader.read_all(from_position: last_pos)
     |> Enum.each(fn event ->

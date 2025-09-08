@@ -23,8 +23,8 @@ defmodule Fact.EventDataIndexer do
 
   defp via_tuple(key), do: {:via, Registry, {Fact.EventDataIndexerRegistry, key}}
 
-  def init(%{index_dir: index_dir} = state) do
-    Logger.debug("#{__MODULE__} init called")
+  def init(%{index_dir: index_dir, key: key} = state) do
+    Logger.debug("#{__MODULE__}[#{key}] init called")
 
     unless File.exists?(index_dir) do
       File.mkdir_p!(index_dir)
@@ -37,7 +37,7 @@ defmodule Fact.EventDataIndexer do
   def handle_continue(:rebuild_and_join, %{key: key} = state) do
     last_pos = load_checkpoint(state)
 
-    Logger.debug("#{__MODULE__} rebuilding data/#{key} index from #{last_pos}")
+    Logger.debug("#{__MODULE__}[#{key}] building index from #{last_pos}")
 
     Fact.EventReader.read_all(from_position: last_pos)
     |> Enum.each(fn event ->
@@ -45,7 +45,7 @@ defmodule Fact.EventDataIndexer do
       save_checkpoint(state, event)
     end)
 
-    Logger.debug("#{__MODULE__} joining :fact_indexers group")
+    Logger.debug("#{__MODULE__}[#{key}] joining :fact_indexers group")
     :ok = :pg.join(:fact_indexers, self())
 
     # Inform the manager this indexer is ready to rock
