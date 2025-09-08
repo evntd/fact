@@ -1,4 +1,4 @@
-defmodule Fact.DataKeyIndexer do
+defmodule Fact.EventDataIndexer do
   use GenServer
   require Logger
 
@@ -21,7 +21,7 @@ defmodule Fact.DataKeyIndexer do
     GenServer.start_link(__MODULE__, state, start_opts)
   end
 
-  defp via_tuple(key), do: {:via, Registry, {Fact.DataKeyIndexerRegistry, key}}
+  defp via_tuple(key), do: {:via, Registry, {Fact.EventDataIndexerRegistry, key}}
 
   def init(%{index_dir: index_dir} = state) do
     Logger.debug("#{__MODULE__} init called")

@@ -1,4 +1,4 @@
-defmodule Fact.DataKeyIndexerManager do
+defmodule Fact.EventDataIndexerManager do
   use GenServer
   require Logger
 
@@ -23,7 +23,7 @@ defmodule Fact.DataKeyIndexerManager do
   end
 
   def init(state) do
-    {:ok, pid} = DynamicSupervisor.start_link(strategy: :one_for_one, name: DataKeyIndexerSupervisor)
+    {:ok, pid} = DynamicSupervisor.start_link(strategy: :one_for_one, name: EventDataIndexerSupervisor)
     {:ok, %__MODULE__{ state | supervisor: pid }, {:continue, :bootstrap}}
   end
 
@@ -42,9 +42,9 @@ defmodule Fact.DataKeyIndexerManager do
 
   def handle_cast({:start_indexer, key}, %{index_dir: index_dir, supervisor: supervisor} = state) do
 
-    case Registry.lookup(Fact.DataKeyIndexerRegistry, key) do
+    case Registry.lookup(Fact.EventDataIndexerRegistry, key) do
       [] ->
-        spec = {Fact.DataKeyIndexer, key: key, index_dir: index_dir}
+        spec = {Fact.EventDataIndexer, key: key, index_dir: index_dir}
         {:ok, _pid} = DynamicSupervisor.start_child(supervisor, spec)
         {:noreply, state}
 

@@ -19,8 +19,8 @@ defmodule Fact.Application do
       {Fact.EventStreamIndexer, [index_dir: Keyword.fetch!(path_opts, :event_stream_index_dir)]},
 
       # User-defined indexers
-      {Registry, keys: :unique, name: Fact.DataKeyIndexerRegistry},
-      {Fact.DataKeyIndexerManager, [index_dir: Keyword.fetch!(path_opts, :data_key_index_dir)]}
+      {Registry, keys: :unique, name: Fact.EventDataIndexerRegistry},
+      {Fact.EventDataIndexerManager, [index_dir: Keyword.fetch!(path_opts, :event_data_index_dir)]}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Fact.Supervisor)
@@ -33,7 +33,7 @@ defmodule Fact.Application do
       indices_dir: Path.join(data_dir, "indices"),
       event_type_index_dir: Path.join(data_dir, "indices/type"),
       event_stream_index_dir: Path.join(data_dir, "indices/stream"),
-      data_key_index_dir: Path.join(data_dir, "indices/data")
+      event_data_index_dir: Path.join(data_dir, "indices/data")
     ]
 
     dirs |> Enum.each(fn {_k,path} ->
