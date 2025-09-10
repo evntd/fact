@@ -19,7 +19,7 @@ defmodule Fact.Indexer do
         GenServer.start_link(__MODULE__, opts, name: name)
       end
       
-      @impl GenServer
+      @impl true
       def init(opts) do
         index_name = index()
         state = %{
@@ -30,7 +30,7 @@ defmodule Fact.Indexer do
         {:ok, state, {:continue, :rebuild_and_join}}
       end
       
-      @impl GenServer
+      @impl true
       def handle_continue(:rebuild_and_join, state) do
         checkpoint = load_checkpoint(state)
         Logger.debug("#{__MODULE__} building index from #{checkpoint}")
@@ -47,6 +47,7 @@ defmodule Fact.Indexer do
         {:noreply, state}
       end
       
+      @impl true
       def handle_info({:index, event}, state) do
         append_to_index(state, event)
         save_checkpoint(state, event)
