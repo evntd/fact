@@ -1,19 +1,22 @@
 defmodule Fact.EventDataIndexer do
   use GenServer
+  alias Fact.Paths
   require Logger
 
-  defstruct [:index_dir, :key, :checkpoint_file]
+  defstruct [
+    :index_dir,
+    :key,
+    :checkpoint_file]
 
   def start_link(opts) do
     {start_opts, index_opts} = Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
-    index_dir = Keyword.fetch!(index_opts, :index_dir)
     key = Keyword.fetch!(index_opts, :key)
 
     state = %__MODULE__{
       key: key,
-      index_dir: Path.join(index_dir, key),
-      checkpoint_file: Path.join([index_dir, key, ".checkpoint"])
+      index_dir: Paths.index({:event_data, key}),
+      checkpoint_file: Paths.index_checkpoint({:event_data, key})
     }
 
     start_opts = Keyword.put_new(start_opts, :name, via_tuple(key))
@@ -23,9 +26,10 @@ defmodule Fact.EventDataIndexer do
 
   defp via_tuple(key), do: {:via, Registry, {Fact.EventDataIndexerRegistry, key}}
 
-  def init(%{index_dir: index_dir, key: key} = state) do
+  def init(%{key: key} = state) do
     Logger.debug("#{__MODULE__}[#{key}] init called")
 
+    index_dir = Paths.index({:event_data, key})
     unless File.exists?(index_dir) do
       File.mkdir_p!(index_dir)
       Logger.debug("created: #{index_dir}")
@@ -39,12 +43,20 @@ defmodule Fact.EventDataIndexer do
 
     Logger.debug("#{__MODULE__}[#{key}] building index from #{last_pos}")
 
-    Fact.EventReader.read_all(from_position: last_pos)
-    |> Enum.each(fn event ->
-      append_to_index(state, event)
-      save_checkpoint(state, event)
-    end)
-
+    # Event Data indexers need to use there own dedicated EventReader because user queries can cause JIT indexing, 
+    # thus the global EventReader is in use and would cause a timeout, or worse a deadlock.
+    {:ok, reader} = Fact.EventReader.start_link(name: String.to_atom("Fact.EventDataIndexer[#{key}].EventReader"))
+    
+    try do
+      Fact.EventReader.read_all(reader, from_position: last_pos)
+      |> Enum.each(fn event ->
+        append_to_index(state, event)
+        save_checkpoint(state, event)
+      end)
+    after
+      GenServer.stop(reader)
+    end
+    
     Logger.debug("#{__MODULE__}[#{key}] joining :fact_indexers group")
     :ok = :pg.join(:fact_indexers, self())
 
@@ -60,8 +72,9 @@ defmodule Fact.EventDataIndexer do
     {:noreply, state}
   end
 
-  defp append_to_index(%{index_dir: index_dir, key: key}, %{"data" => data, "id" => id}) do
+  defp append_to_index(%{key: key}, %{"data" => data, "id" => id}) do
 
+    index_dir = Paths.index({:event_data, key})
     if Map.has_key?(data, key) do
       value = Map.get(data, key) |> hash_value
 

@@ -1,13 +1,14 @@
 defmodule Fact.EventWriter do
   @compile {:no_warn_undefined, :pg}
+  use GenServer
+  alias Fact.Paths
+  require Logger
 
   @moduledoc """
   Documentation for `Fact`.
   """
 
-  use GenServer
-
-  require Logger
+  
 
   defstruct [
     :events_dir,
@@ -16,17 +17,16 @@ defmodule Fact.EventWriter do
   ]
 
   def start_link(opts \\ []) do
-    {start_opts, writer_opts} = Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     state = %__MODULE__{
-      events_dir: Keyword.fetch!(writer_opts, :events_dir),
-      append_log: Keyword.fetch!(writer_opts, :append_log),
+      events_dir: Paths.events,
+      append_log: Paths.append_log,
       last_pos: 0
     }
 
-    start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
+    opts = Keyword.put_new(opts, :name, __MODULE__)
 
-    GenServer.start_link(__MODULE__, state, start_opts)
+    GenServer.start_link(__MODULE__, state, opts)
   end
 
   def append(event) do

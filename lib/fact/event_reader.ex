@@ -1,6 +1,6 @@
 defmodule Fact.EventReader do
   use GenServer
-
+  alias Fact.Paths
   require Logger
 
   defmodule QueryClause do
@@ -9,26 +9,29 @@ defmodule Fact.EventReader do
 
   #defstruct [:events_dir, :append_log, :stream_dir]
 
-  def start_link(opts) do
-    {start_opts, reader_opts} = Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
+  def start_link(opts \\ []) do
 
     state = %{
-      events_dir: Keyword.fetch!(reader_opts, :events_dir),
-      append_log: Keyword.fetch!(reader_opts, :append_log),
-      stream_dir: Keyword.fetch!(reader_opts, :event_stream_index_dir),
-      event_type_dir: Keyword.fetch!(reader_opts, :event_type_index_dir),
-      event_data_dir: Keyword.fetch!(reader_opts, :event_data_index_dir)
+      events_dir: Paths.events,
+      append_log: Paths.append_log,
+      stream_dir: Paths.index(:event_stream),
+      event_type_dir: Paths.index(:event_type),
+      event_data_dir: Paths.index(:event_data)
     }
 
-    start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
+    opts = Keyword.put_new(opts, :name, __MODULE__)
 
-    GenServer.start_link(__MODULE__, state, start_opts)
+    GenServer.start_link(__MODULE__, state, opts)
 
   end
 
-  def read_all(opts \\ []) do
+  def read_all(opts) when is_list(opts) do
+    read_all(__MODULE__, opts)
+  end
+  
+  def read_all(server, opts \\ []) do
     from_pos = Keyword.get(opts, :from_position, 0)
-    GenServer.call(__MODULE__, {:read_all, from_pos})
+    GenServer.call(server, {:read_all, from_pos})
   end
 
   def read_stream(stream, opts \\ []) do
@@ -144,6 +147,7 @@ defmodule Fact.EventReader do
 
   defp events_matching_data(event_data, state) do
     Enum.reduce_while(event_data, nil, fn {key, value}, acc ->
+      {:ok, _pid} = Fact.EventDataIndexerManager.ensure_indexer(key)
       ids = read_index(Path.join([state.event_data_dir, to_string(key), sha1(value)]))
       case {acc, MapSet.size(ids) > 0} do
         {_, false} -> {:halt, MapSet.new()}

@@ -21,3 +21,6 @@ fact-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# JetBrains
+.idea

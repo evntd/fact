@@ -1,21 +1,20 @@
 defmodule Fact.EventStreamIndexer do
   use GenServer
+  alias Fact.Paths
   require Logger
+
   defstruct [:index_dir, :checkpoint_file]
 
-  def start_link(opts) do
-    {start_opts, index_opts} = Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
-
-    index_dir = Keyword.fetch!(index_opts, :index_dir)
-
+  def start_link(opts \\ []) do
+   
     state = %__MODULE__{
-      index_dir: index_dir,
-      checkpoint_file: Path.join(index_dir, ".checkpoint")
+      index_dir: Paths.index(:event_stream),
+      checkpoint_file: Paths.index_checkpoint(:event_stream)
     }
 
-    start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
+    opts = Keyword.put_new(opts, :name, __MODULE__)
 
-    GenServer.start_link(__MODULE__, state, start_opts)
+    GenServer.start_link(__MODULE__, state, opts)
   end
 
   def init(state) do
@@ -25,7 +24,6 @@ defmodule Fact.EventStreamIndexer do
 
   def handle_continue(:rebuild_and_join, state) do
     last_pos = load_checkpoint(state)
-
 
     Logger.debug("#{__MODULE__} building index from #{last_pos}")
 
