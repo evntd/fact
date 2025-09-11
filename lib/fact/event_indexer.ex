@@ -1,4 +1,4 @@
-defmodule Fact.Indexer do
+defmodule Fact.EventIndexer do
   @moduledoc """
   Base module for all indexers.
   """
@@ -7,7 +7,7 @@ defmodule Fact.Indexer do
   defmacro __using__(name) do
     
     quote do
-      @behaviour Fact.Indexer
+      @behaviour Fact.EventIndexer
       
       use GenServer
       use Fact.EventKeys
