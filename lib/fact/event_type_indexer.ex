@@ -1,10 +1,6 @@
 defmodule Fact.EventTypeIndexer do
-  use Fact.Indexer
+  use Fact.Indexer, :event_type
   
   @impl true
-  def index, do: :event_type 
-  
-  @impl true
-  def index_event(event), do: event["stream"]
-
+  def index(event), do: event["stream"]
 end

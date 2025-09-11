@@ -2,17 +2,17 @@ defmodule Fact.Indexer do
   @moduledoc """
   Base module for all indexers.
   """
-
-  @callback index() :: atom 
-  @callback index_event(any()) :: String.t() | nil
+  @callback index(any()) :: String.t() | nil
   
-  defmacro __using__(_opts) do
+  defmacro __using__(name) do
+    
     quote do
       use GenServer
       alias Fact.Paths
       require Logger
-      
+
       @behaviour Fact.Indexer
+      @index unquote(name)
       
       def start_link(opts \\ []) do
         name = Keyword.get(opts, :name, __MODULE__)
@@ -21,26 +21,19 @@ defmodule Fact.Indexer do
       
       @impl true
       def init(opts) do
-        index_name = index()
-        ensure_paths!(index_name)
-        
-        state = %{
-          index: index_name,
-          checkpoint: Paths.index_checkpoint(index_name)
-        }
-        
-        {:ok, state, {:continue, :rebuild_and_join}}
+        ensure_paths!()
+        {:ok, %{}, {:continue, :rebuild_and_join}}
       end
       
       @impl true
       def handle_continue(:rebuild_and_join, state) do
-        checkpoint = load_checkpoint(state)
+        checkpoint = load_checkpoint()
         Logger.debug("#{__MODULE__} building index from #{checkpoint}")
         
         Fact.EventReader.read_all(from_position: checkpoint)
         |> Stream.each(fn event ->
-          append_to_index(state, event)
-          save_checkpoint(state, event)
+          append_to_index(event)
+          save_checkpoint(event)
         end)
         |> Stream.run()
         
@@ -51,47 +44,37 @@ defmodule Fact.Indexer do
       
       @impl true
       def handle_info({:index, event}, state) do
-        append_to_index(state, event)
-        save_checkpoint(state, event)
+        append_to_index(event)
+        save_checkpoint(event)
         {:noreply, state}
       end
 
-      defp append_to_index(%{index: index_name}, %{"id" => id} = event) do
-        case index_event(event) do
+      defp append_to_index(%{"id" => id} = event) do
+        case index(event) do
           nil -> :ignored
           key ->
-            file = Path.join(Paths.index(index_name), key)
+            file = Path.join(Paths.index(@index), key)
             File.write!(file, id <> "\n", [:append])
             :ok    
         end
       end
       
-      defp load_checkpoint(%{checkpoint: file}) do
-        case File.read(file) do
+      defp load_checkpoint() do
+        checkpoint_path = Paths.index_checkpoint(@index)
+        case File.read(checkpoint_path) do
           {:ok, contents} -> contents |> String.trim() |> String.to_integer
           {:error, _} -> 0
         end
       end
 
-      defp save_checkpoint(%{checkpoint: file}, %{"pos" => pos}) do
-        File.write!(file, Integer.to_string(pos))
+      defp save_checkpoint(%{"pos" => pos}) do
+        Paths.index_checkpoint(@index) |> File.write!(Integer.to_string(pos))
       end
       
-      defp ensure_paths!(index_name) do
-        File.mkdir_p!(Paths.index(index_name))
-        checkpoint = Paths.index_checkpoint(index_name)
-        unless File.exists?(checkpoint), do: File.write!(checkpoint, "0")
-      end
-
-      defp wait_for_pg(attempt \\ 0) do
-        case Process.whereis(:pg) do
-          nil when attempt < 20 ->
-            :timer.sleep(50)
-            wait_for_pg(attempt + 1)
-          nil ->
-            raise ":pg never started after 1 second"
-          _pid -> :ok
-        end
+      defp ensure_paths!() do
+        File.mkdir_p!(Paths.index(@index))
+        checkpoint_path = Paths.index_checkpoint(@index)
+        unless File.exists?(checkpoint_path), do: File.write!(checkpoint_path, "0")
       end
     end
   end
