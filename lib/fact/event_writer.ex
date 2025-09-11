@@ -1,12 +1,11 @@
 defmodule Fact.EventWriter do
-  @compile {:no_warn_undefined, :pg}
   use GenServer
+  use Fact.EventKeys 
+  
   alias Fact.Paths
   require Logger
 
-  @moduledoc """
-  Documentation for `Fact`.
-  """
+  @compile {:no_warn_undefined, :pg}
   
   defstruct [
     :events_dir,
@@ -46,9 +45,9 @@ defmodule Fact.EventWriter do
   def handle_call({:append, event}, _from, %{events_dir: events_dir, append_log: append_log, last_pos: last_pos} = state) do
 
     event = Map.merge(event, %{
-      id: UUID.uuid4(:hex),
-      ts: DateTime.utc_now() |> DateTime.to_unix(:microsecond),
-      pos: last_pos + 1
+      @event_id => UUID.uuid4(:hex),
+      @store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
+      @store_position => last_pos + 1
     })
 
     json = JSON.encode!(event)

@@ -1,5 +1,6 @@
 defmodule Fact.EventReader do
   use GenServer
+  use Fact.EventKeys
   alias Fact.Paths
   require Logger
 
@@ -92,7 +93,7 @@ defmodule Fact.EventReader do
         |> Stream.map(fn {path, pos} ->
           {:ok, encoded} = File.read(path)
           {:ok, event} = JSON.decode(encoded)
-          Map.put(event, "stream_position", pos)
+          Map.put(event, @event_stream_position, pos)
         end)
 
       {:reply, read_stream, state}
@@ -120,7 +121,7 @@ defmodule Fact.EventReader do
       |> Stream.map(fn {path, pos} ->
           {:ok, encoded} = File.read(path)
           {:ok, event} = JSON.decode(encoded)
-          Map.put(event, "query_position", pos)
+          Map.put(event, @query_position, pos)
         end)
 
     {:reply, read_stream, state}

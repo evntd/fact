@@ -7,11 +7,13 @@ defmodule Fact.Indexer do
   defmacro __using__(name) do
     
     quote do
+      @behaviour Fact.Indexer
+      
       use GenServer
+      use Fact.EventKeys
       alias Fact.Paths
       require Logger
-
-      @behaviour Fact.Indexer
+      
       @index unquote(name)
       
       def start_link(opts \\ []) do
@@ -49,7 +51,7 @@ defmodule Fact.Indexer do
         {:noreply, state}
       end
 
-      defp append_to_index(%{"id" => id} = event) do
+      defp append_to_index(%{@event_id => id} = event) do
         case index(event) do
           nil -> :ignored
           key ->
@@ -67,7 +69,7 @@ defmodule Fact.Indexer do
         end
       end
 
-      defp save_checkpoint(%{"pos" => pos}) do
+      defp save_checkpoint(%{@store_position => pos}) do
         Paths.index_checkpoint(@index) |> File.write!(Integer.to_string(pos))
       end
       
