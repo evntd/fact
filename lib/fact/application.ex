@@ -1,12 +1,8 @@
 defmodule Fact.Application do
   use Application
-  alias Fact.Paths
-  require Logger
 
   def start(_type, _args) do
     
-    init_directories!()
-
     {:ok, _} = :pg.start_link()
 
     children = [
@@ -24,10 +20,4 @@ defmodule Fact.Application do
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Fact.Supervisor)
   end
-
-  defp init_directories!() do
-    File.mkdir_p!(Paths.events)
-    unless File.exists?(Paths.append_log), do: File.write!(Paths.append_log, "")
-  end
-
 end

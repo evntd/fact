@@ -7,9 +7,7 @@ defmodule Fact.EventWriter do
   @moduledoc """
   Documentation for `Fact`.
   """
-
   
-
   defstruct [
     :events_dir,
     :append_log,
@@ -17,7 +15,8 @@ defmodule Fact.EventWriter do
   ]
 
   def start_link(opts \\ []) do
-
+    ensure_paths!()
+    
     state = %__MODULE__{
       events_dir: Paths.events,
       append_log: Paths.append_log,
@@ -68,7 +67,6 @@ defmodule Fact.EventWriter do
   end
 
   def handle_call({:position_of, event_id}, _from, %{append_log: append_log} = state) do
-
     position =
       File.stream!(append_log)
       |> Stream.with_index(1)
@@ -77,13 +75,17 @@ defmodule Fact.EventWriter do
       end)
 
     {:reply, position, state}
-
   end
-
 
   defp last_position(%{append_log: append_log}) do
     File.stream!(append_log)
     |> Enum.reduce(0, fn _line, pos -> pos + 1 end)
+  end
+
+  defp ensure_paths!() do
+    File.mkdir_p!(Paths.events)
+    append_log = Paths.append_log
+    unless File.exists?(append_log), do: File.write!(append_log, "")
   end
 
 end
