@@ -26,13 +26,8 @@ defmodule Fact.Application do
   end
 
   defp init_directories!() do
-    
     File.mkdir_p!(Paths.events)
     unless File.exists?(Paths.append_log), do: File.write!(Paths.append_log, "")
-    
-    File.mkdir_p!(Paths.index(:event_type))
-    File.mkdir_p!(Paths.index(:event_stream))
-    
   end
 
 end

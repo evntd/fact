@@ -22,6 +22,8 @@ defmodule Fact.Indexer do
       @impl true
       def init(opts) do
         index_name = index()
+        ensure_paths!(index_name)
+        
         state = %{
           index: index_name,
           checkpoint: Paths.index_checkpoint(index_name)
@@ -73,6 +75,12 @@ defmodule Fact.Indexer do
 
       defp save_checkpoint(%{checkpoint: file}, %{"pos" => pos}) do
         File.write!(file, Integer.to_string(pos))
+      end
+      
+      defp ensure_paths!(index_name) do
+        File.mkdir_p!(Paths.index(index_name))
+        checkpoint = Paths.index_checkpoint(index_name)
+        unless File.exists?(checkpoint), do: File.write!(checkpoint, "0")
       end
 
       defp wait_for_pg(attempt \\ 0) do
