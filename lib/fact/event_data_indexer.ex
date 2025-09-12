@@ -42,20 +42,12 @@ defmodule Fact.EventDataIndexer do
     last_pos = load_checkpoint(state)
 
     Logger.debug("#{__MODULE__}[#{key}] building index from #{last_pos}")
-
-    # Event Data indexers need to use there own dedicated EventReader because user queries can cause JIT indexing, 
-    # thus the global EventReader is in use and would cause a timeout, or worse a deadlock.
-    {:ok, reader} = Fact.EventReader.start_link(name: String.to_atom("Fact.EventDataIndexer[#{key}].EventReader"))
     
-    try do
-      Fact.EventReader.read_all(reader, from_position: last_pos)
-      |> Enum.each(fn event ->
-        append_to_index(state, event)
-        save_checkpoint(state, event)
-      end)
-    after
-      GenServer.stop(reader)
-    end
+    Fact.EventReader.read_all(from_position: last_pos)
+    |> Enum.each(fn event ->
+      append_to_index(state, event)
+      save_checkpoint(state, event)
+    end)
     
     Logger.debug("#{__MODULE__}[#{key}] joining :fact_indexers group")
     :ok = :pg.join(:fact_indexers, self())

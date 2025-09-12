@@ -7,7 +7,6 @@ defmodule Fact.Application do
 
     children = [
       Fact.EventWriter,
-      Fact.EventReader,
 
       # Always-on indexers
       Fact.EventTypeIndexer,

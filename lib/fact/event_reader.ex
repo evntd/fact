@@ -1,5 +1,4 @@
 defmodule Fact.EventReader do
-  use GenServer
   use Fact.EventKeys
   alias Fact.Paths
   require Logger
@@ -8,64 +7,15 @@ defmodule Fact.EventReader do
     defstruct event_types: [], event_data: []
   end
 
-  #defstruct [:events_dir, :append_log, :stream_dir]
-
-  def start_link(opts \\ []) do
-
-    state = %{
-      events_dir: Paths.events,
-      append_log: Paths.append_log,
-      stream_dir: Paths.index(:event_stream),
-      event_type_dir: Paths.index(:event_type),
-      event_data_dir: Paths.index(:event_data)
-    }
-
-    opts = Keyword.put_new(opts, :name, __MODULE__)
-
-    GenServer.start_link(__MODULE__, state, opts)
-
-  end
-
-  def read_all(opts) when is_list(opts) do
-    read_all(__MODULE__, opts)
-  end
-  
-  def read_all(server, opts \\ []) do
+  def read_all(opts \\ []) do
     from_pos = Keyword.get(opts, :from_position, 0)
-    GenServer.call(server, {:read_all, from_pos})
-  end
 
-  def read_stream(stream, opts \\ []) do
-    from_pos = Keyword.get(opts, :from_position, 0)
-    GenServer.call(__MODULE__, {:read_stream, stream, from_pos})
-  end
-
-  def query(clauses) when is_list(clauses) do
-    GenServer.call(__MODULE__, {:query, clauses})
-  end
-
-  def query(%Fact.EventReader.QueryClause{} = clause) do
-    GenServer.call(__MODULE__, {:query, [clause]})
-  end
-
-  def query(types \\ [], properties \\ []) do
-    GenServer.call(__MODULE__, {:query, [%Fact.EventReader.QueryClause{event_types: types, event_data: properties}]})
-  end
-
-
-  # PRIVATE
-
-  def init(state) do
-    {:ok, state}
-  end
-
-  def handle_call({:read_all, from_pos}, _from, %{append_log: append_log, events_dir: events_dir} = state) do
-
+    events_path = Paths.events
     read_stream =
-      append_log
+      Paths.append_log
       |> File.stream!()
       |> Stream.map(&String.trim/1)
-      |> Stream.map(&Path.join(events_dir, "#{&1}.json"))
+      |> Stream.map(&Path.join(events_path, "#{&1}.json"))
       |> Stream.with_index(1)
       |> Stream.drop_while(fn {_path, pos} -> pos <= from_pos end)
       |> Stream.map(fn {path, _pos} ->
@@ -74,20 +24,20 @@ defmodule Fact.EventReader do
         event
       end)
 
-    {:reply, read_stream, state}
-
+    read_stream
   end
 
-  def handle_call({:read_stream, stream, from_pos}, _from, %{stream_dir: stream_dir, events_dir: events_dir} = state) do
+  def read_stream(stream, opts \\ []) do
+    from_pos = Keyword.get(opts, :from_position, 0)
 
-    eventstream_file = Path.join(stream_dir, stream)
-    if File.exists?(eventstream_file) do
-
+    events_path = Paths.events
+    event_stream_file = Path.join(Paths.index(:event_stream), stream)
+    if File.exists?(event_stream_file) do
       read_stream =
-        eventstream_file
+        event_stream_file
         |> File.stream!()
         |> Stream.map(&String.trim/1)
-        |> Stream.map(&Path.join(events_dir, "#{&1}.json"))
+        |> Stream.map(&Path.join(events_path, "#{&1}.json"))
         |> Stream.with_index(1)
         |> Stream.drop_while(fn {_path, pos} -> pos <= from_pos end)
         |> Stream.map(fn {path, pos} ->
@@ -96,41 +46,42 @@ defmodule Fact.EventReader do
           Map.put(event, @event_stream_position, pos)
         end)
 
-      {:reply, read_stream, state}
+      read_stream
     else
-      {:reply, {:error, :stream_not_found}, state}
-    end
-
+      {:error, :stream_not_found}
+    end    
   end
 
-  def handle_call({:query, clauses}, _from, state) when is_list(clauses) do
-
+  def query(clauses) when is_list(clauses) do
     events_matched =
       clauses
       |> Enum.reduce(MapSet.new(), fn clause, acc ->
-        MapSet.union(acc, events_matching_clause(clause, state))
+        MapSet.union(acc, events_matching_clause(clause))
       end)
-
-    read_stream =
-      state.append_log
-      |> File.stream!()
-      |> Stream.map(&String.trim/1)
-      |> Stream.filter(&MapSet.member?(events_matched, &1))
-      |> Stream.map(&Path.join(state.events_dir, "#{&1}.json"))
-      |> Stream.with_index(1)
-      |> Stream.map(fn {path, pos} ->
-          {:ok, encoded} = File.read(path)
-          {:ok, event} = JSON.decode(encoded)
-          Map.put(event, @query_position, pos)
-        end)
-
-    {:reply, read_stream, state}
-
+      
+    events_dir = Paths.events
+    
+    Paths.append_log
+    |> File.stream!()
+    |> Stream.map(&String.trim/1)
+    |> Stream.filter(&MapSet.member?(events_matched, &1))
+    |> Stream.map(&Path.join(events_dir, "#{&1}.json"))
+    |> Stream.with_index(1)
+    |> Stream.map(fn {path, pos} ->
+      {:ok, encoded} = File.read(path)
+      {:ok, event} = JSON.decode(encoded)
+      Map.put(event, @query_position, pos)
+    end)
   end
 
-  defp events_matching_clause(%QueryClause{} = clause, state) do
-    type_matches = events_matching_types(clause.event_types, state)
-    data_matches = events_matching_data(clause.event_data, state)
+  def query(%Fact.EventReader.QueryClause{} = clause), do: query([clause])
+  def query(types \\ [], properties \\ []), do: query([%Fact.EventReader.QueryClause{event_types: types, event_data: properties}])
+
+  # PRIVATE
+
+  defp events_matching_clause(%QueryClause{} = clause) do
+    type_matches = events_matching_types(clause.event_types)
+    data_matches = events_matching_data(clause.event_data)
     case {type_matches, data_matches} do
       {nil, nil} -> MapSet.new()
       {nil, data} -> data
@@ -139,17 +90,19 @@ defmodule Fact.EventReader do
     end
   end
 
-  defp events_matching_types([], _state), do: nil
-  defp events_matching_types(event_types, state) do
+  defp events_matching_types([]), do: nil
+  defp events_matching_types(event_types) do
+    event_type_dir = Paths.index(:event_type)
     event_types
-    |> Enum.map(&read_index(Path.join(state.event_type_dir, &1)))
+    |> Enum.map(&read_index(Path.join(event_type_dir, &1)))
     |> Enum.reduce(MapSet.new(), &MapSet.union/2)
   end
 
-  defp events_matching_data(event_data, state) do
+  defp events_matching_data(event_data) do
+    event_data_dir = Paths.index(:event_data)
     Enum.reduce_while(event_data, nil, fn {key, value}, acc ->
       {:ok, _pid} = Fact.EventDataIndexerManager.ensure_indexer(key)
-      ids = read_index(Path.join([state.event_data_dir, to_string(key), sha1(value)]))
+      ids = read_index(Path.join([event_data_dir, to_string(key), sha1(value)]))
       case {acc, MapSet.size(ids) > 0} do
         {_, false} -> {:halt, MapSet.new()}
         {nil, true} -> {:cont, ids}
