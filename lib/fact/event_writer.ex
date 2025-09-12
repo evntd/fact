@@ -37,7 +37,7 @@ defmodule Fact.EventWriter do
 
   def init(state) do
     last_pos = last_position(state)
-    Logger.debug("#{__MODULE__} last position at #{last_pos}")
+    Logger.debug("#{__MODULE__} last #{@event_store_position} at #{last_pos}")
     state = %__MODULE__{ state | last_pos: last_pos }
     {:ok, state}
   end
@@ -46,8 +46,8 @@ defmodule Fact.EventWriter do
 
     event = Map.merge(event, %{
       @event_id => UUID.uuid4(:hex),
-      @store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
-      @store_position => last_pos + 1
+      @event_store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
+      @event_store_position => last_pos + 1
     })
 
     json = JSON.encode!(event)
@@ -55,12 +55,12 @@ defmodule Fact.EventWriter do
     record = JSON.decode!(json)
 
     :ok = File.write!(path, json, [:exclusive])
-    :ok = File.write!(append_log, record["id"] <> "\n", [:append])
+    :ok = File.write!(append_log, record[@event_id] <> "\n", [:append])
 
     :pg.get_members(:fact_indexers)
     |> Enum.each(&send(&1, {:index, record}))
 
-    state = %__MODULE__{ state | last_pos: record["pos"] }
+    state = %__MODULE__{ state | last_pos: record[@event_store_position] }
 
     {:reply, record, state}
   end

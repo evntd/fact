@@ -30,12 +30,12 @@ defmodule Fact.EventIndexer do
       @impl true
       def handle_continue(:rebuild_and_join, state) do
         checkpoint = load_checkpoint()
-        Logger.debug("#{__MODULE__} building index from #{checkpoint}")
+        Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
         
         Fact.EventReader.read_all(from_position: checkpoint)
         |> Stream.each(fn event ->
           append_to_index(event)
-          save_checkpoint(event)
+          save_checkpoint(event[@event_store_position])
         end)
         |> Stream.run()
         
@@ -47,7 +47,7 @@ defmodule Fact.EventIndexer do
       @impl true
       def handle_info({:index, event}, state) do
         append_to_index(event)
-        save_checkpoint(event)
+        save_checkpoint(event[@event_store_position])
         {:noreply, state}
       end
 
@@ -69,8 +69,9 @@ defmodule Fact.EventIndexer do
         end
       end
 
-      defp save_checkpoint(%{@store_position => pos}) do
-        Paths.index_checkpoint(@index) |> File.write!(Integer.to_string(pos))
+      defp save_checkpoint(pos) do
+        Paths.index_checkpoint(@index) 
+        |> File.write!(Integer.to_string(pos))
       end
       
       defp ensure_paths!() do

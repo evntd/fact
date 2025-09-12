@@ -70,7 +70,7 @@ defmodule Fact.EventReader do
     |> Stream.map(fn {path, pos} ->
       {:ok, encoded} = File.read(path)
       {:ok, event} = JSON.decode(encoded)
-      Map.put(event, @query_position, pos)
+      Map.put(event, @event_query_position, pos)
     end)
   end
 
