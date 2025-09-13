@@ -2,89 +2,109 @@ defmodule Fact.EventIndexer do
   @moduledoc """
   Base module for all indexers.
   """
-  @callback index(event :: map(), state :: term()) :: String.t() | nil
+  @callback index_event(event :: map(), state :: term()) :: String.t() | nil
   
-  defmacro __using__(kind) do
+  defmacro __using__(_opts \\ []) do
     
     quote do
       @behaviour Fact.EventIndexer
       
       use GenServer
       use Fact.EventKeys
-      alias Fact.Paths
       require Logger
       
-      @kind unquote(kind)
+      defstruct [:index, :path] 
       
       def start_link(opts \\ []) do
-        state = 
-          case Keyword.fetch(opts, :key) do
-            {:ok, key} -> {@kind, key}
-            :error -> @kind 
-          end
+
+        {index_opts, start_opts} = Keyword.split(opts, [:key, :path])
         
-        opts = Keyword.put_new(opts, :name, __MODULE__)
-        GenServer.start_link(__MODULE__, state, opts)
+        index = 
+          case Keyword.fetch(index_opts, :key) do
+            {:ok, key} -> {__MODULE__, key}
+            :error -> __MODULE__ 
+          end
+
+        base = Keyword.fetch!(index_opts, :path)
+          
+        path =
+          case index do
+            {_mod, key} -> Path.join(base, to_string(key))
+            _ -> base
+          end 
+        
+        state = %__MODULE__{
+          index: index,
+          path: path
+        }
+        
+        start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
+        GenServer.start_link(__MODULE__, state, start_opts)
       end
       
       @impl true
       def init(state) do
-        ensure_paths!(state)
+        ensure_paths!(state.path)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
       
       @impl true
       def handle_continue(:rebuild_and_join, state) do
-        checkpoint = load_checkpoint(state)
+        checkpoint = load_checkpoint(state.path)
         Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
         
         Fact.EventReader.read_all(from_position: checkpoint)
         |> Stream.each(fn event ->
           append_to_index(event, state)
-          save_checkpoint(event[@event_store_position], state)
+          save_checkpoint(event[@event_store_position], state.path)
         end)
         |> Stream.run()
         
         Logger.debug("#{__MODULE__} joining :fact_indexers group")
         :ok = :pg.join(:fact_indexers, self())
+        
+        send(Fact.EventIndexerManager, {:indexer_ready, self(), state.index})
+        
         {:noreply, state}
       end
       
       @impl true
       def handle_info({:index, event}, state) do
         append_to_index(event, state)
-        save_checkpoint(event[@event_store_position], state)
+        save_checkpoint(event[@event_store_position], state.path)
         {:noreply, state}
       end
 
-      defp append_to_index(%{@event_id => id} = event, state) do
-        case index(event, state) do
+      defp append_to_index(%{@event_id => id} = event, %__MODULE__{index: index, path: path}) do
+        case index_event(event, index) do
           nil -> :ignored
           key ->
-            file = Path.join(Paths.index(state), key)
+            file = Path.join(path, key)
             File.write!(file, id <> "\n", [:append])
             :ok    
         end
       end
       
-      defp load_checkpoint(state) do
-        checkpoint_path = Paths.index_checkpoint(state)
+      defp load_checkpoint(path) do
+        checkpoint_path = get_checkpoint_path(path)
         case File.read(checkpoint_path) do
           {:ok, contents} -> contents |> String.trim() |> String.to_integer
           {:error, _} -> 0
         end
       end
 
-      defp save_checkpoint(position, state) do
-        Paths.index_checkpoint(state) 
+      defp save_checkpoint(position, path) do
+        get_checkpoint_path(path) 
         |> File.write!(Integer.to_string(position))
       end
       
-      defp ensure_paths!(state) do
-        File.mkdir_p!(Paths.index(state))
-        checkpoint_path = Paths.index_checkpoint(state)
+      defp ensure_paths!(path) do
+        File.mkdir_p!(path)
+        checkpoint_path = get_checkpoint_path(path)
         unless File.exists?(checkpoint_path), do: File.write!(checkpoint_path, "0")
       end
+      
+      def get_checkpoint_path(path), do: Path.join(path, ".checkpoint")
     end
   end
 end

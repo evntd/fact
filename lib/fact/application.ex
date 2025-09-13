@@ -7,14 +7,8 @@ defmodule Fact.Application do
 
     children = [
       Fact.EventWriter,
-
-      # Always-on indexers
-      Fact.EventTypeIndexer,
-      Fact.EventStreamIndexer,
-
-      # User-defined indexers
-      {Registry, keys: :unique, name: Fact.EventDataIndexerRegistry},
-      Fact.EventDataIndexerManager
+      {Registry, keys: :unique, name: Fact.EventIndexerRegistry},
+      Fact.EventIndexerManager
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Fact.Supervisor)

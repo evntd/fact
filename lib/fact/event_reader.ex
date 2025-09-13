@@ -101,7 +101,7 @@ defmodule Fact.EventReader do
   defp events_matching_data(event_data) do
     event_data_dir = Paths.index(:event_data)
     Enum.reduce_while(event_data, nil, fn {key, value}, acc ->
-      {:ok, _pid} = Fact.EventDataIndexerManager.ensure_indexer(key)
+      {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer({Fact.EventDataIndexer, key})
       ids = read_index(Path.join([event_data_dir, to_string(key), sha1(value)]))
       case {acc, MapSet.size(ids) > 0} do
         {_, false} -> {:halt, MapSet.new()}
