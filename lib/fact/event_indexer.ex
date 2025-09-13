@@ -2,9 +2,9 @@ defmodule Fact.EventIndexer do
   @moduledoc """
   Base module for all indexers.
   """
-  @callback index(any()) :: String.t() | nil
+  @callback index(event :: map(), state :: term()) :: String.t() | nil
   
-  defmacro __using__(name) do
+  defmacro __using__(kind) do
     
     quote do
       @behaviour Fact.EventIndexer
@@ -14,28 +14,34 @@ defmodule Fact.EventIndexer do
       alias Fact.Paths
       require Logger
       
-      @index unquote(name)
+      @kind unquote(kind)
       
       def start_link(opts \\ []) do
-        name = Keyword.get(opts, :name, __MODULE__)
-        GenServer.start_link(__MODULE__, opts, name: name)
+        state = 
+          case Keyword.fetch(opts, :key) do
+            {:ok, key} -> {@kind, key}
+            :error -> @kind 
+          end
+        
+        opts = Keyword.put_new(opts, :name, __MODULE__)
+        GenServer.start_link(__MODULE__, state, opts)
       end
       
       @impl true
-      def init(opts) do
-        ensure_paths!()
-        {:ok, %{}, {:continue, :rebuild_and_join}}
+      def init(state) do
+        ensure_paths!(state)
+        {:ok, state, {:continue, :rebuild_and_join}}
       end
       
       @impl true
       def handle_continue(:rebuild_and_join, state) do
-        checkpoint = load_checkpoint()
+        checkpoint = load_checkpoint(state)
         Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
         
         Fact.EventReader.read_all(from_position: checkpoint)
         |> Stream.each(fn event ->
-          append_to_index(event)
-          save_checkpoint(event[@event_store_position])
+          append_to_index(event, state)
+          save_checkpoint(event[@event_store_position], state)
         end)
         |> Stream.run()
         
@@ -46,37 +52,37 @@ defmodule Fact.EventIndexer do
       
       @impl true
       def handle_info({:index, event}, state) do
-        append_to_index(event)
-        save_checkpoint(event[@event_store_position])
+        append_to_index(event, state)
+        save_checkpoint(event[@event_store_position], state)
         {:noreply, state}
       end
 
-      defp append_to_index(%{@event_id => id} = event) do
-        case index(event) do
+      defp append_to_index(%{@event_id => id} = event, state) do
+        case index(event, state) do
           nil -> :ignored
           key ->
-            file = Path.join(Paths.index(@index), key)
+            file = Path.join(Paths.index(state), key)
             File.write!(file, id <> "\n", [:append])
             :ok    
         end
       end
       
-      defp load_checkpoint() do
-        checkpoint_path = Paths.index_checkpoint(@index)
+      defp load_checkpoint(state) do
+        checkpoint_path = Paths.index_checkpoint(state)
         case File.read(checkpoint_path) do
           {:ok, contents} -> contents |> String.trim() |> String.to_integer
           {:error, _} -> 0
         end
       end
 
-      defp save_checkpoint(pos) do
-        Paths.index_checkpoint(@index) 
-        |> File.write!(Integer.to_string(pos))
+      defp save_checkpoint(position, state) do
+        Paths.index_checkpoint(state) 
+        |> File.write!(Integer.to_string(position))
       end
       
-      defp ensure_paths!() do
-        File.mkdir_p!(Paths.index(@index))
-        checkpoint_path = Paths.index_checkpoint(@index)
+      defp ensure_paths!(state) do
+        File.mkdir_p!(Paths.index(state))
+        checkpoint_path = Paths.index_checkpoint(state)
         unless File.exists?(checkpoint_path), do: File.write!(checkpoint_path, "0")
       end
     end

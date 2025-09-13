@@ -27,8 +27,8 @@ defmodule Fact.EventDataIndexer do
     
     Fact.EventReader.read_all(from_position: checkpoint)
     |> Stream.each(fn event ->
-      append_to_index(state, event)
-      save_checkpoint(state, event[@event_store_position])
+      append_to_index(event, state)
+      save_checkpoint(event[@event_store_position], state)
     end)
     |> Stream.run()
     
@@ -42,8 +42,8 @@ defmodule Fact.EventDataIndexer do
   end
 
   def handle_info({:index, event}, state) do
-    append_to_index(state, event)
-    save_checkpoint(state, event[@event_store_position])
+    append_to_index(event, state)
+    save_checkpoint(event[@event_store_position], state)
     {:noreply, state}
   end
   
@@ -54,12 +54,13 @@ defmodule Fact.EventDataIndexer do
     end
   end
   
-  defp append_to_index(index, %{@event_id => id} = event) do
-    case index_event(event, index) do
+  defp append_to_index(%{@event_id => id} = event, state) do
+    case index_event(event, state) do
       nil -> :ignored
       value ->
-        file = Path.join(Paths.index(index), hash_value(value))
+        file = Path.join(Paths.index(state), hash_value(value))
         File.write!(file, id <> "\n", [:append])
+        :ok
     end
   end
 
@@ -69,16 +70,16 @@ defmodule Fact.EventDataIndexer do
     Base.encode16(hash, case: :lower)
   end
 
-  defp load_checkpoint(index) do
-    checkpoint_path = Paths.index_checkpoint(index)
+  defp load_checkpoint(state) do
+    checkpoint_path = Paths.index_checkpoint(state)
     case File.read(checkpoint_path) do
       {:ok, contents} -> contents |> String.trim() |> String.to_integer
       {:error, _} -> 0
     end
   end
 
-  defp save_checkpoint(index, position) do
-    Paths.index_checkpoint(index)
+  defp save_checkpoint(position, state) do
+    Paths.index_checkpoint(state)
     |> File.write!(Integer.to_string(position))
   end
 
