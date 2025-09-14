@@ -1,12 +1,12 @@
 defmodule Fact.EventWriter do
   use GenServer
-  use Fact.EventKeys 
-  
+  use Fact.EventKeys
+
   alias Fact.Paths
   require Logger
 
   @compile {:no_warn_undefined, :pg}
-  
+
   defstruct [
     :events_dir,
     :append_log,
@@ -15,10 +15,10 @@ defmodule Fact.EventWriter do
 
   def start_link(opts \\ []) do
     ensure_paths!()
-    
+
     state = %__MODULE__{
-      events_dir: Paths.events,
-      append_log: Paths.append_log,
+      events_dir: Paths.events(),
+      append_log: Paths.append_log(),
       last_pos: 0
     }
 
@@ -38,17 +38,21 @@ defmodule Fact.EventWriter do
   def init(state) do
     last_pos = last_position(state)
     Logger.debug("#{__MODULE__} last #{@event_store_position} at #{last_pos}")
-    state = %__MODULE__{ state | last_pos: last_pos }
+    state = %__MODULE__{state | last_pos: last_pos}
     {:ok, state}
   end
 
-  def handle_call({:append, event}, _from, %{events_dir: events_dir, append_log: append_log, last_pos: last_pos} = state) do
-
-    event = Map.merge(event, %{
-      @event_id => UUID.uuid4(:hex),
-      @event_store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
-      @event_store_position => last_pos + 1
-    })
+  def handle_call(
+        {:append, event},
+        _from,
+        %{events_dir: events_dir, append_log: append_log, last_pos: last_pos} = state
+      ) do
+    event =
+      Map.merge(event, %{
+        @event_id => UUID.uuid4(:hex),
+        @event_store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
+        @event_store_position => last_pos + 1
+      })
 
     json = JSON.encode!(event)
     path = Path.join(events_dir, event.id <> ".json")
@@ -60,7 +64,7 @@ defmodule Fact.EventWriter do
     :pg.get_members(:fact_indexers)
     |> Enum.each(&send(&1, {:index, record}))
 
-    state = %__MODULE__{ state | last_pos: record[@event_store_position] }
+    state = %__MODULE__{state | last_pos: record[@event_store_position]}
 
     {:reply, record, state}
   end
@@ -82,9 +86,8 @@ defmodule Fact.EventWriter do
   end
 
   defp ensure_paths!() do
-    File.mkdir_p!(Paths.events)
-    append_log = Paths.append_log
+    File.mkdir_p!(Paths.events())
+    append_log = Paths.append_log()
     unless File.exists?(append_log), do: File.write!(append_log, "")
   end
-
 end

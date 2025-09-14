@@ -1,14 +1,17 @@
 defmodule Fact.EventStreamCategoryIndexer do
   @moduledoc false
   use Fact.EventIndexer
-  
+
   @impl true
   def index_event(event, opts) do
     separator = Keyword.get(opts, :separator, "-")
+
     case event[@event_stream] do
-      nil -> nil 
+      nil ->
+        nil
+
       stream ->
-        String.split(stream, separator, parts: 2) 
+        String.split(stream, separator, parts: 2)
         |> List.first()
     end
   end

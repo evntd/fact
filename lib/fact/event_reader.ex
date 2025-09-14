@@ -10,9 +10,10 @@ defmodule Fact.EventReader do
   def read_all(opts \\ []) do
     from_pos = Keyword.get(opts, :from_position, 0)
 
-    events_path = Paths.events
+    events_path = Paths.events()
+
     read_stream =
-      Paths.append_log
+      Paths.append_log()
       |> File.stream!()
       |> Stream.map(&String.trim/1)
       |> Stream.map(&Path.join(events_path, "#{&1}.json"))
@@ -29,8 +30,8 @@ defmodule Fact.EventReader do
 
   def read_stream(event_stream, opts \\ []) do
     from_pos = Keyword.get(opts, :from_position, 0)
-    events_path = Paths.events
-    
+    events_path = Paths.events()
+
     Fact.EventIndexerManager.stream(Fact.EventStreamIndexer, event_stream)
     |> Stream.map(&Path.join(events_path, "#{&1}.json"))
     |> Stream.with_index(1)
@@ -40,7 +41,6 @@ defmodule Fact.EventReader do
       {:ok, event} = JSON.decode(encoded)
       Map.put(event, @event_stream_position, pos)
     end)
-    
   end
 
   def query(clauses) when is_list(clauses) do
@@ -49,10 +49,10 @@ defmodule Fact.EventReader do
       |> Enum.reduce(MapSet.new(), fn clause, acc ->
         MapSet.union(acc, events_matching_clause(clause))
       end)
-      
-    events_dir = Paths.events
-    
-    Paths.append_log
+
+    events_dir = Paths.events()
+
+    Paths.append_log()
     |> File.stream!()
     |> Stream.map(&String.trim/1)
     |> Stream.filter(&MapSet.member?(events_matched, &1))
@@ -66,13 +66,16 @@ defmodule Fact.EventReader do
   end
 
   def query(%Fact.EventReader.QueryClause{} = clause), do: query([clause])
-  def query(types \\ [], properties \\ []), do: query([%Fact.EventReader.QueryClause{event_types: types, event_data: properties}])
+
+  def query(types \\ [], properties \\ []),
+    do: query([%Fact.EventReader.QueryClause{event_types: types, event_data: properties}])
 
   # PRIVATE
 
   defp events_matching_clause(%QueryClause{} = clause) do
     type_matches = events_matching_types(clause.event_types)
     data_matches = events_matching_data(clause.event_data)
+
     case {type_matches, data_matches} do
       {nil, nil} -> MapSet.new()
       {nil, data} -> data
@@ -82,6 +85,7 @@ defmodule Fact.EventReader do
   end
 
   defp events_matching_types([]), do: nil
+
   defp events_matching_types(event_types) do
     event_types
     |> Stream.flat_map(&Fact.EventIndexerManager.stream(Fact.EventTypeIndexer, &1))
@@ -90,13 +94,13 @@ defmodule Fact.EventReader do
 
   defp events_matching_data(event_data) do
     event_data
-    |> Enum.group_by(fn {k,_} -> k end, fn {_,v} -> v end)
+    |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
     |> Enum.reduce_while(:first, fn {key, values}, acc ->
       indexer = {Fact.EventDataIndexer, to_string(key)}
       {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(indexer)
-      
+
       ids =
-        values 
+        values
         |> Enum.flat_map(fn value ->
           case Fact.EventIndexerManager.stream(indexer, value) do
             streamable -> Enum.to_list(streamable)
@@ -104,19 +108,21 @@ defmodule Fact.EventReader do
           end
         end)
         |> MapSet.new()
-      
+
       cond do
         MapSet.size(ids) == 0 ->
           {:halt, MapSet.new()}
+
         acc == :first ->
           {:cont, ids}
+
         true ->
           {:cont, MapSet.intersection(acc, ids)}
       end
     end)
-    |> case do 
+    |> case do
       :first -> MapSet.new()
       result -> result
-     end
+    end
   end
 end
