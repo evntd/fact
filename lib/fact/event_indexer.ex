@@ -74,12 +74,30 @@ defmodule Fact.EventIndexer do
         save_checkpoint(event[@event_store_position], state.path)
         {:noreply, state}
       end
+      
+      @impl true
+      def handle_cast({:stream, value, receiver}, %__MODULE__{index: index, path: path} = state) do
+        file = Path.join(path, to_string(value))
+        
+        event_ids =
+          case File.exists?(file) do
+            false ->
+              {:error, {:index_not_found, index, value}}
+            true ->
+              File.stream!(file)
+              |> Stream.map(&String.trim/1)
+          end
+        
+        GenServer.reply(receiver, event_ids)
+        
+        {:noreply, state}
+      end
 
       defp append_to_index(%{@event_id => id} = event, %__MODULE__{index: index, path: path}) do
         case index_event(event, index) do
           nil -> :ignored
           key ->
-            file = Path.join(path, key)
+            file = Path.join(path, to_string(key))
             File.write!(file, id <> "\n", [:append])
             :ok    
         end
@@ -104,7 +122,13 @@ defmodule Fact.EventIndexer do
         unless File.exists?(checkpoint_path), do: File.write!(checkpoint_path, "0")
       end
       
-      def get_checkpoint_path(path), do: Path.join(path, ".checkpoint")
+      defp get_checkpoint_path(path), do: Path.join(path, ".checkpoint")
+
+      defp sha1(value) do
+        binary = :erlang.term_to_binary(value)
+        hash = :crypto.hash(:sha, binary)
+        Base.encode16(hash, case: :lower)
+      end
     end
   end
 end

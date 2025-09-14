@@ -10,10 +10,5 @@ config :fact,
       mod: Fact.EventDataIndexer, opts: [path: ".fact/indices/event_data", key: "name"]]
   ],
   paths: [
-    events: ".fact/events",
-    indices: [
-      event_type: ".fact/indices/type",
-      event_stream: ".fact/indices/stream",
-      event_data: ".fact/indices/data"
-    ]
+    events: ".fact/events"
   ]

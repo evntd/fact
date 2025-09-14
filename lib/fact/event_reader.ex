@@ -27,29 +27,20 @@ defmodule Fact.EventReader do
     read_stream
   end
 
-  def read_stream(stream, opts \\ []) do
+  def read_stream(event_stream, opts \\ []) do
     from_pos = Keyword.get(opts, :from_position, 0)
-
     events_path = Paths.events
-    event_stream_file = Path.join(Paths.index(:event_stream), stream)
-    if File.exists?(event_stream_file) do
-      read_stream =
-        event_stream_file
-        |> File.stream!()
-        |> Stream.map(&String.trim/1)
-        |> Stream.map(&Path.join(events_path, "#{&1}.json"))
-        |> Stream.with_index(1)
-        |> Stream.drop_while(fn {_path, pos} -> pos <= from_pos end)
-        |> Stream.map(fn {path, pos} ->
-          {:ok, encoded} = File.read(path)
-          {:ok, event} = JSON.decode(encoded)
-          Map.put(event, @event_stream_position, pos)
-        end)
-
-      read_stream
-    else
-      {:error, :stream_not_found}
-    end    
+    
+    Fact.EventIndexerManager.stream(Fact.EventStreamIndexer, event_stream)
+    |> Stream.map(&Path.join(events_path, "#{&1}.json"))
+    |> Stream.with_index(1)
+    |> Stream.drop_while(fn {_path, pos} -> pos <= from_pos end)
+    |> Stream.map(fn {path, pos} ->
+      {:ok, encoded} = File.read(path)
+      {:ok, event} = JSON.decode(encoded)
+      Map.put(event, @event_stream_position, pos)
+    end)
+    
   end
 
   def query(clauses) when is_list(clauses) do
@@ -92,40 +83,28 @@ defmodule Fact.EventReader do
 
   defp events_matching_types([]), do: nil
   defp events_matching_types(event_types) do
-    event_type_dir = Paths.index(:event_type)
     event_types
-    |> Enum.map(&read_index(Path.join(event_type_dir, &1)))
-    |> Enum.reduce(MapSet.new(), &MapSet.union/2)
+    |> Stream.flat_map(&Fact.EventIndexerManager.stream(Fact.EventTypeIndexer, &1))
+    |> Enum.into(MapSet.new())
   end
 
   defp events_matching_data(event_data) do
-    event_data_dir = Paths.index(:event_data)
-    Enum.reduce_while(event_data, nil, fn {key, value}, acc ->
-      {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer({Fact.EventDataIndexer, key})
-      ids = read_index(Path.join([event_data_dir, to_string(key), sha1(value)]))
-      case {acc, MapSet.size(ids) > 0} do
-        {_, false} -> {:halt, MapSet.new()}
-        {nil, true} -> {:cont, ids}
-        {acc, true} -> {:cont, MapSet.intersection(acc, ids)}
+    Enum.reduce_while(event_data, :first, fn {key, value}, acc ->
+      indexer = {Fact.EventDataIndexer, to_string(key)}
+      {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(indexer)
+      ids = Fact.EventIndexerManager.stream(indexer, value) |> Enum.into(MapSet.new())
+      cond do
+        MapSet.size(ids) == 0 ->
+          {:halt, MapSet.new()}
+        acc == :first ->
+          {:cont, ids}
+        true ->
+          {:cont, MapSet.intersection(acc, ids)}
       end
     end)
+    |> case do 
+      :first -> MapSet.new()
+      result -> result
+     end
   end
-
-  defp sha1(value) do
-    binary = :erlang.term_to_binary(value)
-    hash = :crypto.hash(:sha, binary)
-    Base.encode16(hash, case: :lower)
-  end
-
-  defp read_index(path) do
-    if File.exists?(path) do
-      File.stream!(path)
-      |> Stream.map(&String.trim/1)
-      |> Enum.to_list()
-      |> MapSet.new()
-    else
-      MapSet.new()
-    end
-  end
-
 end

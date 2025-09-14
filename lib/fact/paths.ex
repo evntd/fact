@@ -1,16 +1,10 @@
 defmodule Fact.Paths do
   @app :fact
   @append_logfile ".log"
-  @checkpoint_logfile ".checkpoint"
-  
+    
   def events, do: get_path([:events])
   
   def append_log, do: Path.join(events(), @append_logfile)
-  
-  def index(name) when is_atom(name) or is_binary(name), do: get_path([:indices, name])
-  def index({name, key}), do: Path.join(index(name), to_string(key))
-
-  def index_checkpoint(index), do: Path.join(index(index), @checkpoint_logfile)
   
   defp get_path(keys) do
     path = 

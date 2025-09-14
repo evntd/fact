@@ -17,6 +17,10 @@ defmodule Fact.EventIndexerManager do
   def ensure_indexer(key) do
     GenServer.call(__MODULE__, {:ensure_indexer, key})
   end
+  
+  def stream(indexer, value) do
+    GenServer.call(__MODULE__, {:stream, indexer, value})
+  end
 
   @impl true
   def init(state) do
@@ -79,11 +83,13 @@ defmodule Fact.EventIndexerManager do
                 base_opts
                 |> Keyword.put(:name, {:via, Registry, {Fact.EventIndexerRegistry, indexer}})
                 |> maybe_put_key(maybe_key)
+                
+              spec = {mod, opts}
 
-              GenServer.cast(self(), {:start_indexer, {mod, opts}})
+              GenServer.cast(self(), {:start_indexer, spec})
 
               indexers =
-                Map.put(state.indexers, indexer, %{
+                Map.put(state.indexers, get_indexer_key(spec), %{
                   pid: nil,
                   status: :starting,
                   waiters: [from]
@@ -100,11 +106,22 @@ defmodule Fact.EventIndexerManager do
     end
   end
   
+  @impl true 
+  def handle_call({:stream, indexer, value}, from, state) do 
+    case Map.get(state.indexers, indexer) do
+      %{pid: pid} when is_pid(pid) -> 
+        :ok = GenServer.cast(pid, {:stream, value, from})
+        {:noreply, state}
+      _ ->
+        {:reply, {:error, {:not_started, indexer}}, state}
+    end
+  end
+  
   defp normalize_indexer(indexer) do
     case indexer do
       {mod, key} when is_atom(key) -> 
         {:ok, {mod, to_string(key)}}
-      {mod, key} when is_string(key) ->
+      {mod, key} when is_binary(key) ->
         {:ok, {mod, key}}
       mod when is_atom(mod) ->
         {:ok, {mod, nil}}
