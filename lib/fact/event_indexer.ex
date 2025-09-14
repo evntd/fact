@@ -13,20 +13,27 @@ defmodule Fact.EventIndexer do
       use Fact.EventKeys
       require Logger
       
-      defstruct [:index, :path, :encoding] 
+      defstruct [:index, :path, :encoding, :opts] 
       
       def start_link(opts \\ []) do
 
-        {index_opts, start_opts} = Keyword.split(opts, [:key, :path, :encoding])
+        {indexer_opts, start_opts} = Keyword.split(opts, [:key, :path, :encoding, :opts])
         
         index = 
-          case Keyword.fetch(index_opts, :key) do
+          case Keyword.fetch(indexer_opts, :key) do
             {:ok, key} -> {__MODULE__, key}
             :error -> __MODULE__ 
           end
 
-        base = Keyword.fetch!(index_opts, :path)
-        encoding = Keyword.get(index_opts, :encoding, :raw)
+        base = Keyword.fetch!(indexer_opts, :path)
+        encoding = Keyword.get(indexer_opts, :encoding, :raw)
+        custom_opts = Keyword.get(indexer_opts, :opts, [])
+        
+        index_opts =
+          case index do
+            {_mod, key} -> Keyword.put(custom_opts, :key, key)
+            _ -> custom_opts
+          end
           
         path =
           case index do
@@ -37,7 +44,8 @@ defmodule Fact.EventIndexer do
         state = %__MODULE__{
           index: index,
           path: path,
-          encoding: encoding
+          encoding: encoding,
+          opts: opts
         }
         
         start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
@@ -95,8 +103,8 @@ defmodule Fact.EventIndexer do
         {:noreply, state}
       end
 
-      defp append_to_index(%{@event_id => id} = event, %__MODULE__{index: index, path: path, encoding: encoding}) do
-        case index_event(event, index) do
+      defp append_to_index(%{@event_id => id} = event, %__MODULE__{index: index, path: path, encoding: encoding, opts: opts}) do
+        case index_event(event, opts) do
           nil -> :ignored
           key ->
             file = Path.join(path, encode_key(key, encoding))
