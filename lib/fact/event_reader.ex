@@ -89,10 +89,22 @@ defmodule Fact.EventReader do
   end
 
   defp events_matching_data(event_data) do
-    Enum.reduce_while(event_data, :first, fn {key, value}, acc ->
+    event_data
+    |> Enum.group_by(fn {k,_} -> k end, fn {_,v} -> v end)
+    |> Enum.reduce_while(:first, fn {key, values}, acc ->
       indexer = {Fact.EventDataIndexer, to_string(key)}
       {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(indexer)
-      ids = Fact.EventIndexerManager.stream(indexer, value) |> Enum.into(MapSet.new())
+      
+      ids =
+        values 
+        |> Enum.flat_map(fn value ->
+          case Fact.EventIndexerManager.stream(indexer, value) do
+            streamable -> Enum.to_list(streamable)
+            {:error, _} -> []
+          end
+        end)
+        |> MapSet.new()
+      
       cond do
         MapSet.size(ids) == 0 ->
           {:halt, MapSet.new()}
