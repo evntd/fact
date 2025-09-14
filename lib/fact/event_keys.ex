@@ -4,7 +4,6 @@ defmodule Fact.EventKeys do
       @event_data "data"
       @event_id "id"
       @event_metadata "metadata"
-      @event_query_position "query_position"
       @event_store_position "pos"
       @event_store_timestamp "ts"
       @event_stream "stream"

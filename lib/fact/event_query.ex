@@ -1,0 +1,142 @@
+defmodule Fact.EventQuery do
+  @moduledoc """
+  Provides an interface for querying events based on event types and event data properties.
+    
+  This module allows you to define a query using `Fact.EventQuery` structs, specifying:
+    
+  - `:event_types` - a list of strings or atoms representing the types of events to match.
+  - `:event_data` - a keyword list used to filter events based on their properties and values.
+    
+  The primary function, `execute/1`, produces a **stream of event ids** that match the provided query in the order they
+  appear in the `Fact.EventLedger`. This allows downstream consumers to process events sequentially without 
+  deserializing full event payloads unless needed.
+    
+  ## Query Execution
+    
+  - Combines multiple queries using **OR** semantics.
+  - Combines multiple values for the same key in a single query using **OR** semantics.
+  - Combines different keys in a single query using **AND** semantics.
+    
+  The module interacts with `Fact.EventIndexerManager` to access `Fact.EventTypeIndexer` and `Fact.EventDataIndexer`. 
+  Event data properties included in queries will enable just-in-time indexing via a keyed `Fact.EventDataIndexer`. This
+  dynamic indexing comes at the cost of a performance hit as the query must wait for the index to be built. To  
+  counteract this, all indexers support incremental indexing by keep track of the last processed event.
+
+  ## Example
+    
+      query = [ 
+          %Fact.EventQuery{
+            event_types: ["show_watched"],
+            event_data: [
+              title: "Ted Lasso",
+              title: "Stranger Things",
+              season: 2
+            ]
+          },
+          %Fact.EventQuery{
+            event_types: ["customer_invoiced"]
+          }
+      ]
+    
+      Fact.EventQuery.execute(query)
+      |> Enum.each(&IO.inspect/1)
+    
+  Now this query might not be all the useful, but it will return an ordered set of event ids, for all the events where 
+  the event_type is `show_watched` AND the title is `Ted Lasso` OR `Stranger Things` AND the season is two, along with 
+  all the events of type `customer_invoiced`.
+    
+  ## Integration
+    
+  This module is designed to work seamlessly with `Fact.EventReader`. You can pass a `%Fact.EventQuery{}` or a list of
+  them directly to `Fact.EventReader.read_query/2` to get a stream of fully materialized events instead of event ids.  
+  """
+
+  alias Fact.Paths
+
+  defstruct event_types: [], event_data: []
+
+  @type t :: %__MODULE__{
+          event_types: [String.t() | atom()],
+          event_data: keyword()
+        }
+
+  @doc """
+  Executes a single or multiple event queries and returns a stream of matching event ids in the order they appear in the 
+  event ledger.
+    
+  `clauses` - a list of `%Fact.EventQuery{}` structs. Results from multiple clauses are combined using set union 
+  (`OR` semantics).
+    
+  Each clause is evaluated against a configured event indexer.  
+  - `event_types` are resolved through the `Fact.EventTypeIndexer`
+  - `event_data` entries are resolved through one or more `Fact.EventDataIndexer`'s, unioning values for the same key 
+    (`OR`) and intersecting values for different keys (`AND`).
+  
+  The union of all matching event ids is then filtered against the event ledger, producing a lazily evaluated `Stream` 
+  of event ids in append order.
+  """
+  @spec execute(t() | [t()]) :: Stream.t(String.t())
+  def execute(%__MODULE__{} = clause), do: execute([clause])
+
+  def execute(clauses) when is_list(clauses) do
+    if Enum.all?(clauses, &match?(%__MODULE__{}, &1)) do
+      matched_event_ids =
+        Enum.reduce(clauses, MapSet.new(), &MapSet.union(&2, events_matching(&1)))
+
+      Paths.append_log()
+      |> File.stream!()
+      |> Stream.map(&String.trim/1)
+      |> Stream.filter(&MapSet.member?(matched_event_ids, &1))
+    else
+      raise ArgumentError, "All elements must be %#{__MODULE__}{}"
+    end
+  end
+
+  defp events_matching(%__MODULE__{event_types: event_types, event_data: event_data}) do
+    event_type_matches = events_matching_types(event_types)
+    event_data_matches = events_matching_data(event_data)
+    MapSet.intersection(event_type_matches, event_data_matches)
+  end
+
+  defp events_matching_types([]), do: MapSet.new()
+
+  defp events_matching_types(event_types) do
+    event_types
+    |> Stream.flat_map(&Fact.EventIndexerManager.stream(Fact.EventTypeIndexer, &1))
+    |> Enum.into(MapSet.new())
+  end
+
+  defp events_matching_data(event_data) do
+    event_data
+    |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
+    |> Enum.reduce_while(:first, fn {key, values}, acc ->
+      indexer = {Fact.EventDataIndexer, to_string(key)}
+      {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(indexer)
+
+      ids =
+        values
+        |> Enum.flat_map(fn value ->
+          case Fact.EventIndexerManager.stream(indexer, value) do
+            {:error, _} -> []
+            streamable -> Enum.to_list(streamable)            
+          end
+        end)
+        |> MapSet.new()
+
+      cond do
+        MapSet.size(ids) == 0 ->
+          {:halt, MapSet.new()}
+
+        acc == :first ->
+          {:cont, ids}
+
+        true ->
+          {:cont, MapSet.intersection(acc, ids)}
+      end
+    end)
+    |> case do
+      :first -> MapSet.new()
+      result -> result
+    end
+  end
+end
