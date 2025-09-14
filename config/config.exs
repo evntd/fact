@@ -6,8 +6,8 @@ config :fact,
       mod: Fact.EventStreamIndexer, opts: [path: ".fact/indices/event_stream"]],
     [enabled: true, 
       mod: Fact.EventTypeIndexer, opts: [path: ".fact/indices/event_type"]],
-    [enabled: true, 
-      mod: Fact.EventDataIndexer, opts: [path: ".fact/indices/event_data", key: "name"]]
+    [enabled: false, 
+      mod: Fact.EventDataIndexer, opts: [path: ".fact/indices/event_data", encoding: {:hash, :sha}]]
   ],
   paths: [
     events: ".fact/events"

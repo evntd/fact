@@ -13,11 +13,11 @@ defmodule Fact.EventIndexer do
       use Fact.EventKeys
       require Logger
       
-      defstruct [:index, :path] 
+      defstruct [:index, :path, :encoding] 
       
       def start_link(opts \\ []) do
 
-        {index_opts, start_opts} = Keyword.split(opts, [:key, :path])
+        {index_opts, start_opts} = Keyword.split(opts, [:key, :path, :encoding])
         
         index = 
           case Keyword.fetch(index_opts, :key) do
@@ -26,6 +26,7 @@ defmodule Fact.EventIndexer do
           end
 
         base = Keyword.fetch!(index_opts, :path)
+        encoding = Keyword.get(index_opts, :encoding, :raw)
           
         path =
           case index do
@@ -35,7 +36,8 @@ defmodule Fact.EventIndexer do
         
         state = %__MODULE__{
           index: index,
-          path: path
+          path: path,
+          encoding: encoding
         }
         
         start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
@@ -76,8 +78,8 @@ defmodule Fact.EventIndexer do
       end
       
       @impl true
-      def handle_cast({:stream, value, receiver}, %__MODULE__{index: index, path: path} = state) do
-        file = Path.join(path, to_string(value))
+      def handle_cast({:stream, value, receiver}, %__MODULE__{index: index, path: path, encoding: encoding} = state) do
+        file = Path.join(path, encode_key(value, encoding))
         
         event_ids =
           case File.exists?(file) do
@@ -93,11 +95,11 @@ defmodule Fact.EventIndexer do
         {:noreply, state}
       end
 
-      defp append_to_index(%{@event_id => id} = event, %__MODULE__{index: index, path: path}) do
+      defp append_to_index(%{@event_id => id} = event, %__MODULE__{index: index, path: path, encoding: encoding}) do
         case index_event(event, index) do
           nil -> :ignored
           key ->
-            file = Path.join(path, to_string(key))
+            file = Path.join(path, encode_key(key, encoding))
             File.write!(file, id <> "\n", [:append])
             :ok    
         end
@@ -124,10 +126,19 @@ defmodule Fact.EventIndexer do
       
       defp get_checkpoint_path(path), do: Path.join(path, ".checkpoint")
 
-      defp sha1(value) do
-        binary = :erlang.term_to_binary(value)
-        hash = :crypto.hash(:sha, binary)
-        Base.encode16(hash, case: :lower)
+      defp encode_key(value, encoding) do
+        case encoding do
+          :raw ->
+            to_string(value)
+          :hash ->
+            :crypto.hash(:sha, to_string(value))
+            |> Base.encode16(case: :lower)
+          {:hash, algo} ->
+            :crypto.hash(algo, to_string(value))
+            |> Base.encode16(case: :lower)
+          other ->
+            raise ArgumentError, "unsupported encoding: #{inspect(other)}"
+        end
       end
     end
   end
