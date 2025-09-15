@@ -1,10 +1,7 @@
 defmodule Fact.Paths do
   @app :fact
-  @append_logfile ".log"
 
   def events, do: get_path([:events])
-
-  def append_log, do: Path.join(events(), @append_logfile)
 
   defp get_path(keys) do
     path =
