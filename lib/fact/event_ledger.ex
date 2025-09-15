@@ -3,12 +3,14 @@ defmodule Fact.EventLedger do
 
   use GenServer
   use Fact.EventKeys
+  require Logger
 
   @registry_key {:via, Registry, {Fact.EventLedgerRegistry, :ledger}}
 
   defstruct [:path, :last_pos]
 
   def start_link(opts) do
+    # TODO: Factor configuration out to the application.
     ledger_opts = Application.get_env(:fact, :ledger)
     path = Keyword.fetch!(ledger_opts, :path)
     state = %__MODULE__{path: path}
@@ -64,15 +66,27 @@ defmodule Fact.EventLedger do
     end
   end
 
-  def handle_call({:stream!, _opts}, _from, %__MODULE__{path: path} = state) do
-    event_ids = File.stream!(path) |> Stream.map(&String.trim/1)
-    {:reply, event_ids, state}
-  end
+  def handle_call({:stream!, opts}, _from, %__MODULE__{path: path} = state) do
+    direction = Keyword.get(opts, :direction, :forward)
 
-  defp load_position(path), do: File.stream!(path) |> Enum.count()
+    case direction do
+      :forward ->
+        event_ids = Fact.FileReader.read_forward(path)
+        {:reply, event_ids, state}
+
+      :backward ->
+        event_ids = Fact.FileReader.read_backward(path)
+        {:reply, event_ids, state}
+
+      other ->
+        raise ArgumentError, "unknown direction #{inspect(other)}"
+    end
+  end
 
   defp ensure_paths!(path) do
     File.mkdir_p!(Path.dirname(path))
     unless File.exists?(path), do: File.write!(path, "")
   end
+
+  defp load_position(path), do: File.stream!(path) |> Enum.count()
 end

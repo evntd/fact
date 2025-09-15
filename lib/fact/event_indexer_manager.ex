@@ -18,8 +18,8 @@ defmodule Fact.EventIndexerManager do
     GenServer.call(__MODULE__, {:ensure_indexer, key})
   end
 
-  def stream(indexer, value) do
-    GenServer.call(__MODULE__, {:stream, indexer, value})
+  def stream!(indexer, value, opts \\ []) do
+    GenServer.call(__MODULE__, {:stream!, indexer, value, opts})
   end
 
   @impl true
@@ -118,10 +118,10 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
-  def handle_call({:stream, indexer, value}, from, state) do
+  def handle_call({:stream!, indexer, value, opts}, from, state) do
     case Map.get(state.indexers, indexer) do
       %{pid: pid} when is_pid(pid) ->
-        :ok = GenServer.cast(pid, {:stream, value, from})
+        :ok = GenServer.cast(pid, {:stream!, value, from, opts})
         {:noreply, state}
 
       _ ->

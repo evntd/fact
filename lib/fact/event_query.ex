@@ -80,14 +80,17 @@ defmodule Fact.EventQuery do
   of event ids in append order.
   """
   @spec execute(t() | [t()]) :: Stream.t(String.t())
-  def execute(%__MODULE__{} = clause), do: execute([clause])
+  def execute(clauses, opts \\ [])
+  def execute(%__MODULE__{} = clause, opts), do: execute([clause], opts)
 
-  def execute(clauses) when is_list(clauses) do
+  def execute(clauses, opts) when is_list(clauses) do
     if Enum.all?(clauses, &match?(%__MODULE__{}, &1)) do
       matched_event_ids =
         Enum.reduce(clauses, MapSet.new(), &MapSet.union(&2, events_matching(&1)))
 
-      Fact.EventLedger.stream!()
+      direction = Keyword.get(opts, :direction, :forward)
+
+      Fact.EventLedger.stream!(direction: direction)
       |> Stream.filter(&MapSet.member?(matched_event_ids, &1))
     else
       raise ArgumentError, "All elements must be %#{__MODULE__}{}"
@@ -117,7 +120,7 @@ defmodule Fact.EventQuery do
 
   defp events_matching_types(event_types) do
     event_types
-    |> Stream.flat_map(&Fact.EventIndexerManager.stream(Fact.EventTypeIndexer, &1))
+    |> Stream.flat_map(&Fact.EventIndexerManager.stream!(Fact.EventTypeIndexer, &1))
     |> Enum.into(MapSet.new())
   end
 
@@ -131,7 +134,7 @@ defmodule Fact.EventQuery do
       ids =
         values
         |> Enum.flat_map(fn value ->
-          case Fact.EventIndexerManager.stream(indexer, value) do
+          case Fact.EventIndexerManager.stream!(indexer, value) do
             {:error, _} -> []
             streamable -> Enum.to_list(streamable)
           end

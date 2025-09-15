@@ -85,19 +85,17 @@ defmodule Fact.EventIndexer do
 
       @impl true
       def handle_cast(
-            {:stream, value, receiver},
+            {:stream!, value, receiver, opts},
             %__MODULE__{index: index, path: path, encoding: encoding} = state
           ) do
-        file = Path.join(path, encode_key(value, encoding))
+        index_path = Path.join(path, encode_key(value, encoding))
+        direction = Keyword.get(opts, :direction, :forward)
 
         event_ids =
-          case File.exists?(file) do
-            false ->
-              {:error, {:index_not_found, index, value}}
-
-            true ->
-              File.stream!(file)
-              |> Stream.map(&String.trim/1)
+          case {File.exists?(index_path), direction} do
+            {false, _} -> {:error, {:index_not_found, index, value}}
+            {true, :forward} -> Fact.FileReader.read_forward(index_path)
+            {true, :backward} -> Fact.FileReader.read_backward(index_path)
           end
 
         GenServer.reply(receiver, event_ids)
