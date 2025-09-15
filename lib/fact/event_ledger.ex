@@ -26,10 +26,6 @@ defmodule Fact.EventLedger do
     GenServer.call(@registry_key, :last_position)
   end
 
-  def append(events, expected_position) do
-    GenServer.call(@registry_key, {:append, events, expected_position})
-  end
-
   def stream!(opts \\ []) do
     GenServer.call(@registry_key, {:stream!, opts})
   end
@@ -39,7 +35,7 @@ defmodule Fact.EventLedger do
   end
 
   def handle_call(
-        {:append, events, expected_position},
+        {:commit, events, expected_position},
         _from,
         %__MODULE__{last_pos: last_pos, path: path} = state
       ) do

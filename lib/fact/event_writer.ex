@@ -6,10 +6,10 @@ defmodule Fact.EventWriter do
   require Logger
 
   @compile {:no_warn_undefined, :pg}
+  @ledger {:via, Registry, {Fact.EventLedgerRegistry, :ledger}}
 
   defstruct [
     :events_dir,
-    :append_log,
     :last_pos
   ]
 
@@ -17,9 +17,7 @@ defmodule Fact.EventWriter do
     ensure_paths!()
 
     state = %__MODULE__{
-      events_dir: Paths.events(),
-      append_log: Paths.append_log(),
-      last_pos: 0
+      events_dir: Paths.events()
     }
 
     opts = Keyword.put_new(opts, :name, __MODULE__)
@@ -36,58 +34,37 @@ defmodule Fact.EventWriter do
   end
 
   def init(state) do
-    last_pos = last_position(state)
-    Logger.debug("#{__MODULE__} last #{@event_store_position} at #{last_pos}")
-    state = %__MODULE__{state | last_pos: last_pos}
-    {:ok, state}
+    last_pos = Fact.EventLedger.last_position()
+    {:ok, %__MODULE__{state | last_pos: last_pos}}
   end
 
-  def handle_call(
-        {:append, event},
-        _from,
-        %{events_dir: events_dir, append_log: append_log, last_pos: last_pos} = state
-      ) do
-    event =
+  def handle_call({:append, event}, _from, %{events_dir: events_dir, last_pos: last_pos} = state) do
+    # TODO: The caller should provide the expected_position, but for now just get it state.    
+    prepared_event =
       Map.merge(event, %{
         @event_id => UUID.uuid4(:hex),
         @event_store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
         @event_store_position => last_pos + 1
       })
 
-    json = JSON.encode!(event)
-    path = Path.join(events_dir, event.id <> ".json")
-    record = JSON.decode!(json)
+    json = JSON.encode!(prepared_event)
+    path = Path.join(events_dir, prepared_event[@event_id] <> ".json")
+    recorded_event = JSON.decode!(json)
 
     :ok = File.write!(path, json, [:exclusive])
-    :ok = File.write!(append_log, record[@event_id] <> "\n", [:append])
+
+    {:ok, position} = GenServer.call(@ledger, {:commit, [recorded_event], last_pos})
+
+    # TODO: if commit fails, there will be some extra json files laying around on disk.
+    # They could be cleaned up. But if they are not referenced within the ledger, the system will ignore them.
 
     :pg.get_members(:fact_indexers)
-    |> Enum.each(&send(&1, {:index, record}))
+    |> Enum.each(&send(&1, {:index, recorded_event}))
 
-    state = %__MODULE__{state | last_pos: record[@event_store_position]}
-
-    {:reply, record, state}
-  end
-
-  def handle_call({:position_of, event_id}, _from, %{append_log: append_log} = state) do
-    position =
-      File.stream!(append_log)
-      |> Stream.with_index(1)
-      |> Enum.find_value(fn {line, position} ->
-        if String.contains?(line, event_id), do: position, else: nil
-      end)
-
-    {:reply, position, state}
-  end
-
-  defp last_position(%{append_log: append_log}) do
-    File.stream!(append_log)
-    |> Enum.reduce(0, fn _line, pos -> pos + 1 end)
+    {:reply, recorded_event, %__MODULE__{state | last_pos: position}}
   end
 
   defp ensure_paths!() do
     File.mkdir_p!(Paths.events())
-    append_log = Paths.append_log()
-    unless File.exists?(append_log), do: File.write!(append_log, "")
   end
 end
