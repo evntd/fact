@@ -51,8 +51,6 @@ defmodule Fact.EventQuery do
   them directly to `Fact.EventReader.read_query/2` to get a stream of fully materialized events instead of event ids.  
   """
 
-  alias Fact.Paths
-
   defstruct event_types: [], event_data: []
 
   @type t :: %__MODULE__{
@@ -83,9 +81,7 @@ defmodule Fact.EventQuery do
       matched_event_ids =
         Enum.reduce(clauses, MapSet.new(), &MapSet.union(&2, events_matching(&1)))
 
-      Paths.append_log()
-      |> File.stream!()
-      |> Stream.map(&String.trim/1)
+      Fact.EventLedger.stream!()
       |> Stream.filter(&MapSet.member?(matched_event_ids, &1))
     else
       raise ArgumentError, "All elements must be %#{__MODULE__}{}"

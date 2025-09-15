@@ -7,9 +7,7 @@ defmodule Fact.EventReader do
     from_pos = Keyword.get(opts, :from_position, 0)
     events_path = Paths.events()
 
-    Paths.append_log()
-    |> File.stream!()
-    |> Stream.map(&String.trim/1)
+    Fact.EventLedger.stream!()
     |> Stream.map(&Path.join(events_path, "#{&1}.json"))
     |> Stream.with_index(1)
     |> Stream.drop_while(fn {_path, pos} -> pos <= from_pos end)
