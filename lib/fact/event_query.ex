@@ -8,8 +8,10 @@ defmodule Fact.EventQuery do
   - `:event_data` - a keyword list used to filter events based on their properties and values.
     
   The primary function, `execute/1`, produces a **stream of event ids** that match the provided query in the order they
-  appear in the `Fact.EventLedger`. This allows downstream consumers to process events sequentially without 
-  deserializing full event payloads unless needed.
+  appear in the `Fact.EventLedger`. Queries are limited to **equality operations only**. You can filter events by type
+  and by exact matches on event data properties, but no other operators (e.g. ranges, greater/less than, pattern 
+  matching) are supported at this time. This design keeps query semantics simple and predictable while allowing 
+  downstream consumers to process events sequentially and apply their own custom logic.
     
   ## Query Execution
     
@@ -26,24 +28,28 @@ defmodule Fact.EventQuery do
     
       query = [ 
           %Fact.EventQuery{
-            event_types: ["show_watched"],
+            event_types: ["hops_harvested"],
             event_data: [
-              title: "Ted Lasso",
-              title: "Stranger Things",
-              season: 2
+              cultivar: "Cascade",
+              cultivar: "Centennial",
+              date: "2025-09-01",
+              grower: "Goschie Farms"
             ]
           },
           %Fact.EventQuery{
-            event_types: ["customer_invoiced"]
+            event_types: ["hops_dried"],
+            event_data: [
+              finish_date: "2025-09-03"
+            ]
           }
       ]
     
       Fact.EventQuery.execute(query)
       |> Enum.each(&IO.inspect/1)
     
-  Now this query might not be all the useful, but it will return an ordered set of event ids, for all the events where 
-  the event_type is `show_watched` AND the title is `Ted Lasso` OR `Stranger Things` AND the season is two, along with 
-  all the events of type `customer_invoiced`.
+  Now this query might not be all the useful for your use case, but it will return an ordered set of event ids, for all 
+  the `hops_harvested` events for `cascade` and `centennial` on September 1st, 2025, by Goschie Farms AND all 
+  `hops_dried` events where they finished on September 3rd, 2025.
     
   ## Integration
     
@@ -69,7 +75,7 @@ defmodule Fact.EventQuery do
   - `event_types` are resolved through the `Fact.EventTypeIndexer`
   - `event_data` entries are resolved through one or more `Fact.EventDataIndexer`'s, unioning values for the same key 
     (`OR`) and intersecting values for different keys (`AND`).
-  
+
   The union of all matching event ids is then filtered against the event ledger, producing a lazily evaluated `Stream` 
   of event ids in append order.
   """
@@ -127,7 +133,7 @@ defmodule Fact.EventQuery do
         |> Enum.flat_map(fn value ->
           case Fact.EventIndexerManager.stream(indexer, value) do
             {:error, _} -> []
-            streamable -> Enum.to_list(streamable)            
+            streamable -> Enum.to_list(streamable)
           end
         end)
         |> MapSet.new()
