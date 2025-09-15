@@ -35,6 +35,9 @@ config :fact,
       ]
     ]
   ],
+  ledger: [
+    path: ".fact/events/.log"
+  ],
   paths: [
     events: ".fact/events"
   ]

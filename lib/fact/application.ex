@@ -5,6 +5,8 @@ defmodule Fact.Application do
     {:ok, _} = :pg.start_link()
 
     children = [
+      {Registry, keys: :unique, name: Fact.EventLedgerRegistry},
+      Fact.EventLedger,
       Fact.EventWriter,
       {Registry, keys: :unique, name: Fact.EventIndexerRegistry},
       Fact.EventIndexerManager
