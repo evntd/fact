@@ -91,7 +91,20 @@ defmodule Fact.EventQuery do
   defp events_matching(%__MODULE__{event_types: event_types, event_data: event_data}) do
     event_type_matches = events_matching_types(event_types)
     event_data_matches = events_matching_data(event_data)
-    MapSet.intersection(event_type_matches, event_data_matches)
+
+    case {event_types, event_data} do
+      {[], []} ->
+        MapSet.new()
+
+      {[], _} ->
+        event_data_matches
+
+      {_, []} ->
+        event_type_matches
+
+      {_, _} ->
+        MapSet.intersection(event_type_matches, event_data_matches)
+    end
   end
 
   defp events_matching_types([]), do: MapSet.new()
