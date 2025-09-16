@@ -17,6 +17,7 @@ defmodule Fact.EventReader do
 
     Fact.EventLedger.stream!(direction: direction)
     |> Stream.map(&Path.join(events_path, "#{&1}.json"))
+    |> Stream.map(fn path -> path |> File.read!() |> JSON.decode!() end)
     |> Stream.drop_while(&comparator.(&1))
     |> Stream.map(fn {path, _pos} -> path |> File.read!() |> JSON.decode!() end)
   end
