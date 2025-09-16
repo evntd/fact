@@ -10,9 +10,9 @@ defmodule Fact.EventQuery do
   The primary function, `execute/1`, produces a **stream of event ids** that match the provided query in the order they
   appear in the `Fact.EventLedger`. Queries are limited to **equality operations only**. You can filter events by type
   and by exact matches on event data properties, but no other operators (e.g. ranges, greater/less than, pattern 
-  matching) are supported at this time. This design keeps query semantics simple and predictable while allowing 
-  downstream consumers to process events sequentially and apply their own custom logic.
-    
+  matching) are supported. This is an intentional design decision, this is not for general purpose data queries, it is
+  intended to be used for defining consistency boundaries.
+
   ## Query Execution
     
   - Combines multiple queries using **OR** semantics.
