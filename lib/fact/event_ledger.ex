@@ -71,11 +71,11 @@ defmodule Fact.EventLedger do
 
     case direction do
       :forward ->
-        event_ids = Fact.FileReader.read_forward(path)
+        event_ids = Fact.IndexFileReader.read_forward(path)
         {:reply, event_ids, state}
 
       :backward ->
-        event_ids = Fact.FileReader.read_backward(path)
+        event_ids = Fact.IndexFileReader.read_backward(path)
         {:reply, event_ids, state}
 
       other ->
