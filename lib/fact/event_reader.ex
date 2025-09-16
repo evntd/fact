@@ -3,6 +3,10 @@ defmodule Fact.EventReader do
   alias Fact.Paths
   require Logger
 
+  def read_event(event_id) do
+    Paths.events() |> Path.join("#{event_id}.json") |> File.read!() |> JSON.decode!()
+  end
+
   def read_all(opts \\ []) do
     from_position = Keyword.get(opts, :from_position, :start)
     direction = Keyword.get(opts, :direction, :forward)
@@ -19,7 +23,6 @@ defmodule Fact.EventReader do
     |> Stream.map(&Path.join(events_path, "#{&1}.json"))
     |> Stream.map(fn path -> path |> File.read!() |> JSON.decode!() end)
     |> Stream.drop_while(&comparator.(&1))
-    |> Stream.map(fn {path, _pos} -> path |> File.read!() |> JSON.decode!() end)
   end
 
   def read_stream(event_stream, opts \\ []) do

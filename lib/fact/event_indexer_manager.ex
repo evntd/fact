@@ -18,6 +18,18 @@ defmodule Fact.EventIndexerManager do
     GenServer.call(__MODULE__, {:ensure_indexer, key})
   end
 
+  def index(event_refs) do
+    indexers = :pg.get_members(:fact_indexers)
+
+    _ =
+      Enum.each(event_refs, fn {event_id, _event_pos} ->
+        recorded_event = Fact.EventReader.read_event(event_id)
+        Enum.each(indexers, &send(&1, {:index, recorded_event}))
+      end)
+
+    :ok
+  end
+
   def stream!(indexer, value, opts \\ []) do
     GenServer.call(__MODULE__, {:stream!, indexer, value, opts})
   end

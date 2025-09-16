@@ -25,12 +25,11 @@ defmodule Fact.EventWriter do
     GenServer.start_link(__MODULE__, state, opts)
   end
 
-  def append(event) do
-    GenServer.call(__MODULE__, {:append, event})
-  end
+  def append(events, opts \\ [])
+  def append(event, opts) when is_map(event), do: append([event], opts)
 
-  def append(stream, event) do
-    GenServer.call(__MODULE__, {:append, Map.merge(event, %{stream: stream})})
+  def append(events, opts) when is_list(events) do
+    GenServer.call(__MODULE__, {:append, events, opts})
   end
 
   def init(state) do
@@ -38,30 +37,56 @@ defmodule Fact.EventWriter do
     {:ok, %__MODULE__{state | last_pos: last_pos}}
   end
 
-  def handle_call({:append, event}, _from, %{events_dir: events_dir, last_pos: last_pos} = state) do
-    # TODO: The caller should provide the expected_position, but for now just get it state.    
-    prepared_event =
-      Map.merge(event, %{
-        @event_id => UUID.uuid4(:hex),
-        @event_store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond),
-        @event_store_position => last_pos + 1
-      })
+  def handle_call(
+        {:append, events, opts},
+        _from,
+        %{events_dir: events_dir, last_pos: last_pos} = state
+      ) do
+    # Enrich with @event_stream key if specified
+    enriched_events =
+      case Keyword.get(opts, :stream) do
+        nil ->
+          events
 
-    json = JSON.encode!(prepared_event)
-    path = Path.join(events_dir, prepared_event[@event_id] <> ".json")
-    recorded_event = JSON.decode!(json)
+        stream ->
+          Enum.map(events, &Map.put(&1, @event_stream, stream))
+      end
 
-    :ok = File.write!(path, json, [:exclusive])
+    # Determine expected position
+    expected_pos =
+      case Keyword.get(opts, :expectation, :none) do
+        :none -> last_pos
+        pos when is_integer(pos) -> pos
+      end
 
-    {:ok, position} = GenServer.call(@ledger, {:commit, [recorded_event], last_pos})
+    start_pos = expected_pos + 1
+
+    {persisted_event_refs, next_pos} =
+      Enum.map_reduce(enriched_events, start_pos, fn event, event_pos ->
+        event_id = UUID.uuid4(:hex)
+
+        prepared_event =
+          Map.merge(event, %{
+            @event_id => event_id,
+            @event_store_position => event_pos,
+            @event_store_timestamp => DateTime.utc_now() |> DateTime.to_unix(:microsecond)
+          })
+
+        encoded_event = JSON.encode!(prepared_event)
+        event_path = Path.join(events_dir, event_id <> ".json")
+        :ok = File.write!(event_path, encoded_event, [:exclusive])
+
+        {{event_id, event_pos}, event_pos + 1}
+      end)
+
+    {:ok, position} = GenServer.call(@ledger, {:commit, persisted_event_refs, expected_pos})
 
     # TODO: if commit fails, there will be some extra json files laying around on disk.
     # They could be cleaned up. But if they are not referenced within the ledger, the system will ignore them.
 
-    :pg.get_members(:fact_indexers)
-    |> Enum.each(&send(&1, {:index, recorded_event}))
+    :ok = Fact.EventIndexerManager.index(persisted_event_refs)
 
-    {:reply, recorded_event, %__MODULE__{state | last_pos: position}}
+    {:reply, {:ok, position}, %__MODULE__{state | last_pos: position}}
   end
 
   defp ensure_paths!() do

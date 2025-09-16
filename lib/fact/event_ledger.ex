@@ -37,7 +37,7 @@ defmodule Fact.EventLedger do
   end
 
   def handle_call(
-        {:commit, events, expected_position},
+        {:commit, event_refs, expected_position},
         _from,
         %__MODULE__{last_pos: last_pos, path: path} = state
       ) do
@@ -46,11 +46,12 @@ defmodule Fact.EventLedger do
     else
       # Ensure all events have sequential positions, reduce all the event ids into lines, and track the final position.
       {sequential?, event_ids_list, final_pos} =
-        Enum.reduce_while(events, {true, [], last_pos}, fn event, {_, acc, pos} ->
+        Enum.reduce_while(event_refs, {true, [], last_pos}, fn {event_id, event_pos},
+                                                               {_, acc, pos} ->
           expected = pos + 1
 
-          if event[@event_store_position] == expected do
-            {:cont, {true, [acc, event[@event_id], "\n"], expected}}
+          if event_pos == expected do
+            {:cont, {true, [acc, event_id, "\n"], expected}}
           else
             {:halt, {false, acc, pos}}
           end
