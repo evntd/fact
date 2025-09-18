@@ -1,5 +1,5 @@
-defmodule Fact.EventReader do
-  # TODO rename to Fact.EventStreamReader
+defmodule Fact.EventStreamReader do
+  @moduledoc false
   use Fact.EventKeys
   require Logger
 
