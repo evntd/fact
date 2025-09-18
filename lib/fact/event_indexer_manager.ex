@@ -23,7 +23,7 @@ defmodule Fact.EventIndexerManager do
 
     _ =
       Enum.each(event_paths, fn event_path ->
-        recorded_event = Fact.EventReader.Json.read_event(event_path)
+        recorded_event = Fact.EventReader.read_event(event_path)
         Enum.each(indexers, &send(&1, {:index, recorded_event}))
       end)
 

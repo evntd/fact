@@ -96,8 +96,8 @@ defmodule Fact.EventLedger do
     events = 
       event_ids 
       |> Stream.map(&Path.join(state.events_dir, &1))
-      |> Stream.map(&Fact.EventReader.Json.read_event/1)
-      
+      |> Stream.map(&Fact.EventReader.read_event/1)
+
     {:reply, events, state}
   end
   
