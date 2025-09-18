@@ -11,7 +11,7 @@ defmodule Fact.EventStreamReader do
   def read(event_stream, opts) when is_binary(event_stream) do
     do_read(
       fn -> Fact.EventIndexerManager.stream!(Fact.EventStreamIndexer, event_stream, opts) end,
-      opts
+      Keyword.put(opts, :compare, @event_stream_position)
     )
   end
 
@@ -24,10 +24,14 @@ defmodule Fact.EventStreamReader do
   end
 
   defp do_read(read_strategy, opts) do
+    compare_key = Keyword.get(opts, :compare, @event_store_position)
     from_position = Keyword.get(opts, :from_position, :start)
     direction = Keyword.get(opts, :direction, :forward)
-    compare = comparator(@event_store_position, direction, from_position)
-    read_strategy.() |> Stream.drop_while(&compare.(&1))
+    compare = comparator(compare_key, direction, from_position)
+
+    read_strategy.()
+    |> Stream.map(&Fact.EventReader.read_event/1)
+    |> Stream.drop_while(&compare.(&1))
   end
 
   defp comparator(event_key, direction, position) do

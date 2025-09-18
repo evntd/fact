@@ -1,6 +1,8 @@
 import Config
 
 config :fact,
+  db: ".fact/events",
+  ledger: ".fact/events/.log",
   indexers: [
     [
       enabled: true,
@@ -34,7 +36,4 @@ config :fact,
         encoding: {:hash, :sha}
       ]
     ]
-  ],
-  ledger: [
-    path: ".fact/events/"
   ]

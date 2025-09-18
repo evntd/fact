@@ -18,12 +18,12 @@ defmodule Fact.EventIndexerManager do
     GenServer.call(__MODULE__, {:ensure_indexer, key})
   end
 
-  def index(event_paths) do
+  def index(event_ids) do
     indexers = :pg.get_members(:fact_indexers)
 
     _ =
-      Enum.each(event_paths, fn event_path ->
-        recorded_event = Fact.EventReader.read_event(event_path)
+      Enum.each(event_ids, fn event_id ->
+        recorded_event = Fact.EventReader.read_event(event_id)
         Enum.each(indexers, &send(&1, {:index, recorded_event}))
       end)
 
