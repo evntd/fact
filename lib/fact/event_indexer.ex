@@ -102,18 +102,17 @@ defmodule Fact.EventIndexer do
 
         {:noreply, state}
       end
-      
+
       @impl true
       def handle_cast({:last_position, value, caller}, %{encoding: encoding, path: path} = state) do
-        
         file = Path.join(path, encode_key(value, encoding))
 
-        last_pos = 
+        last_pos =
           case File.exists?(file) do
             false -> 0
             true -> File.stream!(file) |> Enum.count()
           end
-         
+
         GenServer.reply(caller, last_pos)
 
         {:noreply, state}

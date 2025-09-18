@@ -3,7 +3,7 @@ defmodule Fact.EventLedger do
 
   use GenServer
   use Fact.EventKeys
-  
+
   require Logger
 
   @registry_key {:via, Registry, {Fact.EventLedgerRegistry, :ledger}}
@@ -67,11 +67,12 @@ defmodule Fact.EventLedger do
     case write_events(state.events_dir, enriched_events) do
       {:ok, ledger_entry, event_paths} ->
         Logger.debug("writing to ledger: #{inspect(ledger_entry)}")
+
         case File.write(state.logfile, ledger_entry, [:append]) do
           :ok ->
             # TODO Fix this index message
             :ok = Fact.EventIndexerManager.index(event_paths)
-            
+
             {:reply, {:ok, end_pos}, %{state | last_pos: end_pos}}
 
           {:error, reason} ->
@@ -82,37 +83,40 @@ defmodule Fact.EventLedger do
         {:reply, {:error, {:event_write_failed, reasons}}, state}
     end
   end
-  
+
   def handle_call({:stream!, opts}, _from, %{logfile: path} = state) do
     direction = Keyword.get(opts, :direction, :forward)
 
-    event_ids = 
+    event_ids =
       case direction do
         :forward -> Fact.IndexFileReader.read_forward(path)
         :backward -> Fact.IndexFileReader.read_backward(path)
         other -> raise ArgumentError, "unknown direction #{inspect(other)}"
       end
-      
-    events = 
-      event_ids 
+
+    events =
+      event_ids
       |> Stream.map(&Path.join(state.events_dir, &1))
       |> Stream.map(&Fact.EventReader.read_event/1)
 
     {:reply, events, state}
   end
-  
+
   defp write_events(path, events) do
     write_results =
       events
       |> Enum.map(fn event -> {event, Path.join(path, event[@event_id])} end)
-      |> Task.async_stream(fn {event, event_path} -> 
+      |> Task.async_stream(
+        fn {event, event_path} ->
           case Fact.EventWriter.write_event(event_path, event) do
             :ok -> {:ok, event, event_path}
             {:error, posix} -> {:error, posix, event, event_path}
           end
-      end, max_concurrency: System.schedulers_online())
+        end,
+        max_concurrency: System.schedulers_online()
+      )
       |> Enum.reduce({:ok, [], [], []}, fn
-        {_, {:ok, event, event_path }}, {result, iodata, event_paths, errors} ->
+        {_, {:ok, event, event_path}}, {result, iodata, event_paths, errors} ->
           {result, [iodata, event[@event_id], "\n"], [event_paths, event_path], errors}
 
         {_, {:error, posix, event, _event_path}}, {_, iodata, event_paths, errors} ->

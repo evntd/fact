@@ -8,7 +8,7 @@ defmodule Fact.Application do
       {Registry, keys: :unique, name: Fact.EventLedgerRegistry},
       {Registry, keys: :unique, name: Fact.EventStreamRegistry},
       {Registry, keys: :unique, name: Fact.EventIndexerRegistry},
-      Fact.EventLedger,      
+      Fact.EventLedger,
       Fact.EventIndexerManager
     ]
 

@@ -6,7 +6,7 @@ defmodule Fact.EventStreamReader do
   def read_all(opts \\ []) do
     from_position = Keyword.get(opts, :from_position, :start)
     direction = Keyword.get(opts, :direction, :forward)
-    
+
     comparator =
       case {direction, from_position} do
         {_, :start} -> fn _ -> false end
@@ -21,7 +21,7 @@ defmodule Fact.EventStreamReader do
   def read_stream(event_stream, opts \\ []) do
     from_position = Keyword.get(opts, :from_position, :start)
     direction = Keyword.get(opts, :direction, :forward)
-    
+
     comparator =
       case {direction, from_position} do
         {_, :start} -> fn _ -> false end
