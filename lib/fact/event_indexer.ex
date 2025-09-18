@@ -85,7 +85,7 @@ defmodule Fact.EventIndexer do
 
       @impl true
       def handle_cast(
-            {:stream!, value, receiver, opts},
+            {:stream!, value, caller, opts},
             %__MODULE__{index: index, path: path, encoding: encoding} = state
           ) do
         index_path = Path.join(path, encode_key(value, encoding))
@@ -98,7 +98,23 @@ defmodule Fact.EventIndexer do
             {true, :backward} -> Fact.IndexFileReader.read_backward(index_path)
           end
 
-        GenServer.reply(receiver, event_ids)
+        GenServer.reply(caller, event_ids)
+
+        {:noreply, state}
+      end
+      
+      @impl true
+      def handle_cast({:last_position, value, caller}, %{encoding: encoding, path: path} = state) do
+        
+        file = Path.join(path, encode_key(value, encoding))
+
+        last_pos = 
+          case File.exists?(file) do
+            false -> 0
+            true -> File.stream!(file) |> Enum.count()
+          end
+         
+        GenServer.reply(caller, last_pos)
 
         {:noreply, state}
       end

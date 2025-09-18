@@ -18,16 +18,20 @@ defmodule Fact.EventIndexerManager do
     GenServer.call(__MODULE__, {:ensure_indexer, key})
   end
 
-  def index(event_refs) do
+  def index(event_paths) do
     indexers = :pg.get_members(:fact_indexers)
 
     _ =
-      Enum.each(event_refs, fn {event_id, _event_pos} ->
-        recorded_event = Fact.EventReader.read_event(event_id)
+      Enum.each(event_paths, fn event_path ->
+        recorded_event = Fact.EventReader.Json.read_event(event_path)
         Enum.each(indexers, &send(&1, {:index, recorded_event}))
       end)
 
     :ok
+  end
+
+  def last_position(indexer, key) do
+    GenServer.call(__MODULE__, {:last_position, indexer, key})
   end
 
   def stream!(indexer, value, opts \\ []) do
@@ -126,6 +130,18 @@ defmodule Fact.EventIndexerManager do
 
       %{status: :ready, pid: pid} ->
         {:reply, {:ok, pid}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:last_position, indexer, value}, from, state) do
+    case Map.get(state.indexers, indexer) do
+      %{pid: pid} when is_pid(pid) ->
+        :ok = GenServer.cast(pid, {:last_position, value, from})
+        {:noreply, state}
+
+      _ ->
+        {:reply, {:error, {:not_started, indexer}}, state}
     end
   end
 
