@@ -61,7 +61,7 @@ defmodule Fact.EventIndexer do
         checkpoint = load_checkpoint(state.path)
         Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
 
-        Fact.EventStreamReader.read_all(from_position: checkpoint)
+        Fact.EventStreamReader.read(:all, from_position: checkpoint)
         |> Stream.each(fn event ->
           append_to_index(event, state)
           save_checkpoint(event[@event_store_position], state.path)
