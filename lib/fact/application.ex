@@ -9,7 +9,8 @@ defmodule Fact.Application do
       {Registry, keys: :unique, name: Fact.EventStreamRegistry},
       {Registry, keys: :unique, name: Fact.EventIndexerRegistry},
       Fact.EventLedger,
-      Fact.EventIndexerManager
+      Fact.EventIndexerManager,
+      {DynamicSupervisor, strategy: :one_for_one, name: Fact.EventStreamWriterSupervisor}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Fact.Supervisor)
