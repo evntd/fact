@@ -20,6 +20,21 @@ config :fact,
     ],
     [
       enabled: true,
+      mod: Fact.EventTagsIndexer,
+      opts: [
+        path: ".fact/indices/tags"
+      ]
+    ],
+    [
+      enabled: false,
+      mod: Fact.EventDataIndexer,
+      opts: [
+        path: ".fact/indices/event_data",
+        encoding: {:hash, :sha}
+      ]
+    ],
+    [
+      enabled: false,
       mod: Fact.EventStreamCategoryIndexer,
       opts: [
         path: ".fact/indices/event_stream_category",
@@ -30,10 +45,9 @@ config :fact,
     ],
     [
       enabled: false,
-      mod: Fact.EventDataIndexer,
+      mod: Fact.EventStreamsIndexer,
       opts: [
-        path: ".fact/indices/event_data",
-        encoding: {:hash, :sha}
+        path: ".fact/indices/streams"
       ]
     ]
   ]

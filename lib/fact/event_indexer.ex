@@ -2,7 +2,7 @@ defmodule Fact.EventIndexer do
   @moduledoc """
   Base module for all indexers.
   """
-  @callback index_event(event :: map(), state :: term()) :: String.t() | nil
+  @callback index_event(event :: map(), state :: term()) :: List.t(String.t()) | String.t() | nil
 
   defmacro __using__(_opts \\ []) do
     quote do
@@ -128,10 +128,21 @@ defmodule Fact.EventIndexer do
           nil ->
             :ignored
 
-          key ->
+          [] ->
+            :ignored
+
+          key when is_binary(key) ->
             file = Path.join(path, encode_key(key, encoding))
             File.write!(file, id <> "\n", [:append])
             :ok
+
+          keys when is_list(keys) ->
+            line = id <> "\n"
+
+            Enum.each(keys, fn key ->
+              file = Path.join(path, encode_key(key, encoding))
+              File.write!(file, line, [:append])
+            end)
         end
       end
 
