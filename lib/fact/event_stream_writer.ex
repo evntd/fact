@@ -23,10 +23,10 @@ defmodule Fact.EventStreamWriter do
     }
   end
 
-  def append(event_stream, events, opts \\ []) do
+  def append(events, event_stream, opts \\ []) do
     {call_opts, append_opts} = Keyword.split(opts, [:timeout])
     timeout = Keyword.get(call_opts, :timeout, 5000)
-    
+
     ensure_started(event_stream)
     GenServer.call(via_tuple(event_stream), {:append, events, append_opts}, timeout)
   end
