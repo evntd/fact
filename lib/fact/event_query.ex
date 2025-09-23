@@ -5,6 +5,7 @@ defmodule Fact.EventQuery do
   This module allows you to define a query using `Fact.EventQuery` structs, specifying:
     
   - `:event_types` - a list of strings or atoms representing the types of events to match.
+  - `:event_tags` - a list of strings representing the tags of events to match
   - `:event_data` - a keyword list used to filter events based on their properties and values.
     
   The primary function, `execute/1`, produces a **stream of event ids** that match the provided query in the order they
@@ -57,10 +58,11 @@ defmodule Fact.EventQuery do
   them directly to `Fact.EventStreamReader.read/2` to get a stream of fully materialized events instead of event ids.  
   """
 
-  defstruct event_types: [], event_data: []
+  defstruct event_types: [], event_tags: [], event_data: []
 
   @type t :: %__MODULE__{
           event_types: [String.t() | atom()],
+          event_tags: [String.t()],
           event_data: keyword()
         }
 
@@ -97,22 +99,44 @@ defmodule Fact.EventQuery do
     end
   end
 
-  defp events_matching(%__MODULE__{event_types: event_types, event_data: event_data}) do
+  defp events_matching(%{
+         event_types: event_types,
+         event_tags: event_tags,
+         event_data: event_data
+       }) do
     event_type_matches = events_matching_types(event_types)
+    event_tag_matches = events_matching_tags(event_tags)
     event_data_matches = events_matching_data(event_data)
 
-    case {event_types, event_data} do
-      {[], []} ->
+    case {event_types, event_tags, event_data} do
+      {[], [], []} ->
         MapSet.new()
 
-      {[], _} ->
-        event_data_matches
-
-      {_, []} ->
+      {_, [], []} ->
         event_type_matches
 
-      {_, _} ->
-        MapSet.intersection(event_type_matches, event_data_matches)
+      {[], _, []} ->
+        event_tag_matches
+
+      {[], [], _} ->
+        event_data_matches
+
+      {_, _, []} ->
+        event_type_matches
+        |> MapSet.intersection(event_tag_matches)
+
+      {_, [], _} ->
+        event_type_matches
+        |> MapSet.intersection(event_data_matches)
+
+      {[], _, _} ->
+        event_tag_matches
+        |> MapSet.intersection(event_data_matches)
+
+      {_, _, _} ->
+        event_type_matches
+        |> MapSet.intersection(event_tag_matches)
+        |> MapSet.intersection(event_data_matches)
     end
   end
 
@@ -122,6 +146,21 @@ defmodule Fact.EventQuery do
     event_types
     |> Stream.flat_map(&Fact.EventIndexerManager.stream!(Fact.EventTypeIndexer, &1))
     |> Enum.into(MapSet.new())
+  end
+
+  defp events_matching_tags([]), do: MapSet.new()
+
+  defp events_matching_tags(event_tags) do
+    Enum.reduce(event_tags, :first, fn tag, acc ->
+      matches_tag =
+        Fact.EventIndexerManager.stream!(Fact.EventTagsIndexer, tag)
+        |> Enum.into(MapSet.new())
+
+      case acc do
+        :first -> matches_tag
+        _ -> MapSet.intersection(acc, matches_tag)
+      end
+    end)
   end
 
   defp events_matching_data(event_data) do
