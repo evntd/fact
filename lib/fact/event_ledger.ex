@@ -24,6 +24,7 @@ defmodule Fact.EventLedger do
   def stream!(opts) do
     path = Application.get_env(:fact, :ledger)
     direction = Keyword.get(opts, :direction, :forward)
+
     case direction do
       :forward -> Fact.IndexFileReader.read_forward(path)
       :backward -> Fact.IndexFileReader.read_backward(path)
@@ -64,7 +65,8 @@ defmodule Fact.EventLedger do
           event ->
             {:reply,
              {:error,
-              {:concurrency, expected: expected_pos, actual: event[@event_store_position]}}, state}
+              {:concurrency, expected: expected_pos, actual: event[@event_store_position]}},
+             state}
         end
     end
   end
