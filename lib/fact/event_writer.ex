@@ -9,5 +9,5 @@ defmodule Fact.EventWriter do
     do_write_event(path, event)
   end
 
-  defdelegate do_write_event(path, event), to: Fact.EventWriter.Json, as: :write
+  defdelegate do_write_event(path, event), to: Fact.EventFileWriter.Json, as: :write
 end

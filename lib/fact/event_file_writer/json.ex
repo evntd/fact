@@ -1,4 +1,4 @@
-defmodule Fact.EventWriter.Json do
+defmodule Fact.EventFileWriter.Json do
   @moduledoc false
   use Fact.EventKeys
   @file_extension ".json"
