@@ -54,8 +54,8 @@ defmodule Fact.EventQuery do
     
   ## Integration
     
-  This module is designed to work seamlessly with `Fact.EventStreamReader`. You can pass a `%Fact.EventQuery{}` or a list of
-  them directly to `Fact.EventStreamReader.read/2` to get a stream of fully materialized events instead of event ids.  
+  This module is designed to work seamlessly with `Fact.EventReader`. You can pass a `%Fact.EventQuery{}` or a list of
+  them directly to `Fact.EventReader.read/2` to get a stream of fully materialized events instead of event ids.  
   """
 
   defstruct event_types: [], event_tags: [], event_data: []

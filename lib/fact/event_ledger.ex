@@ -55,7 +55,7 @@ defmodule Fact.EventLedger do
 
       {event_query, expected_pos} when expected_pos < last_pos ->
         # run the query and check for any events 
-        Fact.EventStreamReader.read(event_query, from_position: expected_pos)
+        Fact.EventReader.read(event_query, from_position: expected_pos)
         |> Stream.take(-1)
         |> Enum.at(0)
         |> case do
