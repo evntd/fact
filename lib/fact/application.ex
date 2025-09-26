@@ -3,6 +3,8 @@ defmodule Fact.Application do
 
   def start(_type, _args) do
     {:ok, _} = :pg.start_link()
+    
+    Fact.Storage.init!()
 
     children = [
       {Registry, keys: :unique, name: Fact.EventLedgerRegistry},

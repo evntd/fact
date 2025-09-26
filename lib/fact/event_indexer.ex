@@ -61,9 +61,9 @@ defmodule Fact.EventIndexer do
         checkpoint = load_checkpoint(state.path)
         Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
 
-        Fact.EventStreamReader.read(:all, from_position: checkpoint)
-        |> Stream.each(fn event ->
-          append_to_index(event, state)
+        Fact.EventReader.read(:all, from_position: checkpoint)
+        |> Stream.each(fn {event_id, event} = record ->
+          append_to_index(record, state)
           save_checkpoint(event[@event_store_position], state.path)
         end)
         |> Stream.run()
@@ -77,8 +77,8 @@ defmodule Fact.EventIndexer do
       end
 
       @impl true
-      def handle_info({:index, event}, state) do
-        append_to_index(event, state)
+      def handle_info({:index, {_, event} = record}, state) do
+        append_to_index(record, state)
         save_checkpoint(event[@event_store_position], state.path)
         {:noreply, state}
       end
@@ -94,8 +94,8 @@ defmodule Fact.EventIndexer do
         event_ids =
           case {File.exists?(index_path), direction} do
             {false, _} -> Stream.concat([])
-            {true, :forward} -> Fact.IndexFileReader.read_forward(index_path)
-            {true, :backward} -> Fact.IndexFileReader.read_backward(index_path)
+            {true, :forward} -> Fact.Storage.read_index_forward(index_path)
+            {true, :backward} -> Fact.Storage.read_index_backward(index_path)
           end
 
         GenServer.reply(caller, event_ids)
@@ -118,7 +118,7 @@ defmodule Fact.EventIndexer do
         {:noreply, state}
       end
 
-      defp append_to_index(%{@event_id => id} = event, %__MODULE__{
+      defp append_to_index({event_id, event} = _record, %__MODULE__{
              index: index,
              path: path,
              encoding: encoding,
@@ -133,11 +133,11 @@ defmodule Fact.EventIndexer do
 
           key when is_binary(key) ->
             file = Path.join(path, encode_key(key, encoding))
-            File.write!(file, id <> "\n", [:append])
+            File.write!(file, event_id <> "\n", [:append])
             :ok
 
           keys when is_list(keys) ->
-            line = id <> "\n"
+            line = event_id <> "\n"
 
             Enum.each(keys, fn key ->
               file = Path.join(path, encode_key(key, encoding))

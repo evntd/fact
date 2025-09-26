@@ -26,8 +26,13 @@ defmodule Fact.IndexFileReader.Backwards.Line do
     
   """
   def read(path) do
+    read(@line_size - 1, path)
+  end
+
+  def read(length, path) do
+    line_length = length + 1
     size = File.stat!(path).size
-    total = div(size, @line_size)
+    total = div(size, line_length)
 
     Stream.unfold(total - 1, fn
       -1 ->
@@ -36,10 +41,10 @@ defmodule Fact.IndexFileReader.Backwards.Line do
       idx ->
         {:ok, {:ok, data}} =
           File.open(path, [:raw, :read], fn fd ->
-            :file.pread(fd, idx * @line_size, @line_size)
+            :file.pread(fd, idx * line_length, line_length)
           end)
 
-        <<event_id::binary-size(32), _newline::binary>> = data
+        <<event_id::binary-size(length), _newline::binary>> = data
         {event_id, idx - 1}
     end)
   end

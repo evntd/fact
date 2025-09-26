@@ -26,8 +26,8 @@ defmodule Fact.EventLedger do
     direction = Keyword.get(opts, :direction, :forward)
 
     case direction do
-      :forward -> Fact.IndexFileReader.read_forward(path)
-      :backward -> Fact.IndexFileReader.read_backward(path)
+      :forward -> Fact.Storage.read_index_forward(path)
+      :backward -> Fact.Storage.read_index_backward(path)
       other -> raise ArgumentError, "unknown direction #{inspect(other)}"
     end
   end
@@ -81,6 +81,7 @@ defmodule Fact.EventLedger do
 
         enriched_event =
           Map.merge(event, %{
+            # TODO: only if not specified
             @event_id => UUID.uuid4(:hex),
             @event_store_position => next_pos,
             @event_store_timestamp => timestamp
@@ -90,51 +91,49 @@ defmodule Fact.EventLedger do
       end)
 
     case write_events(enriched_events) do
-      {:ok, ledger_entry_iodata} ->
-        case File.write(Application.get_env(:fact, :ledger), ledger_entry_iodata, [:append]) do
-          :ok ->
-            :ok =
-              enriched_events
-              |> Enum.map(& &1[@event_id])
-              |> Fact.EventIndexerManager.index()
+      {:ok, committed_events} ->
+        Fact.EventIndexerManager.index(committed_events)
+        {:reply, {:ok, end_pos}, %{state | last_pos: end_pos}}
 
-            {:reply, {:ok, end_pos}, %{state | last_pos: end_pos}}
-
-          {:error, reason} ->
-            {:reply, {:error, {:ledger_write_failed, reason}}, state}
-        end
-
-      {:error, reasons} ->
-        {:reply, {:error, {:event_write_failed, reasons}}, state}
+      error ->
+        {:reply, error, state}
     end
   end
 
   defp write_events(events) do
+    # write all the events, then collect the 
+    #   - iodata, for writing all event_ids into the ledger
+    #
+    # on success
+    #   - iodata for writing all event_ids into the ledger at once
+    #   - the event_ids in a list for response to the caller
+    #
+    # on failure
+    #   - the write failures, containing the error and event_id
+
     write_results =
       events
-      |> Task.async_stream(
-        fn event ->
-          case Fact.EventWriter.write_event(event) do
-            :ok -> {:ok, event[@event_id]}
-            {:error, posix} -> {:error, posix, event[@event_id]}
-          end
-        end,
-        max_concurrency: System.schedulers_online()
-      )
-      |> Enum.reduce({:ok, [], []}, fn
-        {_, {:ok, event_id}}, {result, iodata, errors} ->
-          {result, [iodata, event_id, "\n"], errors}
+      |> Task.async_stream(&Fact.Storage.write_event/1, max_concurrency: System.schedulers_online())
+      |> Enum.reduce({:ok, [], [], []}, fn
+        {_, {:ok, event_id}}, {result, iodata, written_events, errors} ->
+          {result, [iodata, event_id, "\n"], [event_id | written_events], errors}
 
-        {_, {:error, posix, event_id}}, {_, iodata, errors} ->
-          {:error, iodata, [{posix, event_id} | errors]}
+        {_, {:error, posix, event_id}}, {_, iodata, written_events, errors} ->
+          {:error, iodata, written_events, [{posix, event_id} | errors]}
       end)
 
     case write_results do
-      {:ok, ledger_entry_iodata, _errors} ->
-        {:ok, ledger_entry_iodata}
+      {:ok, ledger_entry_iodata, written_events, _errors} ->
+        case File.write(Application.get_env(:fact, :ledger), ledger_entry_iodata, [:append]) do
+          :ok ->
+            {:ok, written_events |> Enum.reverse()}
 
-      {:error, _ledger_entry_iodata, errors} ->
-        {:error, Enum.reverse(errors)}
+          {:error, reason} ->
+            {:error, {:ledger_write_failed, reason}}
+        end
+
+      {:error, _ledger_entry_iodata, _written_events, errors} ->
+        {:error, {:event_write_failed, Enum.reverse(errors)}}
     end
   end
 

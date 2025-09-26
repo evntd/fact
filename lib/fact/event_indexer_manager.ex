@@ -23,8 +23,8 @@ defmodule Fact.EventIndexerManager do
 
     _ =
       Enum.each(event_ids, fn event_id ->
-        recorded_event = Fact.EventReader.read_event(event_id)
-        Enum.each(indexers, &send(&1, {:index, recorded_event}))
+        record = Fact.Storage.read_event(event_id)
+        Enum.each(indexers, &send(&1, {:index, record}))
       end)
 
     :ok

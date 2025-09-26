@@ -27,11 +27,6 @@ defmodule Fact.EventReader do
     do_read(fn -> Fact.EventQuery.execute(query) end, @event_store_position, opts)
   end
 
-  def read_event(event_id) do
-    db_dir = Application.get_env(:fact, :db)
-    do_read_event(Path.join(db_dir, event_id))
-  end
-
   defp do_read(read_strategy, compare_key, opts) do
     position = Keyword.get(opts, :position, :start)
     direction = Keyword.get(opts, :direction, :forward)
@@ -51,11 +46,12 @@ defmodule Fact.EventReader do
               "expected :count to be a non-negative integer or nil, got: #{inspect(count)}"
 
       true ->
-        position_is_out_of_range? = position_out_of_range_comparator(compare_key, direction, position)
+        position_is_out_of_range? =
+          position_out_of_range_comparator(compare_key, direction, position)
 
         stream =
           read_strategy.()
-          |> Stream.map(&read_event/1)
+          |> Stream.map(&Fact.Storage.read_event/1)
           |> Stream.drop_while(&position_is_out_of_range?.(&1))
 
         if is_integer(count) do
@@ -69,10 +65,8 @@ defmodule Fact.EventReader do
   defp position_out_of_range_comparator(event_key, direction, position) do
     case {direction, position} do
       {_, :start} -> fn _ -> false end
-      {:forward, pos} -> &(&1[event_key] <= pos)
-      {:backward, pos} -> &(&1[event_key] > pos)
+      {:forward, pos} -> fn {_, event} -> event[event_key] <= pos end
+      {:backward, pos} -> fn {_, event} -> event[event_key] > pos end
     end
   end
-
-  defdelegate do_read_event(path), to: Fact.EventFileReader.Json, as: :read
 end
