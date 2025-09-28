@@ -4,7 +4,10 @@ defmodule Fact.EventIndexer do
   """
   @callback index_event(event :: map(), state :: term()) :: List.t(String.t()) | String.t() | nil
 
-  defmacro __using__(_opts \\ []) do
+  defmacro __using__(opts \\ []) do
+    
+    index_dir = Keyword.fetch!(opts, :path) |> to_string
+    
     quote do
       @behaviour Fact.EventIndexer
 
@@ -12,6 +15,8 @@ defmodule Fact.EventIndexer do
       use Fact.EventKeys
       import Fact.Names
       require Logger
+      
+      @index_dir unquote(index_dir)
 
       defstruct [:instance, :index, :path, :encoding, :opts]
 
@@ -28,7 +33,7 @@ defmodule Fact.EventIndexer do
           end
 
         instance = Keyword.fetch!(indexer_opts, :instance)
-        base = Keyword.fetch!(indexer_opts, :path)
+        base_path = Keyword.fetch!(indexer_opts, :path)
         encoding = Keyword.get(indexer_opts, :encoding, :raw)
         custom_opts = Keyword.get(indexer_opts, :opts, [])
 
@@ -40,8 +45,8 @@ defmodule Fact.EventIndexer do
 
         path =
           case index do
-            {_mod, key} -> Path.join(base, to_string(key))
-            _ -> base
+            {_mod, key} -> Path.join([base_path, @index_dir, to_string(key)])
+            _ -> Path.join(base_path, @index_dir)
           end
 
         state = %__MODULE__{

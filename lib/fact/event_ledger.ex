@@ -6,20 +6,20 @@ defmodule Fact.EventLedger do
   import Fact.Names
   require Logger
 
-  defstruct [:instance, :last_pos, :path]
+  defstruct [:instance, :path, last_pos: 0]
 
   def start_link(opts) do
     Logger.debug("#{__MODULE__}.start_link(#{inspect(opts)})")
-    {ledger_opts, start_opts} = Keyword.split(opts, [:instance, :path])
+    {ledger_opts, genserver_opts} = Keyword.split(opts, [:instance, :path])
 
     instance = Keyword.fetch!(ledger_opts, :instance)
     path = Keyword.fetch!(ledger_opts, :path)
-    state = %__MODULE__{instance: instance, path: path, last_pos: 0}
+    state = %__MODULE__{instance: instance, path: path}
 
-    start_opts = Keyword.put(start_opts, :name, via(instance, __MODULE__))
+    genserver_opts = Keyword.put(genserver_opts, :name, via(instance, __MODULE__))
 
-    Logger.debug("GenServer.start_link(#{__MODULE__}, #{inspect(state)}, #{inspect(start_opts)})")
-    GenServer.start_link(__MODULE__, state, start_opts)
+    Logger.debug("GenServer.start_link(#{__MODULE__}, #{inspect(state)}, #{inspect(genserver_opts)})")
+    GenServer.start_link(__MODULE__, state, genserver_opts)
   end
 
   def commit(instance, events, opts \\ []) do

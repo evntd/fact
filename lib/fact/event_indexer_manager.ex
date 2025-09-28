@@ -7,14 +7,14 @@ defmodule Fact.EventIndexerManager do
 
   @type indexer_status :: :stopped | :starting | :started | :ready
 
-  defstruct [:instance, supervisor: nil, indexers: %{}, indexer_config: []]
+  defstruct [:instance, supervisor: nil, indexers: %{}, indexer_specs: []]
 
   def start_link(opts) do
-    {indexer_opts, start_opts} = Keyword.split(opts, [:instance, :indexers])
+    {indexer_opts, genserver_opts} = Keyword.split(opts, [:instance, :indexers])
     instance = Keyword.fetch!(indexer_opts, :instance)
-    indexer_config = Keyword.fetch!(indexer_opts, :indexers)
-    start_opts = Keyword.put(start_opts, :name, via(instance, __MODULE__))
-    GenServer.start_link(__MODULE__, {instance, indexer_config}, start_opts)
+    indexers = Keyword.fetch!(indexer_opts, :indexers)
+    genserver_opts = Keyword.put(genserver_opts, :name, via(instance, __MODULE__))
+    GenServer.start_link(__MODULE__, {instance, indexers}, genserver_opts)
   end
 
   def ensure_indexer(instance, key) do
@@ -30,7 +30,7 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
-  def init({instance, indexer_config}) do
+  def init({instance, indexers}) do
     {:ok, supervisor} =
       DynamicSupervisor.start_link(
         strategy: :one_for_one,
@@ -41,7 +41,7 @@ defmodule Fact.EventIndexerManager do
       instance: instance,
       supervisor: supervisor,
       indexers: %{},
-      indexer_config: indexer_config
+      indexer_specs: indexers
     }
 
     {:ok, state, {:continue, :start_indexers}}
@@ -50,15 +50,12 @@ defmodule Fact.EventIndexerManager do
   @impl true
   def handle_continue(
         :start_indexers,
-        %{instance: instance, indexers: indexers, indexer_config: indexer_config} = state
+        %{indexers: indexers, indexer_specs: indexer_specs} = state
       ) do
     new_indexers =
-      indexer_config
-      |> Enum.filter(fn config -> Keyword.get(config, :enabled, false) end)
-      |> Enum.reduce(indexers, fn config, acc ->
-        mod = Keyword.fetch!(config, :mod)
-        opts = Keyword.get(config, :opts, [])
-        spec = {mod, Keyword.put(opts, :instance, instance)}
+      indexer_specs
+      |> Enum.filter(fn {_mod, opts} -> Keyword.get(opts, :enabled, true) end)
+      |> Enum.reduce(indexers, fn spec, acc ->
         indexer_key = get_indexer_key(spec)
         GenServer.cast(self(), {:start_indexer, spec})
         Map.put(acc, indexer_key, %{pid: nil, status: :starting, waiters: []})

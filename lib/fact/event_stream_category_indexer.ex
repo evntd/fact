@@ -1,6 +1,6 @@
 defmodule Fact.EventStreamCategoryIndexer do
   @moduledoc false
-  use Fact.EventIndexer
+  use Fact.EventIndexer, path: :event_stream_category
 
   @impl true
   def index_event(event, opts) do

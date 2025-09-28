@@ -1,6 +1,6 @@
 defmodule Fact.EventTagsIndexer do
   @moduledoc false
-  use Fact.EventIndexer
+  use Fact.EventIndexer, path: :event_tags
 
   @impl true
   def index_event(%{@event_tags => tags}, _opts), do: tags

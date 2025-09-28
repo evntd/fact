@@ -15,6 +15,8 @@ defmodule Fact.Storage do
     driver = Keyword.get(opts, :driver, Fact.Storage.Driver.ByEventId)
     format = Keyword.get(opts, :format, Fact.Storage.Format.Json)
 
+    ensure_path!(path)
+    
     Code.ensure_loaded!(driver)
     Code.ensure_loaded!(format)
 
@@ -61,4 +63,6 @@ defmodule Fact.Storage do
   end
 
   defp storage_table(instance), do: :"#{instance}.#{__MODULE__}"
+
+  defp ensure_path!(path), do: File.mkdir_p!(path)
 end
