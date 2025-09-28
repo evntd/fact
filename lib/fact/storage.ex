@@ -16,7 +16,7 @@ defmodule Fact.Storage do
     format = Keyword.get(opts, :format, Fact.Storage.Format.Json)
 
     ensure_path!(path)
-    
+
     Code.ensure_loaded!(driver)
     Code.ensure_loaded!(format)
 

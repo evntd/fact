@@ -16,10 +16,10 @@ defmodule Fact.Supervisor do
     driver = Keyword.get(opts, :driver, Fact.Storage.Driver.ByEventId)
     format = Keyword.get(opts, :format, Fact.Storage.Format.Json)
     indexers = Keyword.get(opts, :indexers, default_indexers(instance, path))
-    
+
     events_path = Path.join(path, "events")
     ledger_path = Path.join(path, "ledger")
-        
+
     children = [
       {Registry, keys: :unique, name: registry(instance)},
       {Registry, keys: :unique, name: event_stream_registry(instance)},
@@ -34,9 +34,10 @@ defmodule Fact.Supervisor do
 
     Supervisor.init(children, strategy: :one_for_one)
   end
-  
+
   defp default_indexers(instance, path) do
     default_opts = [instance: instance, path: Path.join(path, "indices")]
+
     [
       {Fact.EventStreamIndexer, default_opts},
       {Fact.EventTypeIndexer, default_opts},
@@ -46,5 +47,4 @@ defmodule Fact.Supervisor do
       {Fact.EventStreamsIndexer, default_opts ++ [enabled: false]}
     ]
   end
-  
 end

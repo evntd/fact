@@ -18,7 +18,10 @@ defmodule Fact.EventLedger do
 
     genserver_opts = Keyword.put(genserver_opts, :name, via(instance, __MODULE__))
 
-    Logger.debug("GenServer.start_link(#{__MODULE__}, #{inspect(state)}, #{inspect(genserver_opts)})")
+    Logger.debug(
+      "GenServer.start_link(#{__MODULE__}, #{inspect(state)}, #{inspect(genserver_opts)})"
+    )
+
     GenServer.start_link(__MODULE__, state, genserver_opts)
   end
 
