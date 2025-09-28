@@ -5,29 +5,42 @@ defmodule Fact.EventReader do
 
   use Fact.EventKeys
 
-  def read(event_source, opts \\ [])
+  def read(instance, event_source, opts \\ [])
 
-  def read(:all, opts) do
-    do_read(fn -> Fact.EventLedger.stream!(opts) end, @event_store_position, opts)
+  def read(instance, :all, opts) do
+    do_read(
+      instance,
+      fn -> Fact.EventLedger.stream!(instance, opts) end,
+      @event_store_position,
+      opts
+    )
   end
 
-  def read(event_stream, opts) when is_binary(event_stream) do
+  def read(instance, event_stream, opts) when is_binary(event_stream) do
     do_read(
-      fn -> Fact.EventIndexerManager.stream!(Fact.EventStreamIndexer, event_stream, opts) end,
+      instance,
+      fn ->
+        Fact.EventIndexerManager.stream!(instance, Fact.EventStreamIndexer, event_stream, opts)
+      end,
       @event_stream_position,
       opts
     )
   end
 
-  def read(%Fact.EventQuery{} = query, opts) do
-    read([query], opts)
+  def read(instance, %Fact.EventQuery{} = query, opts) do
+    read(instance, [query], opts)
   end
 
-  def read([%Fact.EventQuery{} | _] = query, opts) when is_list(query) do
-    do_read(fn -> Fact.EventQuery.execute(query) end, @event_store_position, opts)
+  def read(instance, [%Fact.EventQuery{} | _] = query, opts) when is_list(query) do
+    do_read(
+      instance,
+      fn -> Fact.EventQuery.execute(instance, query) end,
+      @event_store_position,
+      opts
+    )
   end
 
-  defp do_read(read_strategy, compare_key, opts) do
+  defp do_read(instance, read_strategy, compare_key, opts) do
     position = Keyword.get(opts, :position, :start)
     direction = Keyword.get(opts, :direction, :forward)
     count = Keyword.get(opts, :count, nil)
@@ -51,7 +64,7 @@ defmodule Fact.EventReader do
 
         stream =
           read_strategy.()
-          |> Stream.map(&Fact.Storage.read_event/1)
+          |> Stream.map(&Fact.Storage.read_event(instance, &1))
           |> Stream.drop_while(&position_is_out_of_range?.(&1))
 
         if is_integer(count) do

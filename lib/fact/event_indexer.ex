@@ -10,12 +10,16 @@ defmodule Fact.EventIndexer do
 
       use GenServer
       use Fact.EventKeys
+      import Fact.Names
       require Logger
 
-      defstruct [:index, :path, :encoding, :opts]
+      defstruct [:instance, :index, :path, :encoding, :opts]
 
       def start_link(opts \\ []) do
-        {indexer_opts, start_opts} = Keyword.split(opts, [:key, :path, :encoding, :opts])
+        Logger.debug("#{__MODULE__}.start_link(opts = #{inspect(opts)})")
+
+        {indexer_opts, start_opts} =
+          Keyword.split(opts, [:instance, :key, :path, :encoding, :opts])
 
         index =
           case Keyword.fetch(indexer_opts, :key) do
@@ -23,6 +27,7 @@ defmodule Fact.EventIndexer do
             :error -> __MODULE__
           end
 
+        instance = Keyword.fetch!(indexer_opts, :instance)
         base = Keyword.fetch!(indexer_opts, :path)
         encoding = Keyword.get(indexer_opts, :encoding, :raw)
         custom_opts = Keyword.get(indexer_opts, :opts, [])
@@ -40,13 +45,19 @@ defmodule Fact.EventIndexer do
           end
 
         state = %__MODULE__{
+          instance: instance,
           index: index,
           path: path,
           encoding: encoding,
           opts: opts
         }
 
-        start_opts = Keyword.put_new(start_opts, :name, __MODULE__)
+        start_opts = Keyword.put_new(start_opts, :name, via(instance, __MODULE__))
+
+        Logger.debug(
+          "GenServer.start_link(#{__MODULE__},  #{inspect(state)}, #{inspect(start_opts)})"
+        )
+
         GenServer.start_link(__MODULE__, state, start_opts)
       end
 
@@ -57,11 +68,11 @@ defmodule Fact.EventIndexer do
       end
 
       @impl true
-      def handle_continue(:rebuild_and_join, state) do
-        checkpoint = load_checkpoint(state.path)
+      def handle_continue(:rebuild_and_join, %{instance: instance, path: path} = state) do
+        checkpoint = load_checkpoint(path)
         Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
 
-        Fact.EventReader.read(:all, from_position: checkpoint)
+        Fact.EventReader.read(instance, :all, from_position: checkpoint)
         |> Stream.each(fn {event_id, event} = record ->
           append_to_index(record, state)
           save_checkpoint(event[@event_store_position], state.path)
@@ -69,15 +80,19 @@ defmodule Fact.EventIndexer do
         |> Stream.run()
 
         Logger.debug("#{__MODULE__} joining :fact_indexers group")
-        :ok = :pg.join(:fact_indexers, self())
 
-        send(Fact.EventIndexerManager, {:indexer_ready, self(), state.index})
+        :ok = Fact.EventPublisher.subscribe(instance, self())
+
+        GenServer.cast(
+          via(instance, Fact.EventIndexerManager),
+          {:indexer_ready, self(), state.index}
+        )
 
         {:noreply, state}
       end
 
       @impl true
-      def handle_info({:index, {_, event} = record}, state) do
+      def handle_info({:appended, {_, event} = record}, state) do
         append_to_index(record, state)
         save_checkpoint(event[@event_store_position], state.path)
         {:noreply, state}
@@ -86,7 +101,7 @@ defmodule Fact.EventIndexer do
       @impl true
       def handle_cast(
             {:stream!, value, caller, opts},
-            %__MODULE__{index: index, path: path, encoding: encoding} = state
+            %{instance: instance, index: index, path: path, encoding: encoding} = state
           ) do
         index_path = Path.join(path, encode_key(value, encoding))
         direction = Keyword.get(opts, :direction, :forward)
@@ -94,8 +109,8 @@ defmodule Fact.EventIndexer do
         event_ids =
           case {File.exists?(index_path), direction} do
             {false, _} -> Stream.concat([])
-            {true, :forward} -> Fact.Storage.read_index_forward(index_path)
-            {true, :backward} -> Fact.Storage.read_index_backward(index_path)
+            {true, :forward} -> Fact.Storage.read_index_forward(instance, index_path)
+            {true, :backward} -> Fact.Storage.read_index_backward(instance, index_path)
           end
 
         GenServer.reply(caller, event_ids)

@@ -2,7 +2,7 @@ defmodule Fact.Storage.Driver.ContentAddressable do
   @moduledoc false
   use Fact.Storage.Driver
 
-  @hash_algorithm :sha  
+  @hash_algorithm :sha
   # Its 40, but might as well compute it at compile time.
   @record_id_length :crypto.hash(@hash_algorithm, "") |> Base.encode16() |> String.length()
 

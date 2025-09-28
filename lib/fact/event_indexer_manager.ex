@@ -2,70 +2,81 @@ defmodule Fact.EventIndexerManager do
   @moduledoc false
 
   use GenServer
+  import Fact.Names
   require Logger
 
   @type indexer_status :: :stopped | :starting | :started | :ready
 
-  defstruct supervisor: nil, indexers: %{}
+  defstruct [:instance, supervisor: nil, indexers: %{}, indexer_config: []]
 
   def start_link(opts) do
-    state = %__MODULE__{}
-    opts = Keyword.put_new(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, state, opts)
+    {indexer_opts, start_opts} = Keyword.split(opts, [:instance, :indexers])
+    instance = Keyword.fetch!(indexer_opts, :instance)
+    indexer_config = Keyword.fetch!(indexer_opts, :indexers)
+    start_opts = Keyword.put(start_opts, :name, via(instance, __MODULE__))
+    GenServer.start_link(__MODULE__, {instance, indexer_config}, start_opts)
   end
 
-  def ensure_indexer(key) do
-    GenServer.call(__MODULE__, {:ensure_indexer, key})
+  def ensure_indexer(instance, key) do
+    GenServer.call(via(instance, __MODULE__), {:ensure_indexer, key})
   end
 
-  def index(event_ids) do
-    indexers = :pg.get_members(:fact_indexers)
-
-    _ =
-      Enum.each(event_ids, fn event_id ->
-        record = Fact.Storage.read_event(event_id)
-        Enum.each(indexers, &send(&1, {:index, record}))
-      end)
-
-    :ok
+  def last_position(instance, indexer, key) do
+    GenServer.call(via(instance, __MODULE__), {:last_position, indexer, key})
   end
 
-  def last_position(indexer, key) do
-    GenServer.call(__MODULE__, {:last_position, indexer, key})
-  end
-
-  def stream!(indexer, value, opts \\ []) do
-    GenServer.call(__MODULE__, {:stream!, indexer, value, opts})
+  def stream!(instance, indexer, value, opts \\ []) do
+    GenServer.call(via(instance, __MODULE__), {:stream!, indexer, value, opts})
   end
 
   @impl true
-  def init(state) do
+  def init({instance, indexer_config}) do
     {:ok, supervisor} =
-      DynamicSupervisor.start_link(strategy: :one_for_one, name: EventIndexerSupervisor)
+      DynamicSupervisor.start_link(
+        strategy: :one_for_one,
+        name: via(instance, Fact.EventIndexerSupervisor)
+      )
 
-    indexers =
-      Application.get_env(:fact, :indexers)
+    state = %__MODULE__{
+      instance: instance,
+      supervisor: supervisor,
+      indexers: %{},
+      indexer_config: indexer_config
+    }
+
+    {:ok, state, {:continue, :start_indexers}}
+  end
+
+  @impl true
+  def handle_continue(
+        :start_indexers,
+        %{instance: instance, indexers: indexers, indexer_config: indexer_config} = state
+      ) do
+    new_indexers =
+      indexer_config
       |> Enum.filter(fn config -> Keyword.get(config, :enabled, false) end)
-      |> Enum.reduce(state.indexers, fn config, acc ->
-        [mod: mod, opts: opts] = Keyword.take(config, [:mod, :opts])
-        spec = {mod, opts}
+      |> Enum.reduce(indexers, fn config, acc ->
+        mod = Keyword.fetch!(config, :mod)
+        opts = Keyword.get(config, :opts, [])
+        spec = {mod, Keyword.put(opts, :instance, instance)}
         indexer_key = get_indexer_key(spec)
         GenServer.cast(self(), {:start_indexer, spec})
         Map.put(acc, indexer_key, %{pid: nil, status: :starting, waiters: []})
       end)
 
-    {:ok, %__MODULE__{state | supervisor: supervisor, indexers: indexers}}
+    {:noreply, %{state | indexers: new_indexers}}
   end
 
   @impl true
   def handle_cast(
         {:start_indexer, spec},
-        %__MODULE__{supervisor: supervisor, indexers: indexers} = state
+        %{instance: instance, supervisor: supervisor, indexers: indexers} = state
       ) do
     indexer_key = get_indexer_key(spec)
 
-    case Registry.lookup(Fact.EventIndexerRegistry, indexer_key) do
+    case Registry.lookup(:"#{instance}.Fact.EventIndexerRegistry", indexer_key) do
       [] ->
+        Logger.debug("TRY START: #{inspect(spec)}")
         {:ok, indexer} = DynamicSupervisor.start_child(supervisor, spec)
 
         info = %{
@@ -83,8 +94,29 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
-  def handle_call({:ensure_indexer, indexer}, from, state) do
-    case Map.get(state.indexers, indexer) do
+  def handle_cast({:indexer_ready, pid, indexer_key}, state) do
+    Logger.debug("Received :indexer_ready from #{inspect(indexer_key)} at #{inspect(pid)}")
+
+    # state book keeping, and extract waiting processes
+    {waiters, indexers} =
+      Map.get_and_update!(state.indexers, indexer_key, fn info ->
+        waiters = Map.get(info, :waiters, [])
+        {waiters, %{info | status: :ready, pid: pid}}
+      end)
+
+    # notify any process waiting on the indexer to be :ready
+    Enum.each(waiters, &GenServer.reply(&1, {:ok, pid}))
+
+    {:noreply, %__MODULE__{state | indexers: indexers}}
+  end
+
+  @impl true
+  def handle_call(
+        {:ensure_indexer, indexer},
+        from,
+        %{instance: instance, indexers: indexers} = state
+      ) do
+    case Map.get(indexers, indexer) do
       # Not started
       nil ->
         # indexer should be either the module, or a tuple {module, key}
@@ -95,7 +127,7 @@ defmodule Fact.EventIndexerManager do
           {:ok, {mod, maybe_key}} ->
             # lookup the indexer configuration by module
             config =
-              Application.get_env(:fact, :indexers, [])
+              state.indexer_config
               |> Enum.find(fn config -> Keyword.fetch!(config, :mod) == mod end)
 
             unless config do
@@ -106,7 +138,7 @@ defmodule Fact.EventIndexerManager do
 
               opts =
                 base_opts
-                |> Keyword.put(:name, {:via, Registry, {Fact.EventIndexerRegistry, indexer}})
+                |> Keyword.put(:name, via_indexer(instance, indexer))
                 |> maybe_put_key(maybe_key)
 
               spec = {mod, opts}
@@ -171,23 +203,6 @@ defmodule Fact.EventIndexerManager do
       invalid_indexer ->
         {:error, {:invalid_indexer, invalid_indexer}}
     end
-  end
-
-  @impl true
-  def handle_info({:indexer_ready, pid, indexer_key}, state) do
-    Logger.debug("Received :indexer_ready from #{inspect(indexer_key)} at #{inspect(pid)}")
-
-    # state book keeping, and extract waiting processes
-    {waiters, indexers} =
-      Map.get_and_update!(state.indexers, indexer_key, fn info ->
-        waiters = Map.get(info, :waiters, [])
-        {waiters, %{info | status: :ready, pid: pid}}
-      end)
-
-    # notify any process waiting on the indexer to be :ready
-    Enum.each(waiters, &GenServer.reply(&1, {:ok, pid}))
-
-    {:noreply, %__MODULE__{state | indexers: indexers}}
   end
 
   defp get_indexer_key({mod, opts}) do

@@ -2,12 +2,14 @@ defmodule Fact.Storage.Driver do
   @moduledoc false
 
   @type record_id :: String.t()
+  @type record_path :: String.t()
   @type file_path :: String.t()
+  @type events_path :: String.t()
 
-  @callback read_event(record_id) :: {record_id, map}
+  @callback read_event(record_path) :: binary
   @callback read_index_forward(file_path) :: Stream.t(String.t())
   @callback read_index_backward(file_path) :: Stream.t(String.t())
-  @callback write_event(map) :: {:ok, record_id} | {:error, term(), record_id}
+  @callback write_event(events_path, map) :: {:ok, record_id} | {:error, term(), record_id}
 
   defmacro __using__(_opts) do
     quote do
@@ -20,12 +22,7 @@ defmodule Fact.Storage.Driver do
       @callback record_id_length() :: integer
 
       @impl true
-      def read_event(record_id) do
-        db_dir = Application.get_env(:fact, :db)
-        path = Path.join(db_dir, record_id)
-        event = File.read!(path) |> Fact.Storage.format().decode()
-        {record_id, event}
-      end
+      defdelegate read_event(record_path), to: File, as: :read!
 
       @impl true
       def read_index_backward(index_path) do
@@ -38,9 +35,9 @@ defmodule Fact.Storage.Driver do
       end
 
       @impl true
-      def write_event(event) do
+      def write_event(events_path, event) do
         {record_id, record} = prepare_record(event)
-        path = Path.join(Application.get_env(:fact, :db), record_id)
+        path = Path.join(events_path, record_id)
 
         case File.write(path, record, [:exclusive]) do
           :ok ->
@@ -54,7 +51,7 @@ defmodule Fact.Storage.Driver do
       defoverridable read_event: 1,
                      read_index_backward: 1,
                      read_index_forward: 1,
-                     write_event: 1
+                     write_event: 2
     end
   end
 end

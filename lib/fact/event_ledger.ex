@@ -3,31 +3,38 @@ defmodule Fact.EventLedger do
 
   use GenServer
   use Fact.EventKeys
-
+  import Fact.Names
   require Logger
 
-  @registry_key {:via, Registry, {Fact.EventLedgerRegistry, :ledger}}
-
-  defstruct [:last_pos]
+  defstruct [:instance, :last_pos, :path]
 
   def start_link(opts) do
-    state = %{last_pos: 0}
-    start_opts = Keyword.put(opts, :name, @registry_key)
+    Logger.debug("#{__MODULE__}.start_link(#{inspect(opts)})")
+    {ledger_opts, start_opts} = Keyword.split(opts, [:instance, :path])
+
+    instance = Keyword.fetch!(ledger_opts, :instance)
+    path = Keyword.fetch!(ledger_opts, :path)
+    state = %__MODULE__{instance: instance, path: path, last_pos: 0}
+
+    start_opts = Keyword.put(start_opts, :name, via(instance, __MODULE__))
+
+    Logger.debug("GenServer.start_link(#{__MODULE__}, #{inspect(state)}, #{inspect(start_opts)})")
     GenServer.start_link(__MODULE__, state, start_opts)
   end
 
-  def commit(events, opts \\ []) do
+  def commit(instance, events, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 5000)
-    GenServer.call(@registry_key, {:commit, events, opts}, timeout)
+    GenServer.call(via(instance, __MODULE__), {:commit, events, opts}, timeout)
   end
 
-  def stream!(opts) do
-    path = Application.get_env(:fact, :ledger)
+  def stream!(instance, opts) do
+    table = :"#{instance}.#{__MODULE__}"
+    [{:path, path}] = :ets.lookup(table, :path)
     direction = Keyword.get(opts, :direction, :forward)
 
     case direction do
-      :forward -> Fact.Storage.read_index_forward(path)
-      :backward -> Fact.Storage.read_index_backward(path)
+      :forward -> Fact.Storage.read_index_forward(instance, path)
+      :backward -> Fact.Storage.read_index_backward(instance, path)
       other -> raise ArgumentError, "unknown direction #{inspect(other)}"
     end
   end
@@ -35,8 +42,11 @@ defmodule Fact.EventLedger do
   # Server callbacks
 
   @impl true
-  def init(state) do
-    path = Application.get_env(:fact, :ledger)
+  def init(%{instance: instance, path: path} = state) do
+    table = :"#{instance}.#{__MODULE__}"
+    :ets.new(table, [:named_table, :public, :set])
+    :ets.insert(table, {:path, path})
+
     ensure_path!(path)
     last_pos = load_position(path)
     {:ok, %{state | last_pos: last_pos}}
@@ -71,7 +81,7 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp do_commit(events, %{last_pos: last_pos} = state) do
+  defp do_commit(events, %{instance: instance, last_pos: last_pos} = state) do
     timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
     # Enrich with store metadata
@@ -90,9 +100,9 @@ defmodule Fact.EventLedger do
         {enriched_event, next_pos}
       end)
 
-    case write_events(enriched_events) do
+    case write_events(enriched_events, state) do
       {:ok, committed_events} ->
-        Fact.EventIndexerManager.index(committed_events)
+        Fact.EventPublisher.publish(instance, committed_events)
         {:reply, {:ok, end_pos}, %{state | last_pos: end_pos}}
 
       error ->
@@ -100,7 +110,7 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp write_events(events) do
+  defp write_events(events, %{instance: instance, path: path} = _state) do
     # write all the events, then collect the 
     #   - iodata, for writing all event_ids into the ledger
     #
@@ -113,7 +123,9 @@ defmodule Fact.EventLedger do
 
     write_results =
       events
-      |> Task.async_stream(&Fact.Storage.write_event/1, max_concurrency: System.schedulers_online())
+      |> Task.async_stream(&Fact.Storage.write_event(instance, &1),
+        max_concurrency: System.schedulers_online()
+      )
       |> Enum.reduce({:ok, [], [], []}, fn
         {_, {:ok, event_id}}, {result, iodata, written_events, errors} ->
           {result, [iodata, event_id, "\n"], [event_id | written_events], errors}
@@ -124,7 +136,7 @@ defmodule Fact.EventLedger do
 
     case write_results do
       {:ok, ledger_entry_iodata, written_events, _errors} ->
-        case File.write(Application.get_env(:fact, :ledger), ledger_entry_iodata, [:append]) do
+        case File.write(path, ledger_entry_iodata, [:append]) do
           :ok ->
             {:ok, written_events |> Enum.reverse()}
 

@@ -3,44 +3,52 @@ defmodule Fact.EventStreamWriter do
 
   use GenServer
   use Fact.EventKeys
+  import Fact.Names
   require Logger
 
   @idle_timeout :timer.minutes(1)
 
-  defstruct [:event_stream, :last_pos, :idle_timer]
+  defstruct [:instance, :event_stream, :last_pos, :idle_timer]
 
-  def start_link(event_stream) do
-    GenServer.start_link(__MODULE__, event_stream, name: via_tuple(event_stream))
-  end
+  def child_spec(opts) do
+    instance = Keyword.fetch!(opts, :instance)
+    event_stream = Keyword.fetch!(opts, :event_stream)
 
-  def child_spec(event_stream) do
     %{
-      id: {__MODULE__, event_stream},
-      start: {__MODULE__, :start_link, [event_stream]},
+      id: {__MODULE__, {instance, event_stream}},
+      start: {__MODULE__, :start_link, [opts]},
       restart: :temporary,
       shutdown: 5000,
       type: :worker
     }
   end
 
-  def append(events, event_stream, opts \\ []) do
+  def start_link(opts) do
+    instance = Keyword.fetch!(opts, :instance)
+    event_stream = Keyword.fetch!(opts, :event_stream)
+    start_opts = Map.put(opts, :name, via_event_stream(instance, event_stream))
+    GenServer.start_link(__MODULE__, [instance: instance, event_stream: event_stream], start_opts)
+  end
+
+  def append(instance, events, event_stream, opts \\ []) do
     {call_opts, append_opts} = Keyword.split(opts, [:timeout])
     timeout = Keyword.get(call_opts, :timeout, 5000)
 
-    ensure_started(event_stream)
-    GenServer.call(via_tuple(event_stream), {:append, events, append_opts}, timeout)
+    ensure_started(instance, event_stream)
+
+    GenServer.call(
+      via_event_stream(instance, event_stream),
+      {:append, events, append_opts},
+      timeout
+    )
   end
 
-  defp via_tuple(event_stream) do
-    {:via, Registry, {Fact.EventStreamRegistry, event_stream}}
-  end
-
-  defp ensure_started(event_stream) do
-    case Registry.lookup(Fact.EventStreamRegistry, event_stream) do
+  defp ensure_started(instance, event_stream) do
+    case Registry.lookup(event_stream_registry(instance), event_stream) do
       [] ->
         DynamicSupervisor.start_child(
-          Fact.EventStreamWriterSupervisor,
-          {__MODULE__, event_stream}
+          via(instance, Fact.EventStreamWriterSupervisor),
+          {__MODULE__, [instance: instance, event_stream: event_stream]}
         )
 
       _ ->
@@ -51,8 +59,12 @@ defmodule Fact.EventStreamWriter do
   # Server callbacks
 
   @impl true
-  def init(event_stream) do
+  def init(opts) do
+    instance = Keyword.fetch!(opts, :instance)
+    event_stream = Keyword.fetch!(opts, :event_stream)
+
     state = %__MODULE__{
+      instance: instance,
       event_stream: event_stream,
       last_pos: 0,
       idle_timer: schedule_idle_timeout()
@@ -63,8 +75,10 @@ defmodule Fact.EventStreamWriter do
   end
 
   @impl true
-  def handle_continue(:load_position, %{event_stream: event_stream} = state) do
-    last_pos = Fact.EventIndexerManager.last_position(Fact.EventStreamIndexer, event_stream)
+  def handle_continue(:load_position, %{instance: instance, event_stream: event_stream} = state) do
+    last_pos =
+      Fact.EventIndexerManager.last_position(instance, Fact.EventStreamIndexer, event_stream)
+
     {:noreply, %{state | last_pos: last_pos}}
   end
 
@@ -72,7 +86,7 @@ defmodule Fact.EventStreamWriter do
   def handle_call(
         {:append, events, opts},
         _from,
-        %{event_stream: event_stream, last_pos: last_pos} = state
+        %{instance: instance, event_stream: event_stream, last_pos: last_pos} = state
       ) do
     cancel_idle_timeout(state.idle_timer)
     idle_timer = schedule_idle_timeout()
@@ -96,7 +110,7 @@ defmodule Fact.EventStreamWriter do
           {enriched_event, next_pos}
         end)
 
-      case Fact.EventLedger.commit(enriched_events) do
+      case Fact.EventLedger.commit(instance, enriched_events) do
         {:ok, _last_store_pos} ->
           {:reply, {:ok, end_pos}, %{state | idle_timer: idle_timer, last_pos: end_pos}}
 
