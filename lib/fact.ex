@@ -1,5 +1,5 @@
 defmodule Fact do
-  def start_link(name, opts \\ []) when is_binary(name) do
+  def start_link(name, opts \\ []) when is_atom(name) or is_binary(name) do
     Fact.Supervisor.start_link(Keyword.put(opts, :name, name))
   end
 

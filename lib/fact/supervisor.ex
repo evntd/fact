@@ -12,7 +12,7 @@ defmodule Fact.Supervisor do
   @impl true
   def init(opts) do
     instance = Keyword.fetch!(opts, :name)
-    path = Keyword.get(opts, :path, Path.join(".fact", to_string(instance)))
+    path = Keyword.get(opts, :path, Path.join(".fact", normalize(instance)))
     driver = Keyword.get(opts, :driver, Fact.Storage.Driver.ByEventId)
     format = Keyword.get(opts, :format, Fact.Storage.Format.Json)
     indexers = Keyword.get(opts, :indexers, default_indexers(instance, path))
@@ -46,5 +46,12 @@ defmodule Fact.Supervisor do
       {Fact.EventStreamCategoryIndexer, default_opts ++ [enabled: false]},
       {Fact.EventStreamsIndexer, default_opts ++ [enabled: false]}
     ]
+  end
+
+  defp normalize(name) do
+    to_string(name)
+    |> String.replace_prefix("Elixir.", "")
+    |> String.replace("/", "_")
+    |> String.downcase()
   end
 end
