@@ -1,15 +1,19 @@
 defmodule Fact do
-  def start_link(name, opts \\ []) when is_atom(name) or is_binary(name) do
-    Fact.Supervisor.start_link(Keyword.put(opts, :name, name))
+  @default_instance_name :""
+
+  def start_link(opts \\ []) do
+    Fact.Supervisor.start_link(opts)
   end
 
   defmacro __using__(opts) do
-    instance = Keyword.fetch!(opts, :name)
+    instance_name = Keyword.get(opts, :name, @default_instance_name)
 
     quote do
-      @instance unquote(instance)
+      @instance_name unquote(instance_name)
 
-      def start_link(opts \\ []), do: Fact.start_link(@instance, opts)
+      def start_link(opts \\ []) do
+        Fact.start_link(Keyword.put(opts, :name, @instance_name))
+      end
     end
   end
 end

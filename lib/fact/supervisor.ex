@@ -4,8 +4,10 @@ defmodule Fact.Supervisor do
   import Fact.Names
   require Logger
 
+  @default :""
+
   def start_link(opts) do
-    name = Keyword.fetch!(opts, :name)
+    name = Keyword.get(opts, :name, @default)
     Supervisor.start_link(__MODULE__, opts, name: name)
   end
 
