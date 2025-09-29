@@ -22,7 +22,7 @@ defmodule Fact.EventPublisher do
     subscribers = get_members(instance)
 
     Enum.each(event_ids, fn event_id ->
-      record = Fact.Storage.read_event(instance, event_id)
+      record = Fact.EventStorage.read_event(instance, event_id)
       Enum.each(subscribers, &send(&1, {:appended, record}))
     end)
 

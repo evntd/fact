@@ -113,8 +113,8 @@ defmodule Fact.EventIndexer do
         event_ids =
           case {File.exists?(index_path), direction} do
             {false, _} -> Stream.concat([])
-            {true, :forward} -> Fact.Storage.read_index_forward(instance, index_path)
-            {true, :backward} -> Fact.Storage.read_index_backward(instance, index_path)
+            {true, :forward} -> Fact.EventStorage.read_index_forward(instance, index_path)
+            {true, :backward} -> Fact.EventStorage.read_index_backward(instance, index_path)
           end
 
         GenServer.reply(caller, event_ids)

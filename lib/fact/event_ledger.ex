@@ -36,8 +36,8 @@ defmodule Fact.EventLedger do
     direction = Keyword.get(opts, :direction, :forward)
 
     case direction do
-      :forward -> Fact.Storage.read_index_forward(instance, path)
-      :backward -> Fact.Storage.read_index_backward(instance, path)
+      :forward -> Fact.EventStorage.read_index_forward(instance, path)
+      :backward -> Fact.EventStorage.read_index_backward(instance, path)
       other -> raise ArgumentError, "unknown direction #{inspect(other)}"
     end
   end
@@ -126,7 +126,7 @@ defmodule Fact.EventLedger do
 
     write_results =
       events
-      |> Task.async_stream(&Fact.Storage.write_event(instance, &1),
+      |> Task.async_stream(&Fact.EventStorage.write_event(instance, &1),
         max_concurrency: System.schedulers_online()
       )
       |> Enum.reduce({:ok, [], [], []}, fn

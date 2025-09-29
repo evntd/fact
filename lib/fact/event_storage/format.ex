@@ -1,4 +1,4 @@
-defmodule Fact.Storage.Format do
+defmodule Fact.EventStorage.Format do
   @moduledoc false
 
   @callback encode(map()) :: binary()

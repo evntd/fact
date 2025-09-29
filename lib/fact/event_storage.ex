@@ -1,4 +1,4 @@
-defmodule Fact.Storage do
+defmodule Fact.EventStorage do
   @moduledoc false
 
   def child_spec(opts) do
@@ -12,8 +12,8 @@ defmodule Fact.Storage do
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
     path = Keyword.fetch!(opts, :path)
-    driver = Keyword.get(opts, :driver, Fact.Storage.Driver.ByEventId)
-    format = Keyword.get(opts, :format, Fact.Storage.Format.Json)
+    driver = Keyword.get(opts, :driver, Fact.EventStorage.Driver.ByEventId)
+    format = Keyword.get(opts, :format, Fact.EventStorage.Format.Json)
 
     ensure_path!(path)
 
@@ -29,22 +29,34 @@ defmodule Fact.Storage do
   end
 
   def write_event(instance, event) do
-    driver(instance).write_event(path(instance), event)
+    config = get_instance_config(instance)
+    {record_id, record} = config.driver.prepare_record(event, &config.format.encode/1)
+    path = Path.join(config.path, record_id)
+
+    case File.write(path, record, [:exclusive]) do
+      :ok ->
+        {:ok, record_id}
+
+      {:error, reason} ->
+        {:error, reason, record_id}
+    end
   end
 
   def read_event(instance, record_id) do
     record_path = Path.join(path(instance), record_id)
-    encoded_event = driver(instance).read_event(record_path)
+    encoded_event = File.read!(record_path)
     event = format(instance).decode(encoded_event)
     {record_id, event}
   end
 
   def read_index_backward(instance, index_file) do
-    driver(instance).read_index_backward(index_file)
+    driver = driver(instance)
+    Fact.IndexFileReader.Backwards.Line.read(driver.record_id_length(), index_file)
   end
 
   def read_index_forward(instance, index_file) do
-    driver(instance).read_index_forward(index_file)
+    length = driver(instance).record_id_length()
+    File.stream!(index_file) |> Stream.map(&String.slice(&1, 0, length))
   end
 
   def path(instance) do
@@ -60,6 +72,14 @@ defmodule Fact.Storage do
   def format(instance) do
     [{:format, format}] = :ets.lookup(storage_table(instance), :format)
     format
+  end
+
+  def get_instance_config(instance) do
+    %{
+      driver: driver(instance),
+      format: format(instance),
+      path: path(instance)
+    }
   end
 
   defp storage_table(instance), do: :"#{instance}.#{__MODULE__}"

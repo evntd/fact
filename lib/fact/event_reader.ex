@@ -64,7 +64,7 @@ defmodule Fact.EventReader do
 
         stream =
           read_strategy.()
-          |> Stream.map(&Fact.Storage.read_event(instance, &1))
+          |> Stream.map(&Fact.EventStorage.read_event(instance, &1))
           |> Stream.drop_while(&position_is_out_of_range?.(&1))
 
         if is_integer(count) do

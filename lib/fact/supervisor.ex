@@ -15,8 +15,8 @@ defmodule Fact.Supervisor do
   def init(opts) do
     instance = Keyword.fetch!(opts, :name)
     path = Keyword.get(opts, :path, Path.join(".fact", normalize(instance)))
-    driver = Keyword.get(opts, :driver, Fact.Storage.Driver.ByEventId)
-    format = Keyword.get(opts, :format, Fact.Storage.Format.Json)
+    driver = Keyword.get(opts, :driver, Fact.EventStorage.Driver.ByEventId)
+    format = Keyword.get(opts, :format, Fact.EventStorage.Format.Json)
     indexers = Keyword.get(opts, :indexers, default_indexers(instance, path))
 
     events_path = Path.join(path, "events")
@@ -27,7 +27,8 @@ defmodule Fact.Supervisor do
       {Registry, keys: :unique, name: event_stream_registry(instance)},
       {Registry, keys: :unique, name: event_indexer_registry(instance)},
       {Fact.EventPublisher, []},
-      {Fact.Storage, [instance: instance, path: events_path, driver: driver, format: format]},
+      {Fact.EventStorage,
+       [instance: instance, path: events_path, driver: driver, format: format]},
       {Fact.EventLedger, [instance: instance, path: ledger_path]},
       {Fact.EventIndexerManager, [instance: instance, indexers: indexers]},
       {DynamicSupervisor,

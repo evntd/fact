@@ -1,6 +1,6 @@
-defmodule Fact.Storage.Format.Json do
+defmodule Fact.EventStorage.Format.Json do
   @moduledoc false
-  @behaviour Fact.Storage.Format
+  @behaviour Fact.EventStorage.Format
 
   @impl true
   def encode(event) do
