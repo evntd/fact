@@ -1,6 +1,6 @@
-defmodule Fact.EventStorage.Driver.ByEventId do
+defmodule Fact.Storage.Driver.ByEventId do
   @moduledoc false
-  @behaviour Fact.EventStorage.Driver
+  @behaviour Fact.Storage.Driver
   use Fact.EventKeys
   # Its 40, but might as well compute it at compile time.
   @record_id_length UUID.uuid4(:hex) |> String.length()

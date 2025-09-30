@@ -1,4 +1,4 @@
-defmodule Fact.EventStorage.Driver do
+defmodule Fact.Storage.Driver do
   @moduledoc false
 
   @type record_id :: String.t()

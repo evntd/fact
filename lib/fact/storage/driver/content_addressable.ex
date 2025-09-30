@@ -1,6 +1,6 @@
-defmodule Fact.EventStorage.Driver.ContentAddressable do
+defmodule Fact.Storage.Driver.ContentAddressable do
   @moduledoc false
-  @behaviour Fact.EventStorage.Driver
+  @behaviour Fact.Storage.Driver
 
   @hash_algorithm :sha
   # Its 40, but might as well compute it at compile time.

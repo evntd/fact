@@ -16,12 +16,12 @@ defmodule Fact.EventIndexer do
       require Logger
 
       @index_dir unquote(index_dir)
+      @checkpoint_file ".checkpoint"
+      @checkpoint_init 0
 
-      defstruct [:instance, :index, :path, :encoding, :opts]
+      defstruct [:instance, :index, :index_opts, :checkpoint_path, :encoding, :encode_path]
 
       def start_link(opts \\ []) do
-        Logger.debug("#{__MODULE__}.start_link(opts = #{inspect(opts)})")
-
         {indexer_opts, start_opts} =
           Keyword.split(opts, [:instance, :key, :path, :encoding, :opts])
 
@@ -51,159 +51,110 @@ defmodule Fact.EventIndexer do
         state = %__MODULE__{
           instance: instance,
           index: index,
-          path: path,
-          encoding: encoding,
-          opts: opts
+          index_opts: index_opts,
+          checkpoint_path: Path.join(path, @checkpoint_file),
+          encode_path: path_encoder(path, encoding)
         }
 
         start_opts = Keyword.put_new(start_opts, :name, via(instance, __MODULE__))
-
-        Logger.debug(
-          "GenServer.start_link(#{__MODULE__},  #{inspect(state)}, #{inspect(start_opts)})"
-        )
 
         GenServer.start_link(__MODULE__, state, start_opts)
       end
 
       @impl true
-      def init(state) do
-        ensure_paths!(state.path)
+      def init(%{checkpoint_path: checkpoint_path} = state) do
+        Fact.Storage.ensure_file!(checkpoint_path, @checkpoint_init)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
       @impl true
-      def handle_continue(:rebuild_and_join, %{instance: instance, path: path} = state) do
-        checkpoint = load_checkpoint(path)
-        Logger.debug("#{__MODULE__} building index from #{@event_store_position} #{checkpoint}")
-
-        Fact.EventReader.read(instance, :all, from_position: checkpoint)
-        |> Stream.each(fn {event_id, event} = record ->
-          append_to_index(record, state)
-          save_checkpoint(event[@event_store_position], state.path)
-        end)
-        |> Stream.run()
-
-        Logger.debug("#{__MODULE__} joining :fact_indexers group")
-
+      def handle_continue(:rebuild_and_join, %{instance: instance, index: index} = state) do
+        rebuild_index(state)
         :ok = Fact.EventPublisher.subscribe(instance, self())
-
-        GenServer.cast(
-          via(instance, Fact.EventIndexerManager),
-          {:indexer_ready, self(), state.index}
-        )
-
+        notify_ready(state)
         {:noreply, state}
       end
 
       @impl true
       def handle_info({:appended, {_, event} = record}, state) do
-        append_to_index(record, state)
-        save_checkpoint(event[@event_store_position], state.path)
+        append_index(record, state)
         {:noreply, state}
       end
 
       @impl true
       def handle_cast(
-            {:stream!, value, caller, opts},
-            %{instance: instance, index: index, path: path, encoding: encoding} = state
+            {:stream!, value, caller, stream_opts},
+            %{instance: instance, index: index, encode_path: encode_path} = state
           ) do
-        index_path = Path.join(path, encode_key(value, encoding))
-        direction = Keyword.get(opts, :direction, :forward)
-
-        event_ids =
-          case {File.exists?(index_path), direction} do
-            {false, _} -> Stream.concat([])
-            {true, :forward} -> Fact.EventStorage.read_index_forward(instance, index_path)
-            {true, :backward} -> Fact.EventStorage.read_index_backward(instance, index_path)
-          end
-
+        index_path = encode_path.(value)
+        direction = Keyword.get(stream_opts, :direction, :forward)
+        event_ids = read_index(instance, index_path, direction)
         GenServer.reply(caller, event_ids)
-
         {:noreply, state}
       end
 
       @impl true
-      def handle_cast({:last_position, value, caller}, %{encoding: encoding, path: path} = state) do
-        file = Path.join(path, encode_key(value, encoding))
-
-        last_pos =
-          case File.exists?(file) do
-            false -> 0
-            true -> File.stream!(file) |> Enum.count()
-          end
-
+      def handle_cast({:last_position, value, caller}, %{encode_path: encode_path} = state) do
+        file = encode_path.(value)
+        last_pos = Fact.Storage.line_count(file)
         GenServer.reply(caller, last_pos)
-
         {:noreply, state}
       end
 
-      defp append_to_index({event_id, event} = _record, %__MODULE__{
+      defp notify_ready(%{instance: instance, index: index}) do
+        GenServer.cast(via(instance, Fact.EventIndexerManager), {:indexer_ready, self(), index})
+      end
+
+      defp rebuild_index(%{instance: instance, checkpoint_path: checkpoint_path} = state) do
+        position = Fact.Storage.read_checkpoint(checkpoint_path)
+
+        Fact.EventReader.read(instance, :all, from_position: position)
+        |> Stream.each(&append_index(&1, state))
+        |> Stream.run()
+      end
+
+      defp append_index({event_id, event} = _record, %{
              index: index,
-             path: path,
-             encoding: encoding,
-             opts: opts
+             index_opts: index_opts,
+             encode_path: encode_path,
+             checkpoint_path: checkpoint_path
            }) do
-        case index_event(event, opts) do
-          nil ->
-            :ignored
-
-          [] ->
-            :ignored
-
-          key when is_binary(key) ->
-            file = Path.join(path, encode_key(key, encoding))
-            File.write!(file, event_id <> "\n", [:append])
-            :ok
-
-          keys when is_list(keys) ->
-            line = event_id <> "\n"
-
-            Enum.each(keys, fn key ->
-              file = Path.join(path, encode_key(key, encoding))
-              File.write!(file, line, [:append])
-            end)
-        end
+        index_event(event, index_opts) |> write_index(event_id, encode_path)
+        Fact.Storage.write_checkpoint(checkpoint_path, event[@event_store_position])
       end
 
-      defp load_checkpoint(path) do
-        checkpoint_path = get_checkpoint_path(path)
+      defp read_index(instance, path, :forward),
+        do: Fact.Storage.read_index_forward(instance, path)
 
-        case File.read(checkpoint_path) do
-          {:ok, contents} -> contents |> String.trim() |> String.to_integer()
-          {:error, _} -> 0
-        end
+      defp read_index(instance, path, :backward),
+        do: Fact.Storage.read_index_backward(instance, path)
+
+      defp write_index(nil, _event_id, _encode_path), do: :ignored
+      defp write_index([], _event_id, _encode_path), do: :ignored
+
+      defp write_index(index_key, event_id, encode_path) when is_binary(index_key) do
+        encode_path.(index_key)
+        |> Fact.Storage.write_index(event_id)
       end
 
-      defp save_checkpoint(position, path) do
-        get_checkpoint_path(path)
-        |> File.write!(Integer.to_string(position))
+      defp write_index(index_keys, event_id, encode_path) when is_list(index_keys) do
+        index_keys
+        |> Enum.map(&encode_path.(&1))
+        |> Enum.each(&Fact.Storage.write_index(&1, event_id))
       end
 
-      defp ensure_paths!(path) do
-        File.mkdir_p!(path)
-        checkpoint_path = get_checkpoint_path(path)
-        unless File.exists?(checkpoint_path), do: File.write!(checkpoint_path, "0")
+      defp path_encoder(path, encoding) do
+        fn key -> Path.join(path, encode_key(key, encoding)) end
       end
 
-      defp get_checkpoint_path(path), do: Path.join(path, ".checkpoint")
+      defp encode_key(value, :raw), do: to_string(value)
+      defp encode_key(value, :hash), do: encode_key(value, {:hash, :sha})
 
-      defp encode_key(value, encoding) do
-        case encoding do
-          :raw ->
-            to_string(value)
+      defp encode_key(value, {:hash, algo}),
+        do: :crypto.hash(algo, to_string(value)) |> Base.encode16(case: :lower)
 
-          :hash ->
-            :crypto.hash(:sha, to_string(value))
-            |> Base.encode16(case: :lower)
-
-          {:hash, algo} ->
-            :crypto.hash(algo, to_string(value))
-            |> Base.encode16(case: :lower)
-
-          other ->
-            raise ArgumentError, "unsupported encoding: #{inspect(other)}"
-        end
-      end
+      defp encode_key(value, encoding),
+        do: raise(ArgumentError, "unsupported encoding: #{inspect(encoding)}")
     end
   end
 end

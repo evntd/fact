@@ -36,8 +36,8 @@ defmodule Fact.EventLedger do
     direction = Keyword.get(opts, :direction, :forward)
 
     case direction do
-      :forward -> Fact.EventStorage.read_index_forward(instance, path)
-      :backward -> Fact.EventStorage.read_index_backward(instance, path)
+      :forward -> Fact.Storage.read_index_forward(instance, path)
+      :backward -> Fact.Storage.read_index_backward(instance, path)
       other -> raise ArgumentError, "unknown direction #{inspect(other)}"
     end
   end
@@ -50,8 +50,8 @@ defmodule Fact.EventLedger do
     :ets.new(table, [:named_table, :public, :set])
     :ets.insert(table, {:path, path})
 
-    ensure_path!(path)
-    last_pos = load_position(path)
+    Fact.Storage.ensure_file!(path)
+    last_pos = Fact.Storage.line_count(path)
     {:ok, %{state | last_pos: last_pos}}
   end
 
@@ -114,48 +114,33 @@ defmodule Fact.EventLedger do
   end
 
   defp write_events(events, %{instance: instance, path: path} = _state) do
-    # write all the events, then collect the 
-    #   - iodata, for writing all event_ids into the ledger
-    #
-    # on success
-    #   - iodata for writing all event_ids into the ledger at once
-    #   - the event_ids in a list for response to the caller
-    #
-    # on failure
-    #   - the write failures, containing the error and event_id
-
     write_results =
       events
-      |> Task.async_stream(&Fact.EventStorage.write_event(instance, &1),
+      |> Task.async_stream(&Fact.Storage.write_event(instance, &1),
         max_concurrency: System.schedulers_online()
       )
-      |> Enum.reduce({:ok, [], [], []}, fn
-        {_, {:ok, event_id}}, {result, iodata, written_events, errors} ->
-          {result, [iodata, event_id, "\n"], [event_id | written_events], errors}
+      |> Enum.reduce({:ok, [], []}, fn
+        {_, {:ok, event_id}}, {result, written_events, errors} ->
+          {result, [event_id | written_events], errors}
 
-        {_, {:error, posix, event_id}}, {_, iodata, written_events, errors} ->
-          {:error, iodata, written_events, [{posix, event_id} | errors]}
+        {_, {:error, posix, event_id}}, {_, written_events, errors} ->
+          {:error, written_events, [{posix, event_id} | errors]}
       end)
 
     case write_results do
-      {:ok, ledger_entry_iodata, written_events, _errors} ->
-        case File.write(path, ledger_entry_iodata, [:append]) do
+      {:ok, written_events_backward, []} ->
+        written_events = Enum.reverse(written_events_backward)
+
+        case Fact.Storage.write_index(path, written_events) do
           :ok ->
-            {:ok, written_events |> Enum.reverse()}
+            {:ok, written_events}
 
           {:error, reason} ->
             {:error, {:ledger_write_failed, reason}}
         end
 
-      {:error, _ledger_entry_iodata, _written_events, errors} ->
+      {:error, _written_events, errors} ->
         {:error, {:event_write_failed, Enum.reverse(errors)}}
     end
   end
-
-  defp ensure_path!(path) do
-    File.mkdir_p!(Path.dirname(path))
-    unless File.exists?(path), do: File.write!(path, "")
-  end
-
-  defp load_position(path), do: File.stream!(path) |> Enum.count()
 end
