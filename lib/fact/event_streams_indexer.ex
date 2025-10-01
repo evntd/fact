@@ -1,6 +1,6 @@
 defmodule Fact.EventStreamsIndexer do
   @moduledoc false
-  use Fact.EventIndexer, path: :event_streams
+  use Fact.EventIndexer
 
   @impl true
   def index_event(%{@event_stream_position => 1, @event_stream => event_stream}, _opts),

@@ -1,5 +1,5 @@
 defmodule Fact.EventDataIndexer do
-  use Fact.EventIndexer, path: :event_data
+  use Fact.EventIndexer
 
   @impl true
   def index_event(%{@event_data => data}, opts) do

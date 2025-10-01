@@ -3,7 +3,7 @@ defmodule Fact.EventQueryWriter do
 
   require Logger
 
-  def append(events, event_query, opts \\ []) do
+  def append(instance, events, event_query, opts \\ []) do
     {call_opts, append_opts} = Keyword.split(opts, [:timeout])
 
     Logger.debug(
@@ -16,9 +16,8 @@ defmodule Fact.EventQueryWriter do
         pos when is_integer(pos) -> pos
       end
 
-    Fact.EventLedger.commit(
-      events,
-      Keyword.put(call_opts, :condition, {event_query, expected_pos})
-    )
+    commit_opts = Keyword.put(call_opts, :condition, {event_query, expected_pos})
+
+    Fact.EventLedger.commit(instance, events, commit_opts)
   end
 end
