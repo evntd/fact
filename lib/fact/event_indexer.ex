@@ -88,7 +88,7 @@ defmodule Fact.EventIndexer do
           ) do
         index_path = encode_path.(value)
         direction = Keyword.get(stream_opts, :direction, :forward)
-        event_ids = read_index(instance, index_path, direction)
+        event_ids = Fact.Storage.read_index(instance, index_path, direction)
         GenServer.reply(caller, event_ids)
         {:noreply, state}
       end
@@ -114,33 +114,26 @@ defmodule Fact.EventIndexer do
       end
 
       defp append_index({event_id, event} = _record, %{
+             instance: instance,
              index: index,
              index_opts: index_opts,
              encode_path: encode_path,
              checkpoint_path: checkpoint_path
            }) do
-        index_event(event, index_opts) |> write_index(event_id, encode_path)
+        index_event(event, index_opts) |> write_index(event_id, encode_path, instance)
         Fact.Storage.write_checkpoint(checkpoint_path, event[@event_store_position])
       end
 
-      defp read_index(instance, path, :forward),
-        do: Fact.Storage.read_index_forward(instance, path)
+      defp write_index(nil, _event_id, _encode_path, _instance), do: :ignored
+      defp write_index([], _event_id, _encode_path, _instance), do: :ignored
 
-      defp read_index(instance, path, :backward),
-        do: Fact.Storage.read_index_backward(instance, path)
-
-      defp write_index(nil, _event_id, _encode_path), do: :ignored
-      defp write_index([], _event_id, _encode_path), do: :ignored
-
-      defp write_index(index_key, event_id, encode_path) when is_binary(index_key) do
-        encode_path.(index_key)
-        |> Fact.Storage.write_index(event_id)
+      defp write_index(index_key, event_id, encode_path, instance) when is_binary(index_key) do
+        Fact.Storage.write_index(instance, encode_path.(index_key), event_id)
       end
 
-      defp write_index(index_keys, event_id, encode_path) when is_list(index_keys) do
+      defp write_index(index_keys, event_id, encode_path, instance) when is_list(index_keys) do
         index_keys
-        |> Enum.map(&encode_path.(&1))
-        |> Enum.each(&Fact.Storage.write_index(&1, event_id))
+        |> Enum.each(&Fact.Storage.write_index(instance, encode_path.(&1), event_id))
       end
 
       defp path_encoder(path, encoding) do

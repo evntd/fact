@@ -4,9 +4,9 @@ defmodule Fact.EventQuery do
     
   This module allows you to define a query using `Fact.EventQuery` structs, specifying:
     
-  - `:event_types` - a list of strings or atoms representing the types of events to match.
-  - `:event_tags` - a list of strings representing the tags of events to match
-  - `:event_data` - a keyword list used to filter events based on their properties and values.
+  - `:types` - a list of strings or atoms representing the types of events to match.
+  - `:tags` - a list of strings representing the tags of events to match
+  - `:data` - a keyword list used to filter events based on their properties and values.
     
   The primary function, `execute/1`, produces a **stream of event ids** that match the provided query in the order they
   appear in the `Fact.EventLedger`. Queries are limited to **equality operations only**. You can filter events by type
@@ -58,12 +58,12 @@ defmodule Fact.EventQuery do
   them directly to `Fact.EventReader.read/2` to get a stream of fully materialized events instead of event ids.  
   """
 
-  defstruct event_types: [], event_tags: [], event_data: []
+  defstruct types: [], tags: [], data: []
 
   @type t :: %__MODULE__{
-          event_types: [String.t() | atom()],
-          event_tags: [String.t()],
-          event_data: keyword()
+          types: [Fact.Types.event_type()],
+          tags: Fact.Types.event_tags(),
+          data: keyword()
         }
 
   @doc """
@@ -92,7 +92,7 @@ defmodule Fact.EventQuery do
 
       direction = Keyword.get(opts, :direction, :forward)
 
-      Fact.EventLedger.stream!(instance, direction: direction)
+      Fact.Storage.read_index(instance, :ledger, direction)
       |> Stream.filter(&MapSet.member?(matched_event_ids, &1))
     else
       raise ArgumentError, "All elements must be %#{__MODULE__}{}"
@@ -100,58 +100,58 @@ defmodule Fact.EventQuery do
   end
 
   defp events_matching(instance, %{
-         event_types: event_types,
-         event_tags: event_tags,
-         event_data: event_data
+         types: types,
+         tags: tags,
+         data: data
        }) do
-    event_type_matches = events_matching_types(instance, event_types)
-    event_tag_matches = events_matching_tags(instance, event_tags)
-    event_data_matches = events_matching_data(instance, event_data)
+    type_matches = events_matching_types(instance, types)
+    tag_matches = events_matching_tags(instance, tags)
+    data_matches = events_matching_data(instance, data)
 
-    case {event_types, event_tags, event_data} do
+    case {types, tags, data} do
       {[], [], []} ->
         MapSet.new()
 
       {_, [], []} ->
-        event_type_matches
+        type_matches
 
       {[], _, []} ->
-        event_tag_matches
+        tag_matches
 
       {[], [], _} ->
-        event_data_matches
+        data_matches
 
       {_, _, []} ->
-        event_type_matches
-        |> MapSet.intersection(event_tag_matches)
+        type_matches
+        |> MapSet.intersection(tag_matches)
 
       {_, [], _} ->
-        event_type_matches
-        |> MapSet.intersection(event_data_matches)
+        type_matches
+        |> MapSet.intersection(data_matches)
 
       {[], _, _} ->
-        event_tag_matches
-        |> MapSet.intersection(event_data_matches)
+        tag_matches
+        |> MapSet.intersection(data_matches)
 
       {_, _, _} ->
-        event_type_matches
-        |> MapSet.intersection(event_tag_matches)
-        |> MapSet.intersection(event_data_matches)
+        type_matches
+        |> MapSet.intersection(tag_matches)
+        |> MapSet.intersection(data_matches)
     end
   end
 
   defp events_matching_types(_instance, []), do: MapSet.new()
 
-  defp events_matching_types(instance, event_types) do
-    event_types
+  defp events_matching_types(instance, types) do
+    types
     |> Stream.flat_map(&Fact.EventIndexerManager.stream!(instance, Fact.EventTypeIndexer, &1))
     |> Enum.into(MapSet.new())
   end
 
   defp events_matching_tags(_instance, []), do: MapSet.new()
 
-  defp events_matching_tags(instance, event_tags) do
-    Enum.reduce(event_tags, :first, fn tag, acc ->
+  defp events_matching_tags(instance, tags) do
+    Enum.reduce(tags, :first, fn tag, acc ->
       matches_tag =
         Fact.EventIndexerManager.stream!(instance, Fact.EventTagsIndexer, tag)
         |> Enum.into(MapSet.new())
@@ -163,8 +163,8 @@ defmodule Fact.EventQuery do
     end)
   end
 
-  defp events_matching_data(instance, event_data) do
-    event_data
+  defp events_matching_data(instance, data) do
+    data
     |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
     |> Enum.reduce_while(:first, fn {key, values}, acc ->
       indexer = {Fact.EventDataIndexer, to_string(key)}

@@ -28,8 +28,14 @@ defmodule Fact.Supervisor do
       {Registry, keys: :unique, name: event_indexer_registry(instance)},
       {Fact.EventPublisher, []},
       {Fact.Storage,
-       [instance: instance, path: events_path, driver: driver, format: format]},
-      {Fact.EventLedger, [instance: instance, path: ledger_path]},
+       [
+         instance: instance,
+         events: events_path,
+         ledger: ledger_path,
+         driver: driver,
+         format: format
+       ]},
+      {Fact.EventLedger, [instance: instance]},
       {Fact.EventIndexerManager, [instance: instance, indexers: indexers]},
       {DynamicSupervisor,
        strategy: :one_for_one, name: via(instance, Fact.EventStreamWriterSupervisor)}

@@ -1,4 +1,12 @@
 defmodule Fact.Types do
+  @type event_id :: String.t()
+  @type event_data :: map()
+  @type event_metadata :: map()
+  @type event_position :: non_neg_integer()
+  @type event_tag :: String.t()
+  @type event_tags :: [event_tag]
+  @type event_type :: String.t()
+
   @typedoc """
   An event is a map with at least a `:type` key.
     
@@ -9,10 +17,12 @@ defmodule Fact.Types do
     * `:tags` - a list of custom identifiers to aid in defining context boundaries
   """
   @type event :: %{
-          required(:type) => String.t(),
-          optional(:id) => String.t(),
-          optional(:data) => map(),
-          optional(:metadata) => map(),
-          optional(:tags) => [String.t()]
+          required(:type) => event_type,
+          optional(:id) => event_id,
+          optional(:data) => event_data,
+          optional(:metadata) => event_metadata,
+          optional(:tags) => event_tags
         }
+
+  @type record_id :: String.t()
 end

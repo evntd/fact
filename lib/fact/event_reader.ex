@@ -10,7 +10,7 @@ defmodule Fact.EventReader do
   def read(instance, :all, opts) do
     do_read(
       instance,
-      fn -> Fact.EventLedger.stream!(instance, opts) end,
+      fn -> Fact.Storage.read_index(instance, :ledger, opts) end,
       @event_store_position,
       opts
     )
