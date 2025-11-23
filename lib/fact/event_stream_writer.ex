@@ -26,7 +26,7 @@ defmodule Fact.EventStreamWriter do
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
     event_stream = Keyword.fetch!(opts, :event_stream)
-    start_opts = Map.put(opts, :name, via_event_stream(instance, event_stream))
+    start_opts = Keyword.put(opts, :name, via_event_stream(instance, event_stream))
     GenServer.start_link(__MODULE__, [instance: instance, event_stream: event_stream], start_opts)
   end
 
@@ -76,9 +76,7 @@ defmodule Fact.EventStreamWriter do
 
   @impl true
   def handle_continue(:load_position, %{instance: instance, event_stream: event_stream} = state) do
-    last_pos =
-      Fact.EventIndexerManager.last_position(instance, Fact.EventStreamIndexer, event_stream)
-
+    last_pos = Fact.EventStreamIndexer.last_stream_position(instance, event_stream)
     {:noreply, %{state | last_pos: last_pos}}
   end
 

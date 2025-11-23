@@ -8,7 +8,7 @@ defmodule Fact do
   def append(instance, events, boundary, append_opts \\ [])
 
   def append(instance, events, %Fact.EventQuery{} = query, append_opts),
-    do: append(instance, events, query, append_opts)
+    do: append(instance, events, [query], append_opts)
 
   def append(instance, events, [%Fact.EventQuery{}] = query, append_opts),
     do: Fact.EventQueryWriter.append(instance, events, query, append_opts)

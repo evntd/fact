@@ -7,14 +7,15 @@ defmodule Fact.Supervisor do
   @default :""
 
   def start_link(opts) do
-    name = Keyword.get(opts, :name, @default)
-    Supervisor.start_link(__MODULE__, opts, name: name)
+    instance = Keyword.get(opts, :instance, @default)
+    init_arg = Keyword.put_new(opts, :instance, instance)
+    Supervisor.start_link(__MODULE__, init_arg, name: :"#{instance}.#{__MODULE__}")
   end
 
   @impl true
   def init(opts) do
-    instance = Keyword.fetch!(opts, :name)
-    storage_opts = Keyword.split(opts, [:instance, :path, :driver, :format])
+    {storage_opts, _} = Keyword.split(opts, [:instance, :path, :driver, :format])
+    instance = Keyword.fetch!(storage_opts, :instance)
     indexers = Keyword.get(opts, :indexers, default_indexers(instance))
 
     children = [

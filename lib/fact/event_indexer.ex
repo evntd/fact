@@ -50,7 +50,7 @@ defmodule Fact.EventIndexer do
 
       @impl true
       def init(%{instance: instance, index: index, encoding: encoding} = state) do
-        Fact.Storage.ensure_index!(instance, index, encoding)
+        :ok = Fact.Storage.ensure_index(instance, index, encoding)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
@@ -75,16 +75,6 @@ defmodule Fact.EventIndexer do
           ) do
         event_ids = Fact.Storage.read_index(instance, index, value, stream_opts)
         GenServer.reply(caller, event_ids)
-        {:noreply, state}
-      end
-
-      @impl true
-      def handle_cast(
-            {:last_position, value, caller},
-            %{instance: instance, index: index} = state
-          ) do
-        last_pos = Fact.Storage.line_count(instance, index, value)
-        GenServer.reply(caller, last_pos)
         {:noreply, state}
       end
 
