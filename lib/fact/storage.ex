@@ -1,6 +1,4 @@
 defmodule Fact.Storage do
-  @moduledoc false
-
   use Fact.EventKeys
   require Logger
 

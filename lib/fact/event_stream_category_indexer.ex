@@ -1,5 +1,4 @@
 defmodule Fact.EventStreamCategoryIndexer do
-  @moduledoc false
   use Fact.EventIndexer
 
   @impl true

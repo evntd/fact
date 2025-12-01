@@ -1,6 +1,4 @@
 defmodule Fact.EventQueryWriter do
-  @moduledoc false
-
   require Logger
 
   def append(instance, events, event_query, opts \\ []) do

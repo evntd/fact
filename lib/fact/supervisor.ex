@@ -1,5 +1,4 @@
 defmodule Fact.Supervisor do
-  @moduledoc false
   use Supervisor
   import Fact.Names
   require Logger

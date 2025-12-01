@@ -1,5 +1,4 @@
 defmodule Fact.Storage.Driver.ByEventId do
-  @moduledoc false
   @behaviour Fact.Storage.Driver
   use Fact.EventKeys
   # Its 40, but might as well compute it at compile time.

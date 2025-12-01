@@ -2,7 +2,7 @@ defmodule Fact.EventIndexer do
   @moduledoc """
   Base module for all indexers.
   """
-  @callback index_event(event :: map(), state :: term()) :: List.t(String.t()) | String.t() | nil
+  @callback index_event(event :: map(), state :: term()) :: list(String.t()) | String.t() | nil
 
   defmacro __using__(_opts \\ []) do
     quote do

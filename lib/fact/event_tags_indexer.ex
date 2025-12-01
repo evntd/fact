@@ -1,5 +1,4 @@
 defmodule Fact.EventTagsIndexer do
-  @moduledoc false
   use Fact.EventIndexer
 
   @impl true

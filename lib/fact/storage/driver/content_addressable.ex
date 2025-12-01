@@ -1,5 +1,4 @@
 defmodule Fact.Storage.Driver.ContentAddressable do
-  @moduledoc false
   @behaviour Fact.Storage.Driver
 
   @hash_algorithm :sha

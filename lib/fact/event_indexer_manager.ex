@@ -1,6 +1,4 @@
 defmodule Fact.EventIndexerManager do
-  @moduledoc false
-
   use GenServer
   import Fact.Names
   require Logger

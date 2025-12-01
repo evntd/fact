@@ -1,6 +1,8 @@
 defmodule Fact.EventStreamWriter do
-  @moduledoc false
-
+  @moduledoc """
+  `Fact.EventStreamWriter` is a per-stream, on-demand GenServer responsible for serializing writes to an event stream. 
+  It ensures that events are appended in order, enriched with stream metadata, and committed atomically.
+  """
   use GenServer
   use Fact.EventKeys
   import Fact.Names
@@ -30,7 +32,20 @@ defmodule Fact.EventStreamWriter do
     GenServer.start_link(__MODULE__, [instance: instance, event_stream: event_stream], start_opts)
   end
 
-  def append(instance, events, event_stream, opts \\ []) do
+  @spec append(
+          instance :: atom(),
+          events :: list(Fact.Types.event()) | Fact.Types.event(),
+          event_stream :: String.t(),
+          opts :: keyword
+        ) ::
+          {:ok, pos_integer()} | {:error, term()}
+
+  def append(instance, events, event_stream, opts \\ [])
+
+  def append(instance, %{} = event, event_stream, opts),
+    do: append(instance, [event], event_stream, opts)
+
+  def append(instance, events, event_stream, opts) do
     {call_opts, append_opts} = Keyword.split(opts, [:timeout])
     timeout = Keyword.get(call_opts, :timeout, 5000)
 
