@@ -194,18 +194,6 @@ defmodule Fact.Storage do
     File.write(index_file, iodata, [:append])
   end
 
-  def line_count(instance, :ledger), do: ledger_path(instance) |> line_count()
-
-  def line_count(instance, index, key) do
-    encode_path = get_index_path_encoder(instance, index)
-    encoded_path = encode_path.(key)
-    line_count(encoded_path)
-  end
-
-  def line_count(file) do
-    if File.exists?(file), do: File.stream!(file) |> Enum.count(), else: 0
-  end
-
   def last_store_position(instance, index, key) do
     do_last_store_position(instance, read_index(instance, index, key, direction: :backward))
   end
