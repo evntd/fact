@@ -77,11 +77,15 @@ defmodule Fact.Storage do
   end
 
   def write_event(instance, event) do
-    config = get_instance_config(instance)
-    {record_id, record} = config.driver.prepare_record(event, &config.format.encode/1)
-    path = Path.join(config.path, record_id)
 
-    case File.write(path, record, [:exclusive]) do
+    inst_driver = driver(instance)
+    inst_format = format(instance)
+    inst_path = events_path(instance)
+    
+    {record_id, record} = inst_driver.prepare_record(event, &inst_format.encode/1)
+    record_path = Path.join(inst_path, record_id)
+
+    case File.write(record_path, record, [:exclusive]) do
       :ok ->
         {:ok, record_id}
 
@@ -109,7 +113,7 @@ defmodule Fact.Storage do
   end
 
   def read_event(instance, record_id) do
-    record_path = Path.join(path(instance), record_id)
+    record_path = Path.join(events_path(instance), record_id)
     encoded_event = File.read!(record_path)
     event = format(instance).decode(encoded_event)
     {record_id, event}
@@ -214,38 +218,50 @@ defmodule Fact.Storage do
         event[@event_store_position]
     end
   end
+  
+  def backup(instance, backup_path) do
+    storage_path = path(instance)
+    events_path = events_path(instance) |> String.replace_prefix(storage_path <> "/", "")
+    ledger_path = ledger_path(instance) |> String.replace_prefix(storage_path <> "/", "")
 
+    event_entries = 
+      read_index(instance, :ledger, :forward)
+      |> Stream.map(&String.to_charlist(Path.join(events_path, &1)))
+      |> Enum.to_list()
+      
+    all_entries = [ String.to_charlist(ledger_path) | event_entries ]
+
+    :zip.create(backup_path, all_entries, [{:compress, :all}, {:cwd, String.to_charlist(storage_path)}])
+  end
+  
   def path(instance) do
-    [{:events_path, path}] = :ets.lookup(storage_table(instance), :events_path)
+    [{:path, path}] = :ets.lookup(storage_table(instance), :path)
     path
+  end
+
+  def events_path(instance) do
+    [{:events_path, events_path}] = :ets.lookup(storage_table(instance), :events_path)
+    events_path
   end
 
   def indices_path(instance) do
-    [{:indices_path, path}] = :ets.lookup(storage_table(instance), :indices_path)
-    path
+    [{:indices_path, indices_path}] = :ets.lookup(storage_table(instance), :indices_path)
+    indices_path
   end
 
   def ledger_path(instance) do
-    [{:ledger_path, ledger}] = :ets.lookup(storage_table(instance), :ledger_path)
-    ledger
+    [{:ledger_path, ledger_path}] = :ets.lookup(storage_table(instance), :ledger_path)
+    ledger_path
   end
 
   def driver(instance) do
-    [{:driver, driver}] = :ets.lookup(storage_table(instance), :driver)
-    driver
+    [{:driver, driver_module}] = :ets.lookup(storage_table(instance), :driver)
+    driver_module
   end
 
   def format(instance) do
-    [{:format, format}] = :ets.lookup(storage_table(instance), :format)
-    format
-  end
-
-  def get_instance_config(instance) do
-    %{
-      driver: driver(instance),
-      format: format(instance),
-      path: path(instance)
-    }
+    [{:format, format_module}] = :ets.lookup(storage_table(instance), :format)
+    format_module
   end
 
   defp encode_key(value, :raw), do: to_string(value)
@@ -260,6 +276,7 @@ defmodule Fact.Storage do
   defp setup_table(instance, path, driver, format) do
     table = storage_table(instance)
     :ets.new(table, [:named_table, :public, :set])
+    :ets.insert(table, {:path, path})
     :ets.insert(table, {:events_path, Path.join(path, @events_path)})
     :ets.insert(table, {:ledger_path, Path.join(path, @ledger_path)})
     :ets.insert(table, {:indices_path, Path.join(path, @indices_path)})

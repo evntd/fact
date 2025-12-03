@@ -108,6 +108,8 @@ defmodule Fact do
     Fact.EventReader.read(instance, event_source, read_opts)
     |> Stream.map(fn {_, record} -> record end)
   end
+  
+  defdelegate backup(instance, backup_path), to: Fact.Storage
 
   defmacro __using__(opts) do
     instance_name = Keyword.get(opts, :name, @default_instance_name)
@@ -125,6 +127,10 @@ defmodule Fact do
 
       def read(event_source, read_opts \\ []) do
         Fact.read(@instance_name, event_source, read_opts)
+      end
+      
+      def backup(backup_path) do
+        Fact.backup(@instance_name, backup_path)
       end
     end
   end
