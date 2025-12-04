@@ -69,7 +69,7 @@ defmodule Fact.EventReader do
   def read(instance, %Fact.EventQuery{} = query, opts) do
     read(instance, [query], opts)
   end
-  
+
   def read(instance, [%Fact.EventQuery{} | _] = query, opts) when is_list(query) do
     do_read(
       instance,

@@ -13,13 +13,22 @@ defmodule Fact.Storage.Test do
     {:ok, instance: inst}
   end
 
-  test "should create an 'events' subdirectory within named instance directory of .fact", %{
+  test "should create an 'events' subdirectory within named instance directory", %{
     instance: inst
   } do
-    expected_dir = ".fact/#{inst}/events"
+    expected_dir = "#{inst}/events"
     Fact.Storage.start_link(instance: inst)
     assert true == File.exists?(expected_dir)
-    File.rm_rf!(".fact/#{inst}")
+    File.rm_rf!("#{inst}")
+  end
+
+  test "should create a '.gitignore' file within the named instance directory", %{
+    instance: inst
+  } do
+    expected_file = "#{inst}/.gitignore"
+    Fact.Storage.start_link(instance: inst)
+    assert true == File.exists?(expected_file)
+    File.rm_rf!("#{inst}")
   end
 
   @tag :tmp_dir
@@ -61,5 +70,30 @@ defmodule Fact.Storage.Test do
                path: path,
                format: Fact.Storage.Format.DoesNotExist
              )
+  end
+
+  @tag :tmp_dir
+  test "should write event into file matching id into 'events' when using `Fact.Storage.Driver.ByEventId`",
+       %{
+         instance: inst,
+         tmp_dir: path
+       } do
+    Fact.Storage.start_link(instance: inst, path: path, driver: Fact.Storage.Driver.ByEventId)
+    event_id = UUID.uuid4(:hex)
+    expected_file = Path.join([path, "events", event_id])
+    event = %{"id" => event_id, "type" => "TestEvent", "data" => %{}, "metadata" => %{}}
+    Fact.Storage.write_event(inst, event)
+    assert true == File.exists?(expected_file)
+  end
+
+  @tag :tmp_dir
+  test "should not write event when it fails to be prepared", %{instance: inst, tmp_dir: path} do
+    Fact.Storage.start_link(instance: inst, path: path, driver: Fact.Storage.Driver.ByEventId)
+    event_id = "invalid_event_id"
+    unexpected_file = Path.join([path, "events", event_id])
+    event = %{"id" => event_id, "type" => "TestEvent", "data" => %{}, "metadata" => %{}}
+    result = Fact.Storage.write_event(inst, event)
+    assert {:error, :invalid_record_id, "invalid_event_id"} == result
+    assert false == File.exists?(unexpected_file)
   end
 end

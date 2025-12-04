@@ -5,7 +5,6 @@ defmodule Fact.Storage do
   @default_driver Fact.Storage.Driver.ByEventId
   @default_format Fact.Storage.Format.Json
 
-  @default_path ".fact"
   @events_path "events"
   @indices_path "indices"
   @ledger_path "ledger"
@@ -21,13 +20,14 @@ defmodule Fact.Storage do
 
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
-    path = Keyword.get(opts, :path, Path.join(@default_path, normalize(instance)))
+    path = Keyword.get(opts, :path, Path.join(File.cwd!(), normalize(instance)))
     driver = Keyword.get(opts, :driver, @default_driver)
     format = Keyword.get(opts, :format, @default_format)
 
     events_path = Path.join(path, @events_path)
 
     with :ok <- ensure_directory(events_path),
+         :ok <- ensure_file(Path.join(path, ".gitignore"), "*"),
          {:module, _driver_module} <- Code.ensure_loaded(driver),
          {:module, _format_module} <- Code.ensure_loaded(format) do
       setup_table(instance, path, driver, format)
@@ -81,15 +81,20 @@ defmodule Fact.Storage do
     inst_format = format(instance)
     inst_path = events_path(instance)
 
-    {record_id, record} = inst_driver.prepare_record(event, &inst_format.encode/1)
-    record_path = Path.join(inst_path, record_id)
-
-    case File.write(record_path, record, [:exclusive]) do
-      :ok ->
-        {:ok, record_id}
-
-      {:error, reason} ->
+    case inst_driver.prepare_record(event, &inst_format.encode/1) do
+      {:error, {reason, record_id}} ->
         {:error, reason, record_id}
+
+      {:ok, record_id, record} ->
+        record_path = Path.join(inst_path, record_id)
+
+        case File.write(record_path, record, [:exclusive]) do
+          :ok ->
+            {:ok, record_id}
+
+          {:error, reason} ->
+            {:error, reason, record_id}
+        end
     end
   end
 

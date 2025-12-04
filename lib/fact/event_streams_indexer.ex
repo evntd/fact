@@ -4,7 +4,7 @@ defmodule Fact.EventStreamsIndexer do
 
   This module implements the `Fact.EventIndexer` behaviour. It returns the
   stream identifier of an event **only if the event is the first in its stream**. 
-  
+
   This indexer is useful for building indexes or metadata for stream-level
   operations, such as cataloging streams when their first event is processed.
   """

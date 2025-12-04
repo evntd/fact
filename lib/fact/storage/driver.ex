@@ -22,30 +22,23 @@ defmodule Fact.Storage.Driver do
   @doc """
   Converts an event into a persistable record.
 
-  Implementations must return a tuple `{record_id, record_data}`, where:
+  Implementations must return a tuple `{result, record_id, record_data}`, where:
 
-    * `record_id` — a unique identifier for the stored record, whose length
-      must match the value returned by `c:record_id_length/0`.
-    * `record_data` — the encoded representation of the event, typically a binary.
+      * `result` - is `:ok` or `:error` 
+      * `record_id` — a unique identifier for the stored event whose length must 
+        equal the result of `record_id_length/0`.
+      * `record_data` — the encoded representation of the event, typically a binary.
 
   The `encode` function provided by the caller should be used to transform the
   event into its binary representation (e.g., JSON, MessagePack, etc.).
-
-  ## Callback Signature
-
-      @callback prepare_record(event, encode) :: {record_id, record_data}
   """
-  @callback prepare_record(event, encode) :: {record_id, record_data}
+  @callback prepare_record(event, encode) :: {:ok, record_id, record_data} | {:error, term}
 
   @doc """
   Returns the expected length of all record identifiers produced by the driver.
 
   This allows storage backends to use fixed-width identifiers, which can
   simplify indexing and improve performance in certain implementations.
-
-  ## Callback Signature
-
-      @callback record_id_length() :: integer
   """
   @callback record_id_length() :: integer
 end

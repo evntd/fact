@@ -44,7 +44,7 @@ defmodule Fact.Storage.Driver.ContentAddressable do
   def prepare_record(event, encode) do
     encoded_event = encode.(event)
     event_id = :crypto.hash(@hash_algorithm, encoded_event) |> Base.encode16(case: :lower)
-    {event_id, encoded_event}
+    {:ok, event_id, encoded_event}
   end
 
   @impl true

@@ -3,19 +3,15 @@ defmodule Fact.Storage.Driver.ByEventId do
   A `Fact.Storage.Driver` implementation that uses the event's own ID as the
   storage record identifier.
 
-  This driver assumes that every event contains an ID under the key defined by
+  This driver assumes that every event contains an id defined by
   `@event_id` (provided by `use Fact.EventKeys`). When preparing a record for
   storage, the event is encoded and returned alongside its event ID as the
   record identifier.
-
-  The expected record ID length is computed at compile time by generating a
-  UUID in hex format and using its length—typically `40` characters for UUIDv4
-  hex encoding. This approach ensures consistency with UUID-based event IDs.
   """
 
   @behaviour Fact.Storage.Driver
   use Fact.EventKeys
-  # Its 40, but might as well compute it at compile time.
+
   @record_id_length UUID.uuid4(:hex) |> String.length()
 
   @impl true
@@ -38,16 +34,24 @@ defmodule Fact.Storage.Driver.ByEventId do
 
   ## Examples
 
-      iex> encode = fn evt -> Jason.encode!(evt) end
+      iex> encode = fn evt -> JSON.encode!(evt) end
       iex> event = %{"id" => "abc123", "data" => %{}}
       iex> Fact.Storage.Driver.ByEventId.prepare_record(event, encode)
-      {"abc123", ~s({"data":{},"id":"abc123"})}
+      {:error, {:invalid_record_id, "abc123"}}
 
   """
+
   def prepare_record(event, encode) do
     record = encode.(event)
     record_id = event[@event_id]
-    {record_id, record}
+
+    case UUID.info(record_id) do
+      {:error, _reason} ->
+        {:error, {:invalid_record_id, record_id}}
+
+      {:ok, _info} ->
+        {:ok, record_id, record}
+    end
   end
 
   @impl true

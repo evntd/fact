@@ -24,3 +24,6 @@ fact-*.tar
 
 # JetBrains
 .idea
+
+# Test DBs
+test_*
