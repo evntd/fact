@@ -170,7 +170,7 @@ defmodule Fact.Storage do
   end
 
   def write_index(instance, :ledger, record_id),
-    do: write_index(ledger_path(instance), record_id)
+    do: do_write_index(ledger_path(instance), record_id)
 
   def write_index(_instance, _index, nil, _record_id), do: :ignored
   def write_index(_instance, _index, [], _record_id), do: :ignored
@@ -178,21 +178,22 @@ defmodule Fact.Storage do
   def write_index(instance, index, index_key, record_id) when is_binary(index_key) do
     encode_path = get_index_path_encoder(instance, index)
     encoded_path = encode_path.(index_key)
-    write_index(encoded_path, record_id)
+    do_write_index(encoded_path, record_id)
   end
 
   def write_index(instance, index, index_keys, record_id) when is_list(index_keys) do
     encode_path = get_index_path_encoder(instance, index)
 
     index_keys
-    |> Enum.each(&write_index(encode_path.(&1), record_id))
+    |> Enum.uniq()
+    |> Enum.each(&do_write_index(encode_path.(&1), record_id))
   end
 
-  def write_index(index_file, record_id) when is_binary(record_id) do
-    write_index(index_file, [record_id])
+  defp do_write_index(index_file, record_id) when is_binary(record_id) do
+    do_write_index(index_file, [record_id])
   end
 
-  def write_index(index_file, record_ids) when is_list(record_ids) do
+  defp do_write_index(index_file, record_ids) when is_list(record_ids) do
     iodata = Enum.reduce(record_ids, [], fn record_id, acc -> [acc, record_id, "\n"] end)
     File.write(index_file, iodata, [:append])
   end
