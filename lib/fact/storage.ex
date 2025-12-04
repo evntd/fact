@@ -77,11 +77,10 @@ defmodule Fact.Storage do
   end
 
   def write_event(instance, event) do
-
     inst_driver = driver(instance)
     inst_format = format(instance)
     inst_path = events_path(instance)
-    
+
     {record_id, record} = inst_driver.prepare_record(event, &inst_format.encode/1)
     record_path = Path.join(inst_path, record_id)
 
@@ -119,14 +118,14 @@ defmodule Fact.Storage do
     {record_id, event}
   end
 
-  def read_index(instance, index, key, opts) do
+  def read_index(instance, index, key, read_opts) do
     encode_path = get_index_path_encoder(instance, index)
     encoded_path = encode_path.(key)
-    read_index(instance, encoded_path, Keyword.get(opts, :direction, :forward))
+    read_index(instance, encoded_path, Keyword.get(read_opts, :direction, :forward))
   end
 
-  def read_index(instance, index, opts) when is_list(opts),
-    do: read_index(instance, index, Keyword.get(opts, :direction, :forward))
+  def read_index(instance, index, read_opts) when is_list(read_opts),
+    do: read_index(instance, index, Keyword.get(read_opts, :direction, :forward))
 
   def read_index(instance, :ledger, direction),
     do: read_index(instance, ledger_path(instance), direction)
@@ -218,22 +217,25 @@ defmodule Fact.Storage do
         event[@event_store_position]
     end
   end
-  
+
   def backup(instance, backup_path) do
     storage_path = path(instance)
     events_path = events_path(instance) |> String.replace_prefix(storage_path <> "/", "")
     ledger_path = ledger_path(instance) |> String.replace_prefix(storage_path <> "/", "")
 
-    event_entries = 
+    event_entries =
       read_index(instance, :ledger, :forward)
       |> Stream.map(&String.to_charlist(Path.join(events_path, &1)))
       |> Enum.to_list()
-      
-    all_entries = [ String.to_charlist(ledger_path) | event_entries ]
 
-    :zip.create(backup_path, all_entries, [{:compress, :all}, {:cwd, String.to_charlist(storage_path)}])
+    all_entries = [String.to_charlist(ledger_path) | event_entries]
+
+    :zip.create(backup_path, all_entries, [
+      {:compress, :all},
+      {:cwd, String.to_charlist(storage_path)}
+    ])
   end
-  
+
   def path(instance) do
     [{:path, path}] = :ets.lookup(storage_table(instance), :path)
     path

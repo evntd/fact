@@ -76,7 +76,7 @@ defmodule Fact.Storage.Format do
       {:ok, %{type: "UserRegistered"}}
 
   """
-  
+
   @callback encode(map()) :: binary()
   @callback decode(binary()) :: {:ok, map()} | {:error, term()}
 end

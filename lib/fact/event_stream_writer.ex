@@ -1,6 +1,6 @@
 defmodule Fact.EventStreamWriter do
   @moduledoc """
-  `Fact.EventStreamWriter` is a per-stream, on-demand GenServer responsible for serializing writes to an event stream. 
+  A per-stream, on-demand GenServer responsible for serializing writes to an event stream. 
   It ensures that events are appended in order, enriched with stream metadata, and committed atomically.
   """
   use GenServer

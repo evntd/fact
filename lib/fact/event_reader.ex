@@ -1,10 +1,49 @@
 defmodule Fact.EventReader do
   @moduledoc """
-  Provides a unified interface for reading events from the ledger, specific event streams, or event queries.
+  Provides a unified, consistent API for reading events from a Fact instance.
+
+  `Fact.EventReader` supports three primary sources of events:
+
+    * `:all` — reads from the global ledger index in event-store order.
+    * an event stream name (binary) — reads events belonging to a specific stream.
+    * one or more `%Fact.EventQuery{}` structs — executes the query engine and streams results.
+
+  All read operations return a lazy `Stream` of `{record_id, event}` tuples, allowing callers
+  to process large event sets efficiently without loading them fully into memory.
+
+  ## Options
+
+  The following options are accepted for all read strategies:
+
+    * `:position` — starting position within the index.
+      * `:start` (default) — begin at the start of the source.
+      * non-negative integer — starting offset, interpreted relative to the index used:
+        * For `:all` and queries: uses `@event_store_position`
+        * For event streams: uses `@event_stream_position`
+
+    * `:direction` — traversal direction (default: `:forward`)
+      * `:forward` — increasing positions
+      * `:backward` — decreasing positions
+
+    * `:count` — maximum number of events to return (default: all)
+
+  The reader validates these options and raises `ArgumentError` on invalid values.
+
+  ## Returned Stream
+
+  Each variant delegates to a `read_strategy/0` function that yields record IDs.
+  These record IDs are resolved into full events via `Fact.Storage.read_event/2`,
+  and the reader applies positional filtering and count limiting on top of that.
+
+  Because a `Stream` is returned, callers must enumerate the stream (`Enum.to_list/1`,
+  `Stream.run/1`, etc.) if side effects are desired.
   """
 
   use Fact.EventKeys
 
+  @doc """
+  Reads events from the ledger, index, or the events matching an `EventQuery`.
+  """
   def read(instance, event_source, opts \\ [])
 
   def read(instance, :all, opts) do
@@ -30,7 +69,7 @@ defmodule Fact.EventReader do
   def read(instance, %Fact.EventQuery{} = query, opts) do
     read(instance, [query], opts)
   end
-
+  
   def read(instance, [%Fact.EventQuery{} | _] = query, opts) when is_list(query) do
     do_read(
       instance,

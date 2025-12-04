@@ -4,7 +4,7 @@ defmodule Fact.Types do
   @type event_metadata :: map()
   @type event_position :: non_neg_integer()
   @type event_tag :: String.t()
-  @type event_tags :: [event_tag]
+  @type event_tags :: list(event_tag())
   @type event_type :: String.t()
 
   @typedoc """

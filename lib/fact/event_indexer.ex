@@ -1,6 +1,44 @@
 defmodule Fact.EventIndexer do
   @moduledoc """
-  Base module for all indexers.
+  Base behaviour and macro for building event indexers.
+
+  `Fact.EventIndexer` defines the callback and GenServer scaffolding used by
+  all event indexers in the `Fact` event storage system. An indexer listens
+  for new events, extracts one or more index keys from each event, and writes
+  those relationships into storage. This enables fast lookup of events by
+  category, type, tag, stream, or any domain-specific attribute.
+
+  ## Behaviour
+
+  An indexer must implement the `c:index_event/2` callback, which extracts an
+  index key from a given event. The returned value determines how the event is
+  indexed:
+
+    * a **string** — single index key  
+    * a **list of strings** — multiple keys  
+    * `nil` — event will not be indexed
+
+  The `__using__/1` macro injects the full GenServer implementation that:
+
+    * initializes and ensures the index exists
+    * rebuilds the index from history on startup
+    * subscribes to live event notifications
+    * updates the index as new events arrive
+    * responds to stream queries from other processes
+
+  Custom indexers only need to implement the callback and optionally define
+  module attributes through `use Fact.EventKeys`.
+
+  ## Example
+
+      defmodule MyApp.UserEmailIndexer do
+        use Fact.EventIndexer
+
+        @impl true
+        def index_event(%{"data" => %{"email" => email}}, _opts), do: email
+        def index_event(_, _), do: nil
+      end
+
   """
   @callback index_event(event :: map(), state :: term()) :: list(String.t()) | String.t() | nil
 
@@ -15,6 +53,20 @@ defmodule Fact.EventIndexer do
 
       defstruct [:instance, :index, :index_opts, :encoding]
 
+      @doc """
+      Starts the indexer process.
+
+      Accepts both indexer-specific options and `GenServer.start_link/3`
+      options. Indexer options include:
+
+        * `:instance` — the storage instance (required)
+        * `:key` — optional secondary key used in parameterized indexers
+        * `:encoding` — the index encoding format (`:raw` by default)
+        * `:opts` — custom options forwarded to `index_event/2`
+
+      The index name is automatically derived from the module or
+      `{module, key}` tuple for parameterized indexers.
+      """
       def start_link(opts \\ []) do
         {indexer_opts, start_opts} =
           Keyword.split(opts, [:instance, :key, :encoding, :opts])
@@ -69,6 +121,12 @@ defmodule Fact.EventIndexer do
       end
 
       @impl true
+      @doc """
+      Handles synchronous calls from clients requesting event IDs for a given
+      index key.
+
+      This is used by `Fact.Storage.read_index/4` and similar APIs.
+      """
       def handle_cast(
             {:stream!, value, caller, stream_opts},
             %{instance: instance, index: index} = state
