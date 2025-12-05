@@ -18,21 +18,7 @@ defmodule Fact.Storage.Format.Json do
   When enabled, all events persisted through `Fact.Storage` will be encoded
   using `encode/1`, and all events read back will be processed through
   `decode/1`.
-    
-  ## Requirements
-
-  This module expects a `JSON` library to be available in the application
-  environment. This may be:
-
-    * `Jason` (most common)
-    * `Poison`
-    * Or any module providing `encode!/1` and `decode!/1`
-
-  The `JSON` module must be available under the alias `JSON`, either by:
-
-    * configuring a dependency with that name, or  
-    * defining a custom module that delegates to your preferred JSON library.
-
+  
   ## Behaviour
 
   Implements:
@@ -45,12 +31,12 @@ defmodule Fact.Storage.Format.Json do
   Encoding an event:
 
       iex> Fact.Storage.Format.Json.encode(%{type: "UserRegistered", data: %{id: 1}})
-      ~s({"type":"UserRegistered","data":{"id":1}})
+      ~s({"data":{"id":1},"type":"UserRegistered"})
 
   Decoding an event:
 
-      iex> Fact.Storage.Format.Json.decode(~s({"a": 1}))
-      %{"a" => 1}
+      iex> Fact.Storage.Format.Json.decode(~s({"type": "UserRegistered", "data": {"id": 1}}))
+      %{"data" => %{"id" => 1}, "type" => "UserRegistered"}
   """
 
   @behaviour Fact.Storage.Format
