@@ -32,11 +32,8 @@ defmodule Fact.EventReader do
   ## Returned Stream
 
   Each variant delegates to a `read_strategy/0` function that yields record IDs.
-  These record IDs are resolved into full events via `Fact.Storage.read_event/2`,
+  These record ids are resolved into full events via `Fact.Storage.read_event!/2`,
   and the reader applies positional filtering and count limiting on top of that.
-
-  Because a `Stream` is returned, callers must enumerate the stream (`Enum.to_list/1`,
-  `Stream.run/1`, etc.) if side effects are desired.
   """
 
   use Fact.EventKeys
@@ -103,7 +100,7 @@ defmodule Fact.EventReader do
 
         stream =
           read_strategy.()
-          |> Stream.map(&Fact.Storage.read_event(instance, &1))
+          |> Stream.map(&Fact.Storage.read_event!(instance, &1))
           |> Stream.drop_while(&position_is_out_of_range?.(&1))
 
         if is_integer(count) do

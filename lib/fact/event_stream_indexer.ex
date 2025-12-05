@@ -74,7 +74,7 @@ defmodule Fact.EventStreamIndexer do
         0
 
       record_id ->
-        {_, event} = Fact.Storage.read_event(instance, record_id)
+        {_, event} = Fact.Storage.read_event!(instance, record_id)
         event[@event_stream_position]
     end
   end

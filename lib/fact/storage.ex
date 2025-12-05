@@ -116,7 +116,19 @@ defmodule Fact.Storage do
     fn key -> Path.join(path, encode_key(key, encoding)) end
   end
 
-  def read_event(instance, record_id) do
+  @doc """
+  Reads a single event record from disk and decodes it using the configured format.
+
+  The function:
+    * locates the event file under the events directory
+    * reads the raw encoded event
+    * decodes the event using the configured format module
+    * returns `{record_id, decoded_event}`
+
+  It assumes the record exists and will raise if the underlying file is missing
+  or unreadable.
+  """
+  def read_event!(instance, record_id) do
     record_path = Path.join(events_path(instance), record_id)
     encoded_event = File.read!(record_path)
     event = format(instance).decode(encoded_event)
@@ -219,7 +231,7 @@ defmodule Fact.Storage do
         0
 
       record_id ->
-        {_, event} = read_event(instance, record_id)
+        {_, event} = read_event!(instance, record_id)
         event[@event_store_position]
     end
   end
