@@ -92,7 +92,7 @@ defmodule Fact.EventQuery do
 
       direction = Keyword.get(opts, :direction, :forward)
 
-      Fact.Storage.read_index(instance, :ledger, direction)
+      Fact.Storage.read_ledger(instance, direction)
       |> Stream.filter(&MapSet.member?(matched_event_ids, &1))
     else
       raise ArgumentError, "All elements must be %#{__MODULE__}{}"

@@ -1,6 +1,57 @@
 defmodule Fact.Storage do
+  @moduledoc """
+  **Internal storage engine for Fact. Do not use directly.**
+
+  This module provides the low-level file-based storage mechanics used by the
+  Fact event store. It handles:
+
+    * creation and management of the storage directory structure
+    * writing and reading raw event records
+    * maintaining event indices and the ledger
+    * managing checkpoint files
+    * tracking storage configuration via ETS
+    * performing backups of the storage directory
+
+  `Fact.Storage` is intentionally low-level and tightly coupled to the internal
+  persistence model. It exposes many functions that operate directly on file
+  paths, indices, and driver/format modules. Because of its internal nature,
+  **it is not considered part of the public API**, and callers should not
+  interact with it directly.
+
+  ### Responsibilities
+
+  `Fact.Storage` is responsible for:
+
+    * Initializing the on-disk directory layout for an instance
+    * Configuring the storage driver and format modules
+    * Writing encoded events to disk
+    * Reading event records and indices
+    * Managing `.checkpoint` files for incremental index consumption
+    * Appending to index files
+    * Resolving storage paths via an ETS table established per instance
+    * Creating and restoring backups of the storage contents
+
+  ### Usage Notes
+
+    * This module is started automatically as part of a Fact instance via
+      its `child_spec/1`.
+    * Direct calls to functions in this module can corrupt storage,
+      break invariants, bypass validation/serialization steps, or result in
+      inconsistent indices.
+    * Only higher-level APIs should be used to interact with events or indexes.
+
+  If you find yourself needing to call this module directly, consider whether
+  there is a missing abstraction or a higher-level API should be extended
+  instead.
+
+  """
+  
   use Fact.EventKeys
   require Logger
+
+  @type record_id :: String.t()
+  @type hash_algorithm :: :sha | :sha256
+  @type encoding :: :raw | :hash | {:hash, hash_algorithm()}
 
   @default_driver Fact.Storage.Driver.ByEventId
   @default_format Fact.Storage.Format.Json
@@ -10,6 +61,13 @@ defmodule Fact.Storage do
   @ledger_path "ledger"
   @index_checkpoint ".checkpoint"
 
+  @doc """
+  Returns the child specification for a `Fact.Storage` instance.
+
+  This is an internal function used by `Fact.Supervisor` and related startup
+  infrastructure. It constructs a unique child ID based on the `:instance` value
+  and wires the process to start via `start_link/1`.
+  """
   def child_spec(opts) do
     %{
       id: {__MODULE__, Keyword.fetch!(opts, :instance)},
@@ -18,6 +76,18 @@ defmodule Fact.Storage do
     }
   end
 
+  @doc """
+  Initializes and starts the storage engine for a Fact instance.
+
+  This function is responsible for:
+    * normalizing and preparing the on-disk storage directory
+    * loading the configured storage driver and event format modules
+    * creating the events directory and a `.gitignore`
+    * initializing the ETS metadata table used by all subsequent operations
+
+  The function completes setup and returns `{:ok, pid, :ignore}` to avoid
+  linking semantics used by other OTP behaviors.
+  """
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
     path = Keyword.get(opts, :path, Path.join(File.cwd!(), normalize(instance)))
@@ -35,6 +105,18 @@ defmodule Fact.Storage do
     end
   end
 
+  @doc """
+  Ensures that the directory structure and checkpoint file for a given index exist.
+
+  This function:
+    * computes the fully qualified path for the index and its checkpoint file
+    * creates directories and writes a default `.checkpoint` file if missing
+    * stores index metadata (paths and encoders) in the storage ETS table
+
+  The `encoding` argument determines how index keys are mapped into filenames,
+  which is handled via `encode_key/2`.
+  """
+  @spec ensure_index(atom(), term(), encoding()) :: :ok
   def ensure_index(instance, index, encoding) do
     index_path =
       case index do
@@ -60,6 +142,13 @@ defmodule Fact.Storage do
     end
   end
 
+  @doc """
+  Ensures that the ledger file exists on disk.
+
+  The ledger is the global, append-only index of all events written for a Fact
+  instance. If the ledger file does not exist, this function creates it.
+  """
+  @spec ensure_ledger(atom()) ::  :ok | {:error, File.posix() | :badarg | :terminated | :system_limit}
   def ensure_ledger(instance) do
     ensure_file(ledger_path(instance))
   end
@@ -76,6 +165,16 @@ defmodule Fact.Storage do
     end
   end
 
+  @doc """
+  Writes a single event to disk using the configured driver and format.
+
+  Steps performed:
+    * The storage driver generates a record ID and serialized record contents.
+    * The function attempts an atomic write into the events directory.
+    * On success, it returns `{:ok, record_id}`.
+    * On failure (e.g., duplicate record ID), it returns `{:error, reason, record_id}`.
+  """
+  @spec write_event(atom(), map()) :: {:ok, record_id()} | {:error, term(), record_id()}
   def write_event(instance, event) do
     inst_driver = driver(instance)
     inst_format = format(instance)
@@ -135,6 +234,21 @@ defmodule Fact.Storage do
     {record_id, event}
   end
 
+  def read_ledger(instance, direction),
+      do: read_index(instance, ledger_path(instance), direction)
+
+  @doc """
+  Reads an index based on the given direction and path or key.
+
+  There are three forms:
+    * `read_index(instance, index, key, opts)` – lookup by index key
+    * `read_index(instance, :ledger, opts)` – read the ledger index
+    * `read_index(instance, path, direction)` – read raw index file
+
+  Depending on the direction (`:forward` or `:backward`), this yields a stream of
+  record IDs. Backwards reading uses `Fact.IndexFileReader.Backwards.Line` to
+  avoid loading the entire file into memory.
+  """
   def read_index(instance, index, key, read_opts) do
     encode_path = get_index_path_encoder(instance, index)
     encoded_path = encode_path.(key)
@@ -143,9 +257,6 @@ defmodule Fact.Storage do
 
   def read_index(instance, index, read_opts) when is_list(read_opts),
     do: read_index(instance, index, Keyword.get(read_opts, :direction, :forward))
-
-  def read_index(instance, :ledger, direction),
-    do: read_index(instance, ledger_path(instance), direction)
 
   def read_index(instance, path, :backward) do
     if File.exists?(path) do
@@ -220,7 +331,7 @@ defmodule Fact.Storage do
   end
 
   def last_store_position(instance, :ledger) do
-    do_last_store_position(instance, read_index(instance, :ledger, direction: :backward))
+    do_last_store_position(instance, read_ledger(instance, direction: :backward))
   end
 
   defp do_last_store_position(instance, stream) do
@@ -242,7 +353,7 @@ defmodule Fact.Storage do
     ledger_path = ledger_path(instance) |> String.replace_prefix(storage_path <> "/", "")
 
     event_entries =
-      read_index(instance, :ledger, :forward)
+      read_ledger(instance, :forward)
       |> Stream.map(&String.to_charlist(Path.join(events_path, &1)))
       |> Enum.to_list()
 
