@@ -118,8 +118,8 @@ defmodule Fact.EventIndexerManager do
           {:ok, {mod, maybe_key}} ->
             # lookup the indexer configuration by module
             config =
-              state.indexer_config
-              |> Enum.find(fn config -> Keyword.fetch!(config, :mod) == mod end)
+              state.indexer_specs
+              |> Enum.find_value(fn {m, c} -> if m == mod, do: c end)
 
             unless config do
               # fail, if no indexer configuration exists, need the path for storing the index at a minimum
@@ -129,6 +129,7 @@ defmodule Fact.EventIndexerManager do
 
               opts =
                 base_opts
+                |> Keyword.put_new(:instance, instance)
                 |> Keyword.put(:name, via_indexer(instance, indexer))
                 |> maybe_put_key(maybe_key)
 
