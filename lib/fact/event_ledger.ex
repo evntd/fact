@@ -73,24 +73,24 @@ defmodule Fact.EventLedger do
   defp conditional_commit(
          events,
          {_condition, expected_pos} = condition,
-         %{position: position} = state
+         %{instance: instance, position: position} = state
        )
        when expected_pos < position do
-    with :ok <- check_query_condition(condition) do
+    with :ok <- check_query_condition(instance, condition) do
       do_commit(events, state)
     end
   end
 
-  defp check_query_condition({query, expected_pos}) do
-    Fact.EventReader.read(query, from_position: expected_pos)
+  defp check_query_condition(instance, {query, expected_pos}) do
+    Fact.EventReader.read(instance, query, from_position: expected_pos)
     |> Stream.take(-1)
     |> Enum.at(0)
     |> case do
       nil ->
         :ok
 
-      event ->
-        {:error, {:concurrency, expected: expected_pos, actual: event[@event_store_position]}}
+      {_, record} ->
+        {:error, {:concurrency, expected: expected_pos, actual: record[@event_store_position]}}
     end
   end
 
