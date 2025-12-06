@@ -30,8 +30,15 @@ defmodule Fact.EventLedger do
   @type write_ledger_error ::
           {:error, {:ledger_write_failed, File.posix()}}
 
+  @replacements %{
+    data: @event_data,
+    id: @event_id,
+    metadata: @event_metadata,
+    type: @event_type
+  }
+          
   defstruct [:instance, position: 0]
-
+  
   @spec start_link([instance: atom()] | []) :: {:ok, pid()} | {:error, term()}
   def start_link(opts) do
     {ledger_opts, genserver_opts} = Keyword.split(opts, [:instance])
@@ -108,16 +115,23 @@ defmodule Fact.EventLedger do
     Enum.map_reduce(events, pos, fn event, pos ->
       next = pos + 1
 
-      enriched =
-        Map.merge(event, %{
+      event_with_renamed_keys =
+        rename_keys(event, @replacements)
+      
+      enriched_event =
+        Map.merge(%{
           @event_id => uuid4(),
+          @event_metadata => %{},
+          @event_tags => [],
           @event_store_position => next,
           @event_store_timestamp => timestamp
-        })
+        }, event_with_renamed_keys)
 
-      {enriched, next}
+      {enriched_event, next}
     end)
   end
+  
+  
 
   defp commit_events(events, %{instance: instance} = _state) do
     with {:ok, written_records} <- write_events(events, instance) do
@@ -159,6 +173,13 @@ defmodule Fact.EventLedger do
       {:error, _, errors} ->
         {:error, {:event_write_failed, Enum.reverse(errors)}}
     end
+  end
+
+  defp rename_keys(map, replacements) do
+    Map.new(map, fn {key, value} ->
+      new_key = Map.get(replacements, key, key)
+      {new_key, value}
+    end)
   end
   
   defp uuid4() do

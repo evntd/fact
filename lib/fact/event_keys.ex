@@ -32,15 +32,15 @@ defmodule Fact.EventKeys do
   """
   defmacro __using__(_opts) do
     quote do
-      @event_data "data"
-      @event_id "id"
-      @event_metadata "metadata"
-      @event_store_position "pos"
-      @event_store_timestamp "ts"
-      @event_stream "stream"
+      @event_data "event_data"
+      @event_id "event_id"
+      @event_metadata "event_metadata"
+      @event_store_position "store_position"
+      @event_store_timestamp "store_timestamp"
+      @event_stream "stream_id"
       @event_stream_position "stream_position"
-      @event_tags "tags"
-      @event_type "type"
+      @event_tags "event_tags"
+      @event_type "event_type"
     end
   end
 end
