@@ -28,7 +28,7 @@ defmodule Fact.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:uuid, "~> 1.1.8"},
+      {:uuid, "~> 2.0", hex: :uuid_erl},
 
       # Tools
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}

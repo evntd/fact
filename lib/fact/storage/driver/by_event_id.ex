@@ -12,7 +12,7 @@ defmodule Fact.Storage.Driver.ByEventId do
   @behaviour Fact.Storage.Driver
   use Fact.EventKeys
 
-  @record_id_length UUID.uuid4(:hex) |> String.length()
+  @record_id_length 32
 
   @impl true
   @doc """
@@ -45,13 +45,9 @@ defmodule Fact.Storage.Driver.ByEventId do
     record = encode.(event)
     record_id = event[@event_id]
 
-    case UUID.info(record_id) do
-      {:error, _reason} ->
-        {:error, {:invalid_record_id, record_id}}
-
-      {:ok, _info} ->
-        {:ok, record_id, record}
-    end
+    if is_uuid?(record_id),
+      do: {:ok, record_id, record},
+      else: {:error, {:invalid_record_id, record_id}}
   end
 
   @impl true
@@ -67,4 +63,10 @@ defmodule Fact.Storage.Driver.ByEventId do
 
   """
   def record_id_length(), do: @record_id_length
+  
+  defp is_uuid?(record_id) when is_binary(record_id) do
+    record_id
+    |> :uuid.string_to_uuid
+    |> :uuid.is_uuid
+  end
 end

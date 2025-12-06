@@ -110,7 +110,7 @@ defmodule Fact.EventLedger do
 
       enriched =
         Map.merge(event, %{
-          @event_id => UUID.uuid4(:hex),
+          @event_id => uuid4(),
           @event_store_position => next,
           @event_store_timestamp => timestamp
         })
@@ -159,5 +159,11 @@ defmodule Fact.EventLedger do
       {:error, _, errors} ->
         {:error, {:event_write_failed, Enum.reverse(errors)}}
     end
+  end
+  
+  defp uuid4() do
+    :uuid.get_v4() 
+    |> :uuid.uuid_to_string(:nodash) 
+    |> to_string()
   end
 end
