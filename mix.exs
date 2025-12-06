@@ -10,7 +10,9 @@ defmodule Fact.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      description: description(),
       docs: docs(),
+      package: package(),
       name: "Fact",
       source_url: "https://github.com/evntd/fact"
     ]
@@ -32,11 +34,27 @@ defmodule Fact.MixProject do
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
+  
+  defp description do
+    """
+    A file system based event sourcing database for maximum portability.
+    """
+  end
 
   defp docs do
     [
       main: "Fact",
-      authors: ["Jake Bruun"]
+      canonical: "https://hexdocs.pm/Fact"
+    ]
+  end
+  
+  defp package do
+    [
+      maintainers: ["Jake Bruun"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "https://github.com/evntd/fact"
+      }
     ]
   end
 end
