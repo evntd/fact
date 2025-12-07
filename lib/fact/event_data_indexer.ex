@@ -48,7 +48,7 @@ defmodule Fact.EventDataIndexer do
     key = Keyword.fetch!(opts, :key)
 
     case Map.has_key?(data, key) do
-      true -> Map.get(data, key)
+      true -> Map.get(data, key) |> to_string()
       false -> nil
     end
   end
