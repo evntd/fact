@@ -35,11 +35,11 @@ defmodule Fact.EventDataIndexer do
 
   ## Examples
 
-      iex> event = %{"type" => "UserRegistered", "data" => %{"user_id" => 123}}
+      iex> event = %{"event_type" => "UserRegistered", "event_data" => %{"user_id" => 123}}
       iex> Fact.EventDataIndexer.index_event(event, key: "user_id")
-      123
+      "123"
 
-      iex> event = %{"type" => "UserRegistered", "data" => %{"user_id" => 123}}
+      iex> event = %{"event_type" => "UserRegistered", "event_data" => %{"user_id" => 123}}
       iex> Fact.EventDataIndexer.index_event(event, key: "order_id")
       nil
 

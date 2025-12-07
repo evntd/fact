@@ -29,8 +29,8 @@ defmodule Fact.EventQuery do
     
       query = [ 
           %Fact.EventQuery{
-            event_types: ["hops_harvested"],
-            event_data: [
+            types: ["hops_harvested"],
+            data: [
               cultivar: "Cascade",
               cultivar: "Centennial",
               date: "2025-09-01",
@@ -38,8 +38,8 @@ defmodule Fact.EventQuery do
             ]
           },
           %Fact.EventQuery{
-            event_types: ["hops_dried"],
-            event_data: [
+            types: ["hops_dried"],
+            data: [
               finish_date: "2025-09-03"
             ]
           }
