@@ -10,17 +10,17 @@ defmodule Fact.Storage.Driver.ByEventId.Test do
   end
 
   test "`prepare_record/2` should return tuple of event id and encoded event" do
-    event_id = UUID.uuid4(:hex)
-    event = %{"id" => event_id, "type" => "TestEvent", "data" => %{}, "metadata" => %{}}
+    event_id = Fact.Uuid.v4()
+    event = %{"event_id" => event_id, "event_type" => "TestEvent", "event_data" => %{}, "event_metadata" => %{}}
 
     assert {:ok, event_id,
-            "{\"data\":{},\"id\":\"#{event_id}\",\"metadata\":{},\"type\":\"TestEvent\"}"} ==
+            "{\"event_data\":{},\"event_id\":\"#{event_id}\",\"event_metadata\":{},\"event_type\":\"TestEvent\"}"} ==
              Fact.Storage.Driver.ByEventId.prepare_record(event, &encode/1)
   end
 
   test "`prepare_record/2` should fail when event id is not a valid UUID" do
     event_id = "thisisnotavaliduuid"
-    event = %{"id" => event_id, "type" => "TestEvent", "data" => %{}, "metadata" => %{}}
+    event = %{"event_id" => event_id, "event_type" => "TestEvent", "event_data" => %{}, "event_metadata" => %{}}
 
     assert {:error, {:invalid_record_id, event_id}} ==
              Fact.Storage.Driver.ByEventId.prepare_record(event, &encode/1)

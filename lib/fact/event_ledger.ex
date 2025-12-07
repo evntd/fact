@@ -120,7 +120,7 @@ defmodule Fact.EventLedger do
       
       enriched_event =
         Map.merge(%{
-          @event_id => uuid4(),
+          @event_id => Fact.Uuid.v4(),
           @event_metadata => %{},
           @event_tags => [],
           @event_store_position => next,
@@ -180,11 +180,5 @@ defmodule Fact.EventLedger do
       new_key = Map.get(replacements, key, key)
       {new_key, value}
     end)
-  end
-  
-  defp uuid4() do
-    :uuid.get_v4() 
-    |> :uuid.uuid_to_string(:nodash) 
-    |> to_string()
   end
 end

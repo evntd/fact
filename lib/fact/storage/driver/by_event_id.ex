@@ -35,7 +35,7 @@ defmodule Fact.Storage.Driver.ByEventId do
   ## Examples
 
       iex> encode = fn evt -> JSON.encode!(evt) end
-      iex> event = %{"id" => "abc123", "data" => %{}}
+      iex> event = %{"event_id" => "abc123", "event_data" => %{}}
       iex> Fact.Storage.Driver.ByEventId.prepare_record(event, encode)
       {:error, {:invalid_record_id, "abc123"}}
 
@@ -45,7 +45,7 @@ defmodule Fact.Storage.Driver.ByEventId do
     record = encode.(event)
     record_id = event[@event_id]
 
-    if is_uuid?(record_id),
+    if Fact.Uuid.valid?(record_id),
       do: {:ok, record_id, record},
       else: {:error, {:invalid_record_id, record_id}}
   end
@@ -63,10 +63,5 @@ defmodule Fact.Storage.Driver.ByEventId do
 
   """
   def record_id_length(), do: @record_id_length
-  
-  defp is_uuid?(record_id) when is_binary(record_id) do
-    record_id
-    |> :uuid.string_to_uuid
-    |> :uuid.is_uuid
-  end
+
 end
