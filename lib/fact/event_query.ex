@@ -87,16 +87,25 @@ defmodule Fact.EventQuery do
 
   def execute(instance, clauses, opts) when is_list(clauses) do
     if Enum.all?(clauses, &match?(%__MODULE__{}, &1)) do
-      matched_event_ids =
-        Enum.reduce(clauses, MapSet.new(), &MapSet.union(&2, events_matching(instance, &1)))
-
+      match = get_match_fun(instance, clauses)      
       direction = Keyword.get(opts, :direction, :forward)
 
       Fact.Storage.read_ledger(instance, direction)
-      |> Stream.filter(&MapSet.member?(matched_event_ids, &1))
+      |> Stream.filter(&match.(&1))
     else
       raise ArgumentError, "All elements must be %#{__MODULE__}{}"
     end
+  end
+  
+  defp get_match_fun(instance, clauses) do
+
+    matched_event_ids =
+      Enum.reduce(clauses, MapSet.new(), &MapSet.union(&2, events_matching(instance, &1)))
+    
+    fn event_id ->
+      MapSet.member?(matched_event_ids, event_id)
+    end
+    
   end
 
   defp events_matching(instance, %{
