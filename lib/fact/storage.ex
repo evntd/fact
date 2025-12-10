@@ -45,7 +45,7 @@ defmodule Fact.Storage do
   instead.
 
   """
-  
+
   use Fact.EventKeys
   require Logger
 
@@ -148,7 +148,8 @@ defmodule Fact.Storage do
   The ledger is the global, append-only index of all events written for a Fact
   instance. If the ledger file does not exist, this function creates it.
   """
-  @spec ensure_ledger(atom()) ::  :ok | {:error, File.posix() | :badarg | :terminated | :system_limit}
+  @spec ensure_ledger(atom()) ::
+          :ok | {:error, File.posix() | :badarg | :terminated | :system_limit}
   def ensure_ledger(instance) do
     ensure_file(ledger_path(instance))
   end
@@ -235,7 +236,7 @@ defmodule Fact.Storage do
   end
 
   def read_ledger(instance, direction),
-      do: read_index(instance, ledger_path(instance), direction)
+    do: read_index(instance, ledger_path(instance), direction)
 
   @doc """
   Reads an index based on the given direction and path or key.

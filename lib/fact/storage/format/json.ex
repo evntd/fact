@@ -18,7 +18,7 @@ defmodule Fact.Storage.Format.Json do
   When enabled, all events persisted through `Fact.Storage` will be encoded
   using `encode/1`, and all events read back will be processed through
   `decode/1`.
-  
+
   ## Behaviour
 
   Implements:

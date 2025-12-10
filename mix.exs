@@ -34,7 +34,7 @@ defmodule Fact.MixProject do
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
-  
+
   defp description do
     """
     A file system based event sourcing database for maximum portability.
@@ -47,7 +47,7 @@ defmodule Fact.MixProject do
       canonical: "https://hexdocs.pm/Fact"
     ]
   end
-  
+
   defp package do
     [
       maintainers: ["Jake Bruun"],

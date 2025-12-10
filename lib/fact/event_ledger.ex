@@ -36,9 +36,9 @@ defmodule Fact.EventLedger do
     metadata: @event_metadata,
     type: @event_type
   }
-          
+
   defstruct [:instance, position: 0]
-  
+
   @spec start_link([instance: atom()] | []) :: {:ok, pid()} | {:error, term()}
   def start_link(opts) do
     {ledger_opts, genserver_opts} = Keyword.split(opts, [:instance])
@@ -117,21 +117,22 @@ defmodule Fact.EventLedger do
 
       event_with_renamed_keys =
         rename_keys(event, @replacements)
-      
+
       enriched_event =
-        Map.merge(%{
-          @event_id => Fact.Uuid.v4(),
-          @event_metadata => %{},
-          @event_tags => [],
-          @event_store_position => next,
-          @event_store_timestamp => timestamp
-        }, event_with_renamed_keys)
+        Map.merge(
+          %{
+            @event_id => Fact.Uuid.v4(),
+            @event_metadata => %{},
+            @event_tags => [],
+            @event_store_position => next,
+            @event_store_timestamp => timestamp
+          },
+          event_with_renamed_keys
+        )
 
       {enriched_event, next}
     end)
   end
-  
-  
 
   defp commit_events(events, %{instance: instance} = _state) do
     with {:ok, written_records} <- write_events(events, instance) do

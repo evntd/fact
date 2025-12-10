@@ -81,7 +81,14 @@ defmodule Fact.Storage.Test do
     Fact.Storage.start_link(instance: inst, path: path, driver: Fact.Storage.Driver.ByEventId)
     event_id = Fact.Uuid.v4()
     expected_file = Path.join([path, "events", event_id])
-    event = %{"event_id" => event_id, "event_type" => "TestEvent", "event_data" => %{}, "event_metadata" => %{}}
+
+    event = %{
+      "event_id" => event_id,
+      "event_type" => "TestEvent",
+      "event_data" => %{},
+      "event_metadata" => %{}
+    }
+
     Fact.Storage.write_event(inst, event)
     assert true == File.exists?(expected_file)
   end
@@ -91,7 +98,14 @@ defmodule Fact.Storage.Test do
     Fact.Storage.start_link(instance: inst, path: path, driver: Fact.Storage.Driver.ByEventId)
     event_id = "invalid_event_id"
     unexpected_file = Path.join([path, "events", event_id])
-    event = %{"event_id" => event_id, "event_type" => "TestEvent", "event_data" => %{}, "event_metadata" => %{}}
+
+    event = %{
+      "event_id" => event_id,
+      "event_type" => "TestEvent",
+      "event_data" => %{},
+      "event_metadata" => %{}
+    }
+
     result = Fact.Storage.write_event(inst, event)
     assert {:error, :invalid_record_id, "invalid_event_id"} == result
     assert false == File.exists?(unexpected_file)

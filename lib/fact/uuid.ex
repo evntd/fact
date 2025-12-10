@@ -2,11 +2,11 @@ defmodule Fact.Uuid do
   @moduledoc false
 
   def v4() do
-    :uuid.get_v4() 
+    :uuid.get_v4()
     |> :uuid.uuid_to_string(:nodash)
     |> to_string()
   end
-  
+
   def valid?(uuid) do
     try do
       uuid

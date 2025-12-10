@@ -63,5 +63,4 @@ defmodule Fact.Storage.Driver.ByEventId do
 
   """
   def record_id_length(), do: @record_id_length
-
 end
