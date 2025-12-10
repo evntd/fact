@@ -156,16 +156,18 @@ defmodule Fact do
   defdelegate backup(instance, backup_path), to: Fact.Storage
 
   defmacro __using__(opts) do
-    instance_name = Keyword.get(opts, :name, @default_instance_name)
+    instance_name = Keyword.get(opts, :instance, @default_instance_name)
 
     quote do
       @instance_name unquote(instance_name)
 
       def start_link(opts \\ []) do
-        Fact.start_link(Keyword.put(opts, :name, @instance_name))
+        Fact.start_link(@instance_name, opts)
       end
 
-      def append(events, fail_if_match, after_position \\ 0, opts \\ []) do
+      def instance(), do: @instance_name
+
+      def append(events, fail_if_match \\ nil, after_position \\ 0, opts \\ []) do
         Fact.append(@instance_name, events, fail_if_match, after_position, opts)
       end
 
