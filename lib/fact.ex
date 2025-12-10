@@ -93,12 +93,12 @@ defmodule Fact do
     Fact.Supervisor.start_link(Keyword.put(opts, :instance, instance))
   end
 
-  def append(instance, events, boundary, append_opts \\ [])
+  def append(instance, events, boundary \\ nil, append_opts \\ [])
 
-  def append(instance, events, %Fact.EventQuery{} = query, append_opts),
-    do: append(instance, events, [query], append_opts)
+  def append(instance, events, nil, append_opts),
+    do: append(instance, events, Fact.Query.from_none(), append_opts)
 
-  def append(instance, events, [%Fact.EventQuery{}] = query, append_opts),
+  def append(instance, events, query, append_opts) when is_function(query),
     do: Fact.EventQueryWriter.append(instance, events, query, append_opts)
 
   def append(instance, events, event_stream, append_opts) when is_binary(event_stream),

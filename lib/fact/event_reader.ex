@@ -41,6 +41,7 @@ defmodule Fact.EventReader do
   @doc """
   Reads events from the ledger, index, or the events matching an `EventQuery`.
   """
+  @spec read(Fact.Types.instance_name(), :all | Fact.Types.event_stream() | Fact.Query.t(), keyword()) :: Enumerable.t()
   def read(instance, event_source, opts \\ [])
 
   def read(instance, :all, opts) do
@@ -63,16 +64,15 @@ defmodule Fact.EventReader do
     )
   end
 
-  def read(instance, %Fact.EventQuery{} = query, opts) do
-    read(instance, [query], opts)
-  end
-
-  def read(instance, [%Fact.EventQuery{} | _] = query, opts) when is_list(query) do
+  def read(instance, query, read_opts) when is_function(query) do
     do_read(
       instance,
-      fn -> Fact.EventQuery.execute(instance, query) end,
+      fn ->
+        Fact.Storage.read_ledger(instance, Keyword.get(read_opts, :direction, :forward))
+        |> Stream.filter(&query.(instance).(&1))
+      end,
       @event_store_position,
-      opts
+      read_opts
     )
   end
 
