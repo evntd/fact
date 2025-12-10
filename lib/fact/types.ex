@@ -1,10 +1,14 @@
 defmodule Fact.Types do
+  @typedoc """
+  A handle to a Fact database instance.
+  """
+  @type instance_name :: atom()
+
   @type event_id :: String.t()
   @type event_data :: map()
   @type event_metadata :: map()
   @type event_position :: non_neg_integer()
   @type event_tag :: String.t()
-  @type event_tags :: list(event_tag())
   @type event_type :: String.t()
 
   @typedoc """
@@ -21,7 +25,7 @@ defmodule Fact.Types do
           optional(:id) => event_id,
           optional(:data) => event_data,
           optional(:metadata) => event_metadata,
-          optional(:tags) => event_tags
+          optional(:tags) => list(event_tag)
         }
 
   @type record_id :: String.t()

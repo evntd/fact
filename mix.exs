@@ -37,7 +37,7 @@ defmodule Fact.MixProject do
 
   defp description do
     """
-    A file system based event sourcing database for maximum portability.
+    A file system based event store.
     """
   end
 

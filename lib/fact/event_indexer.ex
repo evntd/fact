@@ -143,7 +143,7 @@ defmodule Fact.EventIndexer do
       defp rebuild_index(%{instance: instance, index: index} = state) do
         position = Fact.Storage.read_checkpoint(instance, index)
 
-        Fact.EventReader.read(instance, :all, from_position: position)
+        Fact.EventReader.read(instance, :all, position: position)
         |> Stream.each(&append_index(&1, state))
         |> Stream.run()
       end

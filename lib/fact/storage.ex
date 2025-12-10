@@ -332,7 +332,7 @@ defmodule Fact.Storage do
   end
 
   def last_store_position(instance, :ledger) do
-    do_last_store_position(instance, read_ledger(instance, direction: :backward))
+    do_last_store_position(instance, read_ledger(instance, :backward))
   end
 
   defp do_last_store_position(instance, stream) do

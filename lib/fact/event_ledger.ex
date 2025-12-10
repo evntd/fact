@@ -34,6 +34,7 @@ defmodule Fact.EventLedger do
     data: @event_data,
     id: @event_id,
     metadata: @event_metadata,
+    tags: @event_tags,
     type: @event_type
   }
 
@@ -89,7 +90,7 @@ defmodule Fact.EventLedger do
   end
 
   defp check_query_condition(instance, {query, expected_pos}) do
-    Fact.EventReader.read(instance, query, from_position: expected_pos)
+    Fact.EventReader.read(instance, query, position: expected_pos)
     |> Stream.take(-1)
     |> Enum.at(0)
     |> case do

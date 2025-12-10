@@ -1,11 +1,11 @@
 defmodule Fact.EventReader do
   @moduledoc """
-  Provides a unified, consistent API for reading events from a Fact instance.
+  Provides functions for reading events from a Fact database instance.
 
   `Fact.EventReader` supports three primary sources of events:
 
     * `:all` — reads from the global ledger index in event-store order.
-    * an event stream name (binary) — reads events belonging to a specific stream.
+    * an event stream — reads events belonging to a specific stream.
     * one or more `%Fact.EventQuery{}` structs — executes the query engine and streams results.
 
   All read operations return a lazy `Stream` of `{record_id, event}` tuples, allowing callers
@@ -44,23 +44,28 @@ defmodule Fact.EventReader do
   @spec read(Fact.Types.instance_name(), :all | Fact.Types.event_stream() | Fact.Query.t(), keyword()) :: Enumerable.t()
   def read(instance, event_source, opts \\ [])
 
-  def read(instance, :all, opts) do
+  def read(instance, :all, read_opts) do
     do_read(
       instance,
-      fn -> Fact.Storage.read_ledger(instance, opts) end,
+      fn -> Fact.Storage.read_ledger(instance, Keyword.get(read_opts, :direction, :forward)) end,
       @event_store_position,
-      opts
+      read_opts
     )
   end
 
-  def read(instance, event_stream, opts) when is_binary(event_stream) do
+  def read(instance, event_stream, read_opts) when is_binary(event_stream) do
     do_read(
       instance,
       fn ->
-        Fact.EventIndexerManager.stream!(instance, Fact.EventStreamIndexer, event_stream, opts)
+        Fact.EventIndexerManager.stream!(
+          instance,
+          Fact.EventStreamIndexer,
+          event_stream,
+          read_opts
+        )
       end,
       @event_stream_position,
-      opts
+      read_opts
     )
   end
 
