@@ -1,5 +1,5 @@
 defmodule Fact.Storage.Driver.ByEventId.Test do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Fact.Storage.Driver.ByEventId
 
   # Helper function for encoding

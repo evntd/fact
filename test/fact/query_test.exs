@@ -1,5 +1,5 @@
 defmodule Fact.QueryTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   use Fact.EventKeys
 
   alias Fact.Query

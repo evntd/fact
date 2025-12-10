@@ -1,5 +1,5 @@
 defmodule Fact.Storage.Format.Json.Test do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   doctest Fact.Storage.Format.Json
 
   test "should encode an event to JSON" do
