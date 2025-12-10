@@ -85,7 +85,6 @@ defmodule Fact.EventStreamWriter do
       idle_timer: schedule_idle_timeout()
     }
 
-    Logger.debug("starting #{event_stream} writer")
     {:ok, state, {:continue, :load_position}}
   end
 
@@ -134,8 +133,7 @@ defmodule Fact.EventStreamWriter do
   end
 
   @impl true
-  def handle_info(:idle_timeout, %{event_stream: event_stream} = state) do
-    Logger.debug("stopping #{event_stream} writer")
+  def handle_info(:idle_timeout, state) do
     {:stop, :normal, state}
   end
 

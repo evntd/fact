@@ -67,7 +67,6 @@ defmodule Fact.EventIndexerManager do
 
     case Registry.lookup(:"#{instance}.Fact.EventIndexerRegistry", indexer_key) do
       [] ->
-        Logger.debug("TRY START: #{inspect(spec)}")
         {:ok, indexer} = DynamicSupervisor.start_child(supervisor, spec)
 
         info = %{
@@ -86,8 +85,6 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def handle_cast({:indexer_ready, pid, indexer_key}, state) do
-    Logger.debug("Received :indexer_ready from #{inspect(indexer_key)} at #{inspect(pid)}")
-
     # state book keeping, and extract waiting processes
     {waiters, indexers} =
       Map.get_and_update!(state.indexers, indexer_key, fn info ->
