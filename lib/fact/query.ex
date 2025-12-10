@@ -48,17 +48,19 @@ defmodule Fact.Query do
             end
 
           {:ok, fun}
+
         {:or, queries} ->
-          fun = 
+          fun =
             fn instance ->
               match_funs = Enum.map(queries, fn q -> q.(instance) end)
-  
+
               fn event_id ->
                 Enum.any?(match_funs, fn m -> m.(event_id) end)
               end
             end
-            
+
           {:ok, fun}
+
         {_op, _queries} ->
           {:error, :invalid_op}
       end

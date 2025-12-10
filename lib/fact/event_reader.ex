@@ -41,7 +41,11 @@ defmodule Fact.EventReader do
   @doc """
   Reads events from the ledger, index, or the events matching an `EventQuery`.
   """
-  @spec read(Fact.Types.instance_name(), :all | Fact.Types.event_stream() | Fact.Query.t(), keyword()) :: Enumerable.t()
+  @spec read(
+          Fact.Types.instance_name(),
+          :all | Fact.Types.event_stream() | Fact.Query.t(),
+          keyword()
+        ) :: Enumerable.t()
   def read(instance, event_source, opts \\ [])
 
   def read(instance, :all, read_opts) do

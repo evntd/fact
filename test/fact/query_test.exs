@@ -7,7 +7,7 @@ defmodule Fact.QueryTest do
   @moduletag :capture_log
 
   setup_all do
-    path = "test_" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
+    path = "test_fact_query_" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
     instance = path |> String.to_atom()
 
     on_exit(fn -> File.rm_rf!(path) end)
@@ -326,14 +326,14 @@ defmodule Fact.QueryTest do
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [1, 2])
     end
-    
+
     test "should return correct result set for event type and tag criteria", %{instance: db} do
       {:ok, fun} = Fact.Query.from("StudentSubscribedToCourse", "student:s1", [])
       events = Fact.read(db, fun) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [6])
     end
-    
+
     test "should return correct result set for event type and data criteria", %{instance: db} do
       {:ok, fun} = Fact.Query.from("CourseDefined", [], course_subject_code: "MATH")
       events = Fact.read(db, fun) |> Enum.to_list()
@@ -347,52 +347,56 @@ defmodule Fact.QueryTest do
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [1])
     end
-    
-    test "should return correct result set for event type, tag, and data criteria", %{instance: db} do
+
+    test "should return correct result set for event type, tag, and data criteria", %{
+      instance: db
+    } do
       {:ok, fun} = Fact.Query.from(["CourseDefined"], ["department:d1"], course_number: 126)
       events = Fact.read(db, fun) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [2])
     end
   end
-  
+
   describe "Fact.Query.combine/2" do
     test "should fail given bad op" do
-      assert {:error, :invalid_op} == Fact.Query.combine(:xor, [Fact.Query.from_all(), Fact.Query.from_none()])
+      assert {:error, :invalid_op} ==
+               Fact.Query.combine(:xor, [Fact.Query.from_all(), Fact.Query.from_none()])
     end
-    
+
     test "should fail given no queries" do
       assert {:error, :empty_query_list} == Fact.Query.combine(:and, [])
     end
-    
+
     test "should fail given invalid query" do
-      assert {:error, :non_function_query} == Fact.Query.combine(:and, ["not a query", Fact.Query.from_all()])
+      assert {:error, :non_function_query} ==
+               Fact.Query.combine(:and, ["not a query", Fact.Query.from_all()])
     end
 
     test "should be no op given :and op and single query" do
       fun = Fact.Query.from_all()
       assert {:ok, fun} == Fact.Query.combine(:and, [fun])
     end
-    
+
     test "should return correct result set for combine with :or", %{instance: db} do
       {:ok, query1} = Fact.Query.from_tags("course:c1")
       {:ok, query2} = Fact.Query.from_data(course_subject_code: "MATH")
       {:ok, combined} = Fact.Query.combine(:or, [query1, query2])
       events = Fact.read(db, combined) |> Enum.to_list()
       assert length(events) == 4
-      assert contains_events_at_store_positions(events, [1,4,6,7])
+      assert contains_events_at_store_positions(events, [1, 4, 6, 7])
     end
   end
-  
+
   describe "Fact.Query.combine!/2" do
     test "should fail given bad op" do
       assert_raise ArgumentError, fn ->
         Fact.Query.combine!(:xor, [Fact.Query.from_all(), Fact.Query.from_none()])
-      end 
+      end
     end
 
     test "should fail given no queries" do
-      assert_raise ArgumentError, fn -> 
+      assert_raise ArgumentError, fn ->
         Fact.Query.combine!(:and, [])
       end
     end
@@ -409,7 +413,7 @@ defmodule Fact.QueryTest do
       combined = Fact.Query.combine!(:or, [query1, query2])
       events = Fact.read(db, combined) |> Enum.to_list()
       assert length(events) == 4
-      assert contains_events_at_store_positions(events, [1,4,6,7])
+      assert contains_events_at_store_positions(events, [1, 4, 6, 7])
     end
   end
 end
