@@ -78,6 +78,15 @@ defmodule Fact.EventLedger do
        when expected_pos == position,
        do: do_commit(events, state)
 
+  defp conditional_commit(events, {_query, expected_pos}, %{position: position} = state)
+       when expected_pos > position do
+    Logger.warning(
+      "expected position (#{expected_pos}) is greater than actual position (#{position})"
+    )
+
+    do_commit(events, state)
+  end
+
   defp conditional_commit(
          events,
          {_condition, expected_pos} = condition,

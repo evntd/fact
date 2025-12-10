@@ -97,9 +97,9 @@ defmodule Fact do
           Fact.Types.instance_name(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
-          non_neg_integer(),
+          Fact.Types.event_position(),
           keyword()
-        ) :: {:ok, non_neg_integer()} | {:error, term()}
+        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def append(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
 
   def append(instance, events, nil, after_position, opts),
@@ -136,17 +136,46 @@ defmodule Fact do
     end
   end
 
-  #
-  #  def append(instance, events, boundary \\ nil, append_opts \\ [])
-  #
-  #  def append(instance, events, nil, append_opts),
-  #    do: append(instance, events, Fact.Query.from_none(), append_opts)
-  #
-  #  def append(instance, events, query, append_opts) when is_function(query),
-  #    do: Fact.EventQueryWriter.append(instance, events, query, append_opts)
-  #
-  #  def append(instance, events, event_stream, append_opts) when is_binary(event_stream),
-  #    do: Fact.EventStreamWriter.append(instance, events, event_stream, append_opts)
+  @spec append_stream(
+          Fact.Types.instance_name(),
+          Fact.Types.event() | [Fact.Types.event(), ...],
+          Fact.Types.event_stream(),
+          Fact.Types.event_position() | :any | :none | :exists,
+          keyword()
+        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+  def append_stream(instance, events, event_stream, expected_position \\ :any, opts \\ [])
+
+  def append_stream(instance, event, event_stream, expected_position, opts)
+      when is_map(event) and not is_list(event) do
+    append_stream(instance, [event], event_stream, expected_position, opts)
+  end
+
+  def append_stream(instance, events, event_stream, expected_position, opts) do
+    cond do
+      not is_atom(instance) ->
+        {:error, :invalid_instance}
+
+      not is_list(events) ->
+        {:error, :invalid_event_list}
+
+      not Enum.all?(events, &is_map/1) ->
+        {:error, :invalid_events}
+
+      not Enum.all?(events, &is_map_key(&1, :type)) ->
+        {:error, :missing_event_type}
+
+      not is_binary(event_stream) ->
+        {:error, :invalid_event_stream}
+
+      not (:any == expected_position or :none == expected_position or :exists == expected_position or
+               (is_integer(expected_position) and expected_position >= 0)) ->
+        {:error, :invalid_expected_position}
+
+      true ->
+        append_opts = Keyword.put(opts, :expect, expected_position)
+        Fact.EventStreamWriter.append(instance, events, event_stream, append_opts)
+    end
+  end
 
   def read(instance, event_source, read_opts \\ []) do
     Fact.EventReader.read(instance, event_source, read_opts)
@@ -169,6 +198,10 @@ defmodule Fact do
 
       def append(events, fail_if_match \\ nil, after_position \\ 0, opts \\ []) do
         Fact.append(@instance_name, events, fail_if_match, after_position, opts)
+      end
+
+      def append_stream(events, event_stream, expected_position \\ :any, opts \\ []) do
+        Fact.append_stream(@instance_name, events, event_stream, expected_position, opts)
       end
 
       def read(event_source, read_opts \\ []) do

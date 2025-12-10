@@ -146,7 +146,7 @@ defmodule Fact.EventStreamWriter do
   defp consistent?(expectation, last_pos) do
     case expectation do
       :any -> true
-      :no_stream -> last_pos == 0
+      :none -> last_pos == 0
       :exists -> last_pos > 0
       pos -> last_pos == pos
     end
