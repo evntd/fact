@@ -64,11 +64,12 @@ defmodule Fact.EventStreamWriter do
         {:error, :invalid_event_stream}
 
       not (:any == expected_position or :none == expected_position or :exists == expected_position or
-           (is_integer(expected_position) and expected_position >= 0)) ->
+               (is_integer(expected_position) and expected_position >= 0)) ->
         {:error, :invalid_expected_position}
 
       true ->
         ensure_started(instance, event_stream)
+
         GenServer.call(
           via_event_stream(instance, event_stream),
           {:commit, events, expected_position},
@@ -76,19 +77,6 @@ defmodule Fact.EventStreamWriter do
         )
     end
   end
-
-#  def append(instance, events, event_stream, opts) do
-#    {call_opts, append_opts} = Keyword.split(opts, [:timeout])
-#    timeout = Keyword.get(call_opts, :timeout, 5000)
-#
-#    ensure_started(instance, event_stream)
-#
-#    GenServer.call(
-#      via_event_stream(instance, event_stream),
-#      {:append, events, append_opts},
-#      timeout
-#    )
-#  end
 
   defp ensure_started(instance, event_stream) do
     case Registry.lookup(event_stream_registry(instance), event_stream) do
@@ -136,7 +124,9 @@ defmodule Fact.EventStreamWriter do
     idle_timer = schedule_idle_timeout()
 
     if not consistent?(expect, last_pos) do
-      {:reply, {:error, {:concurrency, expected: expect, actual: last_pos}},
+      {:reply,
+       {:error,
+        Fact.ConcurrencyError.exception(source: event_stream, expected: expect, actual: last_pos)},
        %{state | idle_timer: idle_timer}}
     else
       {enriched_events, end_pos} =

@@ -13,11 +13,6 @@ defmodule Fact.EventLedger do
 
   @type commit_success :: {:ok, Fact.Types.event_position()}
 
-  @type concurrency_error ::
-          {:error,
-           {:concurrency,
-            expected: Fact.Types.event_position(), actual: Fact.Types.event_position()}}
-
   @type query_condition ::
           Fact.EventQuery.t()
           | [Fact.EventQuery.t()]
@@ -148,7 +143,12 @@ defmodule Fact.EventLedger do
         :ok
 
       {_, record} ->
-        {:error, {:concurrency, expected: expected_pos, actual: record[@event_store_position]}}
+        {:error,
+         Fact.ConcurrencyError.exception(
+           source: :all,
+           expected: expected_pos,
+           actual: record[@event_store_position]
+         )}
     end
   end
 
@@ -172,6 +172,7 @@ defmodule Fact.EventLedger do
       enriched_event =
         Map.merge(
           %{
+            @event_data => %{},
             @event_id => Fact.Uuid.v4(),
             @event_metadata => %{},
             @event_tags => [],

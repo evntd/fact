@@ -5,8 +5,6 @@ defmodule FactTest do
 
   @moduletag capture_log: true
 
-  doctest Fact
-
   setup_all do
     path = "test_fact_" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
     instance = path |> String.to_atom()
@@ -69,32 +67,27 @@ defmodule FactTest do
 
     test "should fail when fail_if_match query contains events", %{instance: db} do
       {:ok, query} = Fact.Query.from_tags("test:t3")
+      {:ok, position} = Fact.append(db, %{type: "TestEvent", tags: ["test:t3"]}, query)
 
-      assert {:ok, position} = Fact.append(db, %{type: "TestEvent", tags: ["test:t3"]}, query),
-             "setup for consistency error"
-
-      assert {:error, {:concurrency, [expected: 0, actual: position]}} ==
+      assert {:error, %Fact.ConcurrencyError{source: :all, expected: 0, actual: position}} ==
                Fact.append(db, %{type: "TestEvent", tags: ["test:t3"]}, query)
     end
 
     test "should fail when fail_if_match query contains events after position", %{instance: db} do
       {:ok, query} = Fact.Query.from_tags("test:t4")
+      {:ok, position} = Fact.append(db, %{type: "TestEvent", tags: ["test:t4"]}, query)
+      expectation = position - 1
 
-      assert {:ok, position} = Fact.append(db, %{type: "TestEvent", tags: ["test:t4"]}, query),
-             "setup for consistency error"
-
-      assert {:error, {:concurrency, [expected: position - 1, actual: position]}} ==
-               Fact.append(db, %{type: "TestEvent", tags: ["test:t4"]}, query, position - 1)
+      assert {:error,
+              %Fact.ConcurrencyError{source: :all, expected: expectation, actual: position}} ==
+               Fact.append(db, %{type: "TestEvent", tags: ["test:t4"]}, query, expectation)
     end
 
     test "should append an event when fail_if_match query contains no events after position", %{
       instance: db
     } do
       {:ok, query} = Fact.Query.from_tags("test:t5")
-
-      assert {:ok, position} = Fact.append(db, %{type: "TestEvent", tags: ["test:t5"]}, query),
-             "setup for consistency error"
-
+      {:ok, position} = Fact.append(db, %{type: "TestEvent", tags: ["test:t5"]}, query)
       assert {:ok, _} = Fact.append(db, %{type: "TestEvent", tags: ["test:t5"]}, query, position)
     end
   end
@@ -150,12 +143,13 @@ defmodule FactTest do
     test "should fail to append event given stream exists and :none expected", %{instance: db} do
       assert {:ok, 1} == Fact.append_stream(db, @test_event, "test_stream-4", :none)
 
-      assert {:error, {:concurrency, [expected: :none, actual: 1]}} ==
+      assert {:error, %Fact.ConcurrencyError{source: "test_stream-4", expected: :none, actual: 1}} ==
                Fact.append_stream(db, @test_event, "test_stream-4", :none)
     end
 
     test "should fail to append event to new stream given :exists expected", %{instance: db} do
-      assert {:error, {:concurrency, [expected: :exists, actual: 0]}} ==
+      assert {:error,
+              %Fact.ConcurrencyError{source: "test_stream-5", expected: :exists, actual: 0}} ==
                Fact.append_stream(db, @test_event, "test_stream-5", :exists)
     end
 
@@ -181,7 +175,8 @@ defmodule FactTest do
       {:ok, position} =
         Fact.append_stream(db, [@test_event, @test_event, @test_event], "test_stream-9", 0)
 
-      assert {:error, {:concurrency, [expected: 1, actual: position]}} ==
+      assert {:error,
+              %Fact.ConcurrencyError{source: "test_stream-9", expected: 1, actual: position}} ==
                Fact.append_stream(db, @test_event, "test_stream-9", 1)
     end
   end
@@ -255,27 +250,25 @@ defmodule FactTest do
                TestDb.append(%{type: "TestEvent", tags: ["using_test:t3"]}, query),
              "setup for consistency error"
 
-      assert {:error, {:concurrency, [expected: 0, actual: position]}} ==
+      assert {:error, %Fact.ConcurrencyError{source: :all, expected: 0, actual: position}} ==
                TestDb.append(%{type: "TestEvent", tags: ["using_test:t3"]}, query)
     end
 
     test "should fail when fail_if_match query contains events after position" do
       {:ok, query} = Fact.Query.from_tags("using_test:t4")
+      {:ok, position} = TestDb.append(%{type: "TestEvent", tags: ["using_test:t4"]}, query)
 
-      assert {:ok, position} =
-               TestDb.append(%{type: "TestEvent", tags: ["using_test:t4"]}, query),
-             "setup for consistency error"
+      expectation = position - 1
 
-      assert {:error, {:concurrency, [expected: position - 1, actual: position]}} ==
-               TestDb.append(%{type: "TestEvent", tags: ["using_test:t4"]}, query, position - 1)
+      assert {:error,
+              %Fact.ConcurrencyError{source: :all, expected: expectation, actual: position}} ==
+               TestDb.append(%{type: "TestEvent", tags: ["using_test:t4"]}, query, expectation)
     end
 
     test "should append an event when fail_if_match query contains no events after position" do
       {:ok, query} = Fact.Query.from_tags("using_test:t5")
 
-      assert {:ok, position} =
-               TestDb.append(%{type: "TestEvent", tags: ["using_test:t5"]}, query),
-             "setup for consistency error"
+      {:ok, position} = TestDb.append(%{type: "TestEvent", tags: ["using_test:t5"]}, query)
 
       assert {:ok, _} =
                TestDb.append(%{type: "TestEvent", tags: ["using_test:t5"]}, query, position)
@@ -326,12 +319,13 @@ defmodule FactTest do
     test "should fail to append event given stream exists and :none expected" do
       assert {:ok, 1} == TestDb.append_stream(@test_event, "test_stream-4", :none)
 
-      assert {:error, {:concurrency, [expected: :none, actual: 1]}} ==
+      assert {:error, %Fact.ConcurrencyError{source: "test_stream-4", expected: :none, actual: 1}} ==
                TestDb.append_stream(@test_event, "test_stream-4", :none)
     end
 
     test "should fail to append event to new stream given :exists expected" do
-      assert {:error, {:concurrency, [expected: :exists, actual: 0]}} ==
+      assert {:error,
+              %Fact.ConcurrencyError{source: "test_stream-5", expected: :exists, actual: 0}} ==
                TestDb.append_stream(@test_event, "test_stream-5", :exists)
     end
 
@@ -355,7 +349,8 @@ defmodule FactTest do
       {:ok, position} =
         TestDb.append_stream([@test_event, @test_event, @test_event], "test_stream-9", 0)
 
-      assert {:error, {:concurrency, [expected: 1, actual: position]}} ==
+      assert {:error,
+              %Fact.ConcurrencyError{source: "test_stream-9", expected: 1, actual: position}} ==
                TestDb.append_stream(@test_event, "test_stream-9", 1)
     end
   end

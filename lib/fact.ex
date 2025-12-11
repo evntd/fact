@@ -101,9 +101,59 @@ defmodule Fact do
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def append(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ []) do
-   Fact.EventLedger.commit(instance, events, fail_if_match, after_position, opts)
+    Fact.EventLedger.commit(instance, events, fail_if_match, after_position, opts)
   end
 
+  @doc """
+  Appends one or more events to a stream. This enriches the appended event records with 
+  `stream_id` and `stream_position`.
+
+  * `events` is a single event or list of events. 
+  * `event_stream` is a string that uniquely identifies stream.
+  * `event_position` is a non-negative integer which is used to ensure you can only append 
+    to the stream if it is at the exact `stream_position`. 
+
+    You may also provide one of the following values for different behavior.
+      * `:any` - No check is made, any  
+      * `:none` - Ensures the stream does not exist, this is the first append. Same as expected_position = 0.
+      * `:exists` - Ensures the stream already exists, equivalent to expected_position >= 1.
+
+  ## Examples
+    
+  Append a single event.
+    
+      iex> Fact.start_link(:mydb)
+      {:ok, #PID<0.200.0>}
+    
+      iex> Fact.append_stream(:mydb, %{type: "MyFirstEvent"}, "myteststream")
+      {:ok, 1}
+    
+      iex> Fact.read(:mydb, "myteststream") |> Enum.to_list()
+      [
+        %{
+          "event_data" => %{},
+          "event_id" => "13b92de902c44763aaffd5df6d42036e",                                                                                                                                                                                                                                                               
+          "event_metadata" => %{},                                                                                                                                                                                                                                                                                        
+          "event_tags" => [],                                                                                                                                                                                                                                                                                             
+          "event_type" => "MyTestEvent",                                                                                                                                                                                                                                                                                  
+          "store_position" => 1,                                                                                                                                                                                                                                                                                          
+          "store_timestamp" => 1765434877444299,                                                                                                                                                                                                                                                                          
+          "stream_id" => "myteststream",                                                                                                                                                                                                                                                                                  
+          "stream_position" => 1                                                                                                                                                                                                                                                                                          
+        }                                                                                                                                                                                                                                                                                                                 
+      ]  
+
+  Append another event, expecting correct stream position.
+    
+      iex> Fact.append_stream(:mydb, %{type: "MySecondEvent"}, "myteststream", 1)
+      {:ok, 2}
+    
+  Append a third event, supplying an incorrect stream position.
+    
+      iex> Fact.append_stream(:mydb, %{type: "MyThirdEvent"}, "myteststream", 1)
+      {:error, %Fact.ConcurrencyError{source: "myteststream", actual: 2, expected: 1}}
+
+  """
   @spec append_stream(
           Fact.Types.instance_name(),
           Fact.Types.event() | [Fact.Types.event(), ...],
