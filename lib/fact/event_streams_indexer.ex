@@ -4,7 +4,7 @@ defmodule Fact.EventStreamsIndexer do
   """
   use Fact.EventIndexer
 
-  @index "event_streams"
+  @index "index"
 
   @doc """
   Returns "event_streams" if the event is the first in a stream, otherwise nil.
@@ -13,7 +13,7 @@ defmodule Fact.EventStreamsIndexer do
 
       iex> event = %{"stream_id" => "user-123", "stream_position" => 1}
       iex> Fact.EventStreamsIndexer.index_event(event, [])
-      "event_streams"
+      "index"
 
       iex> event = %{"stream_id" => "user-123", "stream_position" => 5}
       iex> Fact.EventStreamsIndexer.index_event(event, [])
