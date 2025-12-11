@@ -10,7 +10,6 @@ defmodule Fact.EventTagsIndexer do
 
   use Fact.EventIndexer
 
-  @impl true
   @doc """
   Returns the tags defined on the event.
 

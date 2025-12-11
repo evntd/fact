@@ -1,4 +1,4 @@
 defmodule Fact.EventStreamCategoryIndexerTest do
-  @moduledoc false
+  use ExUnit.Case
   doctest Fact.EventStreamCategoryIndexer
 end
