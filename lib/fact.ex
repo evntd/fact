@@ -100,40 +100,8 @@ defmodule Fact do
           Fact.Types.event_position(),
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def append(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
-
-  def append(instance, events, nil, after_position, opts),
-    do: append(instance, events, Fact.Query.from_none(), after_position, opts)
-
-  def append(instance, event, fail_if_match, after_position, opts)
-      when is_map(event) and not is_list(event) do
-    append(instance, [event], fail_if_match, after_position, opts)
-  end
-
-  def append(instance, events, fail_if_match, after_position, opts) do
-    cond do
-      not is_atom(instance) ->
-        {:error, :invalid_instance}
-
-      not is_list(events) ->
-        {:error, :invalid_event_list}
-
-      not Enum.all?(events, &is_map/1) ->
-        {:error, :invalid_events}
-
-      not Enum.all?(events, &is_map_key(&1, :type)) ->
-        {:error, :missing_event_type}
-
-      not is_function(fail_if_match, 1) ->
-        {:error, :invalid_fail_if_match_query}
-
-      not (is_integer(after_position) and after_position >= 0) ->
-        {:error, :invalid_after_position}
-
-      true ->
-        commit_opts = Keyword.put(opts, :condition, {fail_if_match, after_position})
-        Fact.EventLedger.commit(instance, events, commit_opts)
-    end
+  def append(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ []) do
+   Fact.EventLedger.commit(instance, events, fail_if_match, after_position, opts)
   end
 
   @spec append_stream(
@@ -143,38 +111,8 @@ defmodule Fact do
           Fact.Types.event_position() | :any | :none | :exists,
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def append_stream(instance, events, event_stream, expected_position \\ :any, opts \\ [])
-
-  def append_stream(instance, event, event_stream, expected_position, opts)
-      when is_map(event) and not is_list(event) do
-    append_stream(instance, [event], event_stream, expected_position, opts)
-  end
-
-  def append_stream(instance, events, event_stream, expected_position, opts) do
-    cond do
-      not is_atom(instance) ->
-        {:error, :invalid_instance}
-
-      not is_list(events) ->
-        {:error, :invalid_event_list}
-
-      not Enum.all?(events, &is_map/1) ->
-        {:error, :invalid_events}
-
-      not Enum.all?(events, &is_map_key(&1, :type)) ->
-        {:error, :missing_event_type}
-
-      not is_binary(event_stream) ->
-        {:error, :invalid_event_stream}
-
-      not (:any == expected_position or :none == expected_position or :exists == expected_position or
-               (is_integer(expected_position) and expected_position >= 0)) ->
-        {:error, :invalid_expected_position}
-
-      true ->
-        append_opts = Keyword.put(opts, :expect, expected_position)
-        Fact.EventStreamWriter.append(instance, events, event_stream, append_opts)
-    end
+  def append_stream(instance, events, event_stream, expected_position \\ :any, opts \\ []) do
+    Fact.EventStreamWriter.commit(instance, events, event_stream, expected_position, opts)
   end
 
   def read(instance, event_source, read_opts \\ []) do

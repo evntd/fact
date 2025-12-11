@@ -48,11 +48,52 @@ defmodule Fact.EventLedger do
     GenServer.start_link(__MODULE__, instance, genserver_opts)
   end
 
-  @spec commit(atom, [Fact.Types.event()], commit_opts()) ::
-          commit_success | concurrency_error | write_events_error | write_ledger_error
-  def commit(instance, events, commit_opts \\ []) do
-    timeout = Keyword.get(commit_opts, :timeout, 5000)
-    GenServer.call(via(instance, __MODULE__), {:commit, events, commit_opts}, timeout)
+  @spec commit(
+          Fact.Types.instance_name(),
+          Fact.Types.event() | [Fact.Types.event(), ...],
+          Fact.Query.t(),
+          Fact.Types.event_position(),
+          keyword()
+        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+  def commit(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
+
+  def commit(instance, events, nil, after_position, opts),
+    do: commit(instance, events, Fact.Query.from_none(), after_position, opts)
+
+  def commit(instance, event, fail_if_match, after_position, opts)
+      when is_map(event) and not is_list(event) do
+    commit(instance, [event], fail_if_match, after_position, opts)
+  end
+
+  def commit(instance, events, fail_if_match, after_position, opts) do
+    cond do
+      not is_atom(instance) ->
+        {:error, :invalid_instance}
+
+      not is_list(events) ->
+        {:error, :invalid_event_list}
+
+      not Enum.all?(events, &is_map/1) ->
+        {:error, :invalid_events}
+
+      not Enum.all?(events, &is_map_key(&1, :type)) ->
+        {:error, :missing_event_type}
+
+      not is_function(fail_if_match, 1) ->
+        {:error, :invalid_fail_if_match_query}
+
+      not (is_integer(after_position) and after_position >= 0) ->
+        {:error, :invalid_after_position}
+
+      true ->
+        timeout = Keyword.get(opts, :timeout, 5000)
+
+        GenServer.call(
+          via(instance, __MODULE__),
+          {:commit, events, condition: {fail_if_match, after_position}},
+          timeout
+        )
+    end
   end
 
   @impl true

@@ -32,31 +32,63 @@ defmodule Fact.EventStreamWriter do
     GenServer.start_link(__MODULE__, [instance: instance, event_stream: event_stream], start_opts)
   end
 
-  @spec append(
-          instance :: atom(),
-          events :: list(Fact.Types.event()) | Fact.Types.event(),
-          event_stream :: String.t(),
-          opts :: keyword
-        ) ::
-          {:ok, pos_integer()} | {:error, term()}
+  @spec commit(
+          Fact.Types.instance_name(),
+          Fact.Types.event() | [Fact.Types.event(), ...],
+          Fact.Types.event_stream(),
+          Fact.Types.event_position() | :any | :none | :exists,
+          keyword()
+        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+  def commit(instance, events, event_stream, expected_position \\ :any, opts \\ [])
 
-  def append(instance, events, event_stream, opts \\ [])
-
-  def append(instance, %{} = event, event_stream, opts),
-    do: append(instance, [event], event_stream, opts)
-
-  def append(instance, events, event_stream, opts) do
-    {call_opts, append_opts} = Keyword.split(opts, [:timeout])
-    timeout = Keyword.get(call_opts, :timeout, 5000)
-
-    ensure_started(instance, event_stream)
-
-    GenServer.call(
-      via_event_stream(instance, event_stream),
-      {:append, events, append_opts},
-      timeout
-    )
+  def commit(instance, event, event_stream, expected_position, opts)
+      when is_map(event) and not is_list(event) do
+    commit(instance, [event], event_stream, expected_position, opts)
   end
+
+  def commit(instance, events, event_stream, expected_position, opts) do
+    cond do
+      not is_atom(instance) ->
+        {:error, :invalid_instance}
+
+      not is_list(events) ->
+        {:error, :invalid_event_list}
+
+      not Enum.all?(events, &is_map/1) ->
+        {:error, :invalid_events}
+
+      not Enum.all?(events, &is_map_key(&1, :type)) ->
+        {:error, :missing_event_type}
+
+      not is_binary(event_stream) ->
+        {:error, :invalid_event_stream}
+
+      not (:any == expected_position or :none == expected_position or :exists == expected_position or
+           (is_integer(expected_position) and expected_position >= 0)) ->
+        {:error, :invalid_expected_position}
+
+      true ->
+        ensure_started(instance, event_stream)
+        GenServer.call(
+          via_event_stream(instance, event_stream),
+          {:commit, events, expected_position},
+          Keyword.get(opts, :timeout, 5000)
+        )
+    end
+  end
+
+#  def append(instance, events, event_stream, opts) do
+#    {call_opts, append_opts} = Keyword.split(opts, [:timeout])
+#    timeout = Keyword.get(call_opts, :timeout, 5000)
+#
+#    ensure_started(instance, event_stream)
+#
+#    GenServer.call(
+#      via_event_stream(instance, event_stream),
+#      {:append, events, append_opts},
+#      timeout
+#    )
+#  end
 
   defp ensure_started(instance, event_stream) do
     case Registry.lookup(event_stream_registry(instance), event_stream) do
@@ -96,14 +128,12 @@ defmodule Fact.EventStreamWriter do
 
   @impl true
   def handle_call(
-        {:append, events, opts},
+        {:commit, events, expect},
         _from,
         %{instance: instance, event_stream: event_stream, last_pos: last_pos} = state
       ) do
     cancel_idle_timeout(state.idle_timer)
     idle_timer = schedule_idle_timeout()
-
-    expect = Keyword.get(opts, :expect, :any)
 
     if not consistent?(expect, last_pos) do
       {:reply, {:error, {:concurrency, expected: expect, actual: last_pos}},
