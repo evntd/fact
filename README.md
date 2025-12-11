@@ -17,25 +17,25 @@ end
 ## Basic Usage
 
 ```elixir
-iex(1)> Fact.start_link(:mydb)
+iex> Fact.start_link(:mydb)
 {:ok, #PID<0.1042.0>}
 
-iex(2)> event = %{
-...(2)>   type: "EventSourcingJourneyStarted", 
-...(2)>   data: %{ 
-...(2)>     user_id: System.get_env("USER"), 
-...(2)>     started_at: DateTime.utc_now() |> DateTime.to_unix(:millisecond)
-...(2)>   }
-...(2)> }
+iex> event = %{
+...>   type: "EventSourcingJourneyStarted", 
+...>   data: %{ 
+...>     user_id: System.get_env("USER"), 
+...>     started_at: DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+...>   }
+...> }
 %{
   data: %{started_at: 1765038776528, user_id: "jake"},
   type: "EventSourcingJourneyStarted"
 }
 
-iex(3)> {:ok, position} = Fact.append_stream(:mydb, event, "esjourney-1")
+iex> {:ok, position} = Fact.append_stream(:mydb, event, "esjourney-1")
 {:ok, 1}
 
-iex(4)> Fact.read(:mydb, "esjourney-1") |> Enum.to_list()
+iex> Fact.read(:mydb, "esjourney-1") |> Enum.to_list()
 [
   %{
     "event_data" => %{"started_at" => 1765038776528, "user_id" => "jake"},
