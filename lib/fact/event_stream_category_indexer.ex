@@ -1,70 +1,38 @@
 defmodule Fact.EventStreamCategoryIndexer do
   @moduledoc """
-  An event indexer that extracts the *category* portion of an event's stream name.
-
-  This module implements the `Fact.EventIndexer` behaviour and derives an index
-  value from the event's stream identifier. It is useful in systems where event
-  streams follow a naming convention such as:
-
-      "category-id"
-      "user-123"
-      "order-987"
-      "cart-4567"
-
-  The indexer splits the stream name on a separator (default: `"-"`) and returns
-  only the first segment. This allows grouping or querying events by stream
-  category rather than by the full stream identifier.
-
-  ## Configuration
-
-  The separator can be overridden via the `:separator` option:
-
-      separator: ":"
-
+  Indexes events by the *category* portion of an event stream, by splitting the string on a 
+  specified separator (default :`"-"`) and returns the first segment.
   """
   use Fact.EventIndexer
 
-  @impl true
   @doc """
-  Extracts the category portion of the event's stream name.
+  Extracts a category from an event stream id.
 
-  ## Parameters
+  ## Options
 
-    * `event` — an event.
-    * `opts` — indexing options.
-      * `:separator` — optional delimiter used to split the stream name.
+    * `:separator` - optional delimiter used to split the stream name.
         Defaults to `"-"`.
-
-  ## Returns
-
-    * the category portion of the stream (the first segment before the separator)
-    * `nil` if the event has no stream value
 
   ## Examples
 
-      iex> event = %{"stream" => "user-123"}
+      iex> event = %{"event_type" => "TestEvent", "stream_id" => "user-123"}
       iex> Fact.EventStreamCategoryIndexer.index_event(event, [])
       "user"
 
-      iex> event = %{"stream" => "order:987"}
+      iex> event = %{"event_type" => "TestEvent", "stream_id" => "order:987"}
       iex> Fact.EventStreamCategoryIndexer.index_event(event, separator: ":")
       "order"
 
-      iex> event = %{"stream" => nil}
+      iex> event = %{"event_type" => "TestEvent"}
       iex> Fact.EventStreamCategoryIndexer.index_event(event, [])
       nil
 
   """
-  def index_event(event, opts) do
+  @impl true
+  def index_event(%{@event_stream => stream}, opts) do
     separator = Keyword.get(opts, :separator, "-")
-
-    case event[@event_stream] do
-      nil ->
-        nil
-
-      stream ->
-        String.split(stream, separator, parts: 2)
-        |> List.first()
-    end
+    stream |> String.split(separator, parts: 2) |> List.first()
   end
+
+  def index_event(_event, _opts), do: nil
 end
