@@ -5,6 +5,8 @@ defmodule Fact.EventStreamCategoryIndexer do
   """
   use Fact.EventIndexer
 
+  @default_separator "-"
+
   @doc """
   Extracts a category from an event stream id.
 
@@ -30,7 +32,7 @@ defmodule Fact.EventStreamCategoryIndexer do
   """
   @impl true
   def index_event(%{@event_stream => stream}, opts) do
-    separator = Keyword.get(opts, :separator, "-")
+    separator = Keyword.get(opts, :separator, @default_separator)
     stream |> String.split(separator, parts: 2) |> List.first()
   end
 
