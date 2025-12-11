@@ -10,7 +10,6 @@ defmodule Fact.EventTypeIndexer do
   """
   use Fact.EventIndexer
 
-  @impl true
   @doc """
   Retrieves the type of the event.
 
@@ -34,5 +33,6 @@ defmodule Fact.EventTypeIndexer do
       iex> Fact.EventTypeIndexer.index_event(event, [])
       "InvoiceSent"
   """
+  @impl true
   def index_event(event, _opts), do: event[@event_type]
 end

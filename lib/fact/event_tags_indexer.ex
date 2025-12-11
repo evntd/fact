@@ -39,5 +39,6 @@ defmodule Fact.EventTagsIndexer do
       nil
 
   """
+  @impl true
   def index_event(%{@event_tags => tags}, _opts), do: tags
 end

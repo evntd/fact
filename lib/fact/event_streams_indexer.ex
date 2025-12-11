@@ -5,8 +5,7 @@ defmodule Fact.EventStreamsIndexer do
   use Fact.EventIndexer
 
   @index "event_streams"
-  
-  @impl true
+
   @doc """
   Returns "event_streams" if the event is the first in a stream, otherwise nil.
 
@@ -24,6 +23,7 @@ defmodule Fact.EventStreamsIndexer do
       nil
 
   """
+  @impl true
   def index_event(%{@event_stream_position => 1} = _event, _opts), do: @index
   def index_event(_event, _opts), do: nil
 end

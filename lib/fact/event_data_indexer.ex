@@ -18,7 +18,6 @@ defmodule Fact.EventDataIndexer do
   """
   use Fact.EventIndexer
 
-  @impl true
   @doc """
   Retrieves the value for the configured `:key` from the event's data payload.
 
@@ -44,6 +43,7 @@ defmodule Fact.EventDataIndexer do
       nil
 
   """
+  @impl true
   def index_event(%{@event_data => data} = _event, opts) do
     key = Keyword.fetch!(opts, :key)
 

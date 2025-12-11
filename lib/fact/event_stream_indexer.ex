@@ -13,7 +13,6 @@ defmodule Fact.EventStreamIndexer do
   """
   use Fact.EventIndexer
 
-  @impl true
   @doc """
   Retrieves the stream name of the given event.
 
@@ -37,6 +36,7 @@ defmodule Fact.EventStreamIndexer do
       nil
 
   """
+  @impl true
   def index_event(event, _opts), do: event[@event_stream]
 
   @doc """
