@@ -1,7 +1,9 @@
 defmodule Fact.MixProject do
   use Mix.Project
 
+  @name "Fact"
   @version "0.0.1"
+  @source_url "https://github.com/evntd/fact"
 
   def project do
     [
@@ -13,19 +15,18 @@ defmodule Fact.MixProject do
       description: description(),
       docs: docs(),
       package: package(),
-      name: "Fact",
-      source_url: "https://github.com/evntd/fact"
+      name: @name,
+      source_url: @source_url,
+      test_coverage: test_coverage()
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:uuid, "~> 2.0", hex: :uuid_erl},
@@ -53,8 +54,20 @@ defmodule Fact.MixProject do
       maintainers: ["Jake Bruun"],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/evntd/fact"
+        "GitHub" => @source_url
       }
+    ]
+  end
+  
+  defp test_coverage do
+    [
+      ignore_modules: [
+        Fact.EventIndexer,
+        Fact.IndexFileReader.Backwards.Chunked
+      ],   
+      summary: [
+        threshold: 80
+      ]
     ]
   end
 end
