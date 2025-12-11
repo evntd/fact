@@ -8,7 +8,7 @@ defmodule Fact.ConcurrencyError do
   * `:expected` - the expectation or position during the append operation
   * `:actual` - the actual position during the append operation
   """
-  
+
   defexception [:source, :expected, :actual]
 
   @impl true
