@@ -65,7 +65,7 @@ defmodule Fact.EventReader do
           instance,
           Fact.EventStreamIndexer,
           event_stream,
-          read_opts
+          Keyword.get(read_opts, :direction, :forward)
         )
       end,
       @event_stream_position,
@@ -79,6 +79,22 @@ defmodule Fact.EventReader do
       fn ->
         Fact.Storage.read_ledger(instance, Keyword.get(read_opts, :direction, :forward))
         |> Stream.filter(&query.(instance).(&1))
+      end,
+      @event_store_position,
+      read_opts
+    )
+  end
+
+  def read_index(instance, indexer, index, read_opts) do
+    do_read(
+      instance,
+      fn ->
+        Fact.EventIndexerManager.stream!(
+          instance,
+          indexer,
+          index,
+          Keyword.get(read_opts, :direction, :forward)
+        )
       end,
       @event_store_position,
       read_opts

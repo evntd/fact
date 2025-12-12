@@ -36,12 +36,13 @@ defmodule Fact.Supervisor do
     default_opts = [instance: instance]
 
     [
-      {Fact.EventStreamIndexer, default_opts},
-      {Fact.EventTypeIndexer, default_opts},
-      {Fact.EventTagsIndexer, default_opts},
       {Fact.EventDataIndexer, default_opts ++ [encoding: {:hash, :sha}, enabled: false]},
-      {Fact.EventStreamCategoryIndexer, default_opts ++ [enabled: false]},
-      {Fact.EventStreamsIndexer, default_opts ++ [enabled: false]}
+      {Fact.EventStreamIndexer, default_opts},
+      {Fact.EventTagsIndexer, default_opts},
+      {Fact.EventTypeIndexer, default_opts},      
+      {Fact.EventStreamCategoryIndexer, default_opts},
+      {Fact.EventStreamsByCategoryIndexer, default_opts},
+      {Fact.EventStreamsIndexer, default_opts}
     ]
   end
 end

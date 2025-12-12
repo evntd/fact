@@ -58,13 +58,13 @@ defmodule Fact.MixProject do
       }
     ]
   end
-  
+
   defp test_coverage do
     [
       ignore_modules: [
         Fact.EventIndexer,
         Fact.IndexFileReader.Backwards.Chunked
-      ],   
+      ],
       summary: [
         threshold: 80
       ]

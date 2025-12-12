@@ -128,10 +128,10 @@ defmodule Fact.EventIndexer do
       This is used by `Fact.Storage.read_index/4` and similar APIs.
       """
       def handle_cast(
-            {:stream!, value, caller, stream_opts},
+            {:stream!, value, caller, direction},
             %{instance: instance, index: index} = state
           ) do
-        event_ids = Fact.Storage.read_index(instance, index, value, stream_opts)
+        event_ids = Fact.Storage.read_index(instance, index, value, direction)
         GenServer.reply(caller, event_ids)
         {:noreply, state}
       end

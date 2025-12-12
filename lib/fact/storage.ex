@@ -236,30 +236,15 @@ defmodule Fact.Storage do
   end
 
   def read_ledger(instance, direction),
-    do: read_index(instance, ledger_path(instance), direction)
+    do: read_index_file(instance, ledger_path(instance), direction)
 
-  @doc """
-  Reads an index based on the given direction and path or key.
-
-  There are three forms:
-    * `read_index(instance, index, key, opts)` – lookup by index key
-    * `read_index(instance, :ledger, opts)` – read the ledger index
-    * `read_index(instance, path, direction)` – read raw index file
-
-  Depending on the direction (`:forward` or `:backward`), this yields a stream of
-  record IDs. Backwards reading uses `Fact.IndexFileReader.Backwards.Line` to
-  avoid loading the entire file into memory.
-  """
-  def read_index(instance, index, key, read_opts) do
-    encode_path = get_index_path_encoder(instance, index)
-    encoded_path = encode_path.(key)
-    read_index(instance, encoded_path, Keyword.get(read_opts, :direction, :forward))
+  def read_index(instance, indexer, index, direction) do
+    encode_path = get_index_path_encoder(instance, indexer)
+    encoded_path = encode_path.(index)
+    read_index_file(instance, encoded_path, direction)
   end
 
-  def read_index(instance, index, read_opts) when is_list(read_opts),
-    do: read_index(instance, index, Keyword.get(read_opts, :direction, :forward))
-
-  def read_index(instance, path, :backward) do
+  defp read_index_file(instance, path, :backward) do
     if File.exists?(path) do
       driver = driver(instance)
       Fact.IndexFileReader.Backwards.Line.read(driver.record_id_length(), path)
@@ -268,7 +253,7 @@ defmodule Fact.Storage do
     end
   end
 
-  def read_index(instance, path, :forward) do
+  defp read_index_file(instance, path, :forward) do
     if File.exists?(path) do
       length = driver(instance).record_id_length()
       File.stream!(path) |> Stream.map(&String.slice(&1, 0, length))
@@ -276,9 +261,6 @@ defmodule Fact.Storage do
       empty_stream()
     end
   end
-
-  def read_index(_instance, _path, direction),
-    do: raise(ArgumentError, "unknown direction #{inspect(direction)}")
 
   def read_checkpoint(instance, index) do
     path = get_checkpoint_path(instance, index)
@@ -327,8 +309,8 @@ defmodule Fact.Storage do
     File.write(index_file, iodata, [:append])
   end
 
-  def last_store_position(instance, index, key) do
-    do_last_store_position(instance, read_index(instance, index, key, direction: :backward))
+  def last_store_position(instance, indexer, index) do
+    do_last_store_position(instance, read_index(instance, indexer, index, direction: :backward))
   end
 
   def last_store_position(instance, :ledger) do
