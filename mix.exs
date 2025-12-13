@@ -20,6 +20,12 @@ defmodule Fact.MixProject do
       test_coverage: test_coverage()
     ]
   end
+  
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
 
   defp deps do
     [
