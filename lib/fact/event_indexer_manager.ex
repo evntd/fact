@@ -54,7 +54,7 @@ defmodule Fact.EventIndexerManager do
   @impl true
   def handle_cast(
         {:start_indexer, spec},
-        %{instance: instance, indexers: indexers} = state
+        %__MODULE__{instance: instance, indexers: indexers} = state
       ) do
     indexer_key = get_indexer_key(spec)
 
@@ -78,7 +78,7 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
-  def handle_cast({:indexer_ready, pid, indexer_key}, state) do
+  def handle_cast({:indexer_ready, pid, indexer_key}, %__MODULE__{} = state) do
     # state book keeping, and extract waiting processes
     {waiters, indexers} =
       Map.get_and_update!(state.indexers, indexer_key, fn info ->
@@ -96,7 +96,7 @@ defmodule Fact.EventIndexerManager do
   def handle_call(
         {:ensure_indexer, indexer},
         from,
-        %{instance: instance, indexers: indexers} = state
+        %__MODULE__{instance: instance, indexers: indexers} = state
       ) do
     case Map.get(indexers, indexer) do
       # Not started
