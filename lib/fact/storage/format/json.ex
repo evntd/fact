@@ -43,11 +43,11 @@ defmodule Fact.Storage.Format.Json do
 
   @impl true
   def encode(event) do
-    JSON.encode!(event)
+    Fact.JSON.encode!(event)
   end
 
   @impl true
   def decode(encoded_event) do
-    JSON.decode!(encoded_event)
+    Fact.JSON.decode!(encoded_event)
   end
 end

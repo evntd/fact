@@ -21,14 +21,9 @@ defmodule Fact.MixProject do
     ]
   end
 
-  def application do
-    [
-      extra_applications: [:logger]
-    ]
-  end
-
   defp deps do
     [
+      {:jason, "~> 1.4", optional: true},
       {:uuid, "~> 2.0", hex: :uuid_erl},
 
       # Tools
