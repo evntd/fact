@@ -101,7 +101,7 @@ defmodule Fact.Storage do
          {:module, _driver_module} <- Code.ensure_loaded(driver),
          {:module, _format_module} <- Code.ensure_loaded(format) do
       setup_table(instance, path, driver, format)
-      {:ok, self(), :ignore}
+      {:ok, self()}
     end
   end
 

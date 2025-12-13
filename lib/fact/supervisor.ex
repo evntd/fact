@@ -19,8 +19,8 @@ defmodule Fact.Supervisor do
 
     children = [
       {Registry, keys: :unique, name: registry(instance)},
-      {Registry, keys: :unique, name: event_stream_registry(instance)},
-      {Registry, keys: :unique, name: event_indexer_registry(instance)},
+      {DynamicSupervisor,
+       strategy: :one_for_one, name: via(instance, Fact.EventIndexerSupervisor)},
       {Fact.EventPublisher, []},
       {Fact.Storage, storage_opts},
       {Fact.EventLedger, [instance: instance]},
@@ -39,7 +39,7 @@ defmodule Fact.Supervisor do
       {Fact.EventDataIndexer, default_opts ++ [encoding: {:hash, :sha}, enabled: false]},
       {Fact.EventStreamIndexer, default_opts},
       {Fact.EventTagsIndexer, default_opts},
-      {Fact.EventTypeIndexer, default_opts},      
+      {Fact.EventTypeIndexer, default_opts},
       {Fact.EventStreamCategoryIndexer, default_opts},
       {Fact.EventStreamsByCategoryIndexer, default_opts},
       {Fact.EventStreamsIndexer, default_opts}

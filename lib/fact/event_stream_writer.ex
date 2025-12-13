@@ -28,7 +28,7 @@ defmodule Fact.EventStreamWriter do
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
     event_stream = Keyword.fetch!(opts, :event_stream)
-    start_opts = Keyword.put(opts, :name, via_event_stream(instance, event_stream))
+    start_opts = Keyword.put(opts, :name, via(instance, event_stream))
     GenServer.start_link(__MODULE__, [instance: instance, event_stream: event_stream], start_opts)
   end
 
@@ -71,7 +71,8 @@ defmodule Fact.EventStreamWriter do
         ensure_started(instance, event_stream)
 
         GenServer.call(
-          via_event_stream(instance, event_stream),
+          #via_event_stream(instance, event_stream),
+          via(instance, event_stream),
           {:commit, events, expected_position},
           Keyword.get(opts, :timeout, 5000)
         )
@@ -79,7 +80,7 @@ defmodule Fact.EventStreamWriter do
   end
 
   defp ensure_started(instance, event_stream) do
-    case Registry.lookup(event_stream_registry(instance), event_stream) do
+    case Registry.lookup(registry(instance), event_stream) do
       [] ->
         DynamicSupervisor.start_child(
           via(instance, Fact.EventStreamWriterSupervisor),

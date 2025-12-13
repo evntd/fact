@@ -5,7 +5,7 @@ defmodule Fact.EventIndexerManager do
 
   @type indexer_status :: :stopped | :starting | :started | :ready
 
-  defstruct [:instance, supervisor: nil, indexers: %{}, indexer_specs: []]
+  defstruct [:instance, indexers: %{}, indexer_specs: []]
 
   def start_link(opts) do
     {indexer_opts, genserver_opts} = Keyword.split(opts, [:instance, :indexers])
@@ -25,15 +25,8 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def init({instance, indexers}) do
-    {:ok, supervisor} =
-      DynamicSupervisor.start_link(
-        strategy: :one_for_one,
-        name: via(instance, Fact.EventIndexerSupervisor)
-      )
-
     state = %__MODULE__{
       instance: instance,
-      supervisor: supervisor,
       indexers: %{},
       indexer_specs: indexers
     }
@@ -61,13 +54,14 @@ defmodule Fact.EventIndexerManager do
   @impl true
   def handle_cast(
         {:start_indexer, spec},
-        %{instance: instance, supervisor: supervisor, indexers: indexers} = state
+        %{instance: instance, indexers: indexers} = state
       ) do
     indexer_key = get_indexer_key(spec)
 
-    case Registry.lookup(:"#{instance}.Fact.EventIndexerRegistry", indexer_key) do
+    case Registry.lookup(registry(instance), indexer_key) do
       [] ->
-        {:ok, indexer} = DynamicSupervisor.start_child(supervisor, spec)
+        {:ok, indexer} =
+          DynamicSupervisor.start_child(via(instance, Fact.EventIndexerSupervisor), spec)
 
         info = %{
           pid: indexer,
@@ -127,7 +121,7 @@ defmodule Fact.EventIndexerManager do
               opts =
                 base_opts
                 |> Keyword.put_new(:instance, instance)
-                |> Keyword.put(:name, via_indexer(instance, indexer))
+                |> Keyword.put(:name, via(instance, indexer))
                 |> maybe_put_key(maybe_key)
 
               spec = {mod, opts}
