@@ -28,14 +28,31 @@ jobs:
         include:
           - elixir: 1.19.x
             otp: 28
+            check_format: true
+            
           - elixir: 1.18.x
             otp: 27
+            check_format: true
+            
           - elixir: 1.17.x
             otp: 27
+            check_format: true
+            
           - elixir: 1.16.x
             otp: 26
+            check_format: true
+            
           - elixir: 1.15.x
             otp: 26
+            check_format: true
+            
+          - elixir: 1.14.x
+            otp: 26
+            check_format: false
+            
+          - elixir: 1.13.x
+            otp: 25
+            check_format: false
 
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +75,7 @@ jobs:
         run: mix do deps.get, deps.compile
         
       - name: Check formatting
+        if: ${{ matrix.check_format }}
         run: mix format --check-formatted
         
       - name: Check compilation
