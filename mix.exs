@@ -9,7 +9,7 @@ defmodule Fact.MixProject do
     [
       app: :fact,
       version: @version,
-      elixir: "~> 1.18",
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
