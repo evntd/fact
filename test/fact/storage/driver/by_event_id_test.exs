@@ -3,7 +3,7 @@ defmodule Fact.Storage.Driver.ByEventId.Test do
   doctest Fact.Storage.Driver.ByEventId
 
   # Helper function for encoding
-  def encode(event), do: JSON.encode!(event)
+  def encode(event), do: Fact.Json.encode!(event)
 
   test "`record_id_length/0` should return length of hex formatted uuid" do
     assert 32 == Fact.Storage.Driver.ByEventId.record_id_length()

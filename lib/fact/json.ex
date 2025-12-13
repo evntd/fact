@@ -1,8 +1,8 @@
-defmodule Fact.JSON do
+defmodule Fact.Json do
   @moduledoc false
 
   cond do
-    Code.ensure_loaded?(JSON) ->
+    Code.ensure_loaded?(Elixir.JSON) ->
       def encode!(term), do: Elixir.JSON.encode!(term)
       def decode!(json), do: Elixir.JSON.decode!(json)
 

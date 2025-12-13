@@ -34,7 +34,7 @@ defmodule Fact.Storage.Driver.ByEventId do
 
   ## Examples
 
-      iex> encode = fn evt -> JSON.encode!(evt) end
+      iex> encode = fn evt -> Fact.Json.encode!(evt) end
       iex> event = %{"event_id" => "abc123", "event_data" => %{}}
       iex> Fact.Storage.Driver.ByEventId.prepare_record(event, encode)
       {:error, {:invalid_record_id, "abc123"}}
