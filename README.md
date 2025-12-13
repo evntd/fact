@@ -10,6 +10,21 @@
 
 A file system based event store.
 
+## Features
+
+- Traditional event sourcing capabilities:
+    - Append events to stream
+    - Read events from stream
+    - Read events from store (i.e. all)
+    - Subscribe to event stream
+    - Subscribe to store
+- Compliant with the [Dynamic Consistency Boundary specification](https://dcb.events/specification/).
+    - Append events using a **fail_if_match** query and optional **after_position**.
+    - Read events using a query.
+- Supports multiple instances for siloed isolation in multi-tenancy setups.
+- Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage).
+- Backup store contents to compressed file.
+
 ## Installation
 
 The package can be installed by adding `fact` to your list of dependencies in `mix.exs`:
