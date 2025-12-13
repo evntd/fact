@@ -2,6 +2,8 @@
 
 A file system based event store.
 
+[![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
+
 ## Installation
 
 The package can be installed by adding `fact` to your list of dependencies in `mix.exs`:
