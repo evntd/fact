@@ -71,7 +71,7 @@ defmodule Fact.EventStreamWriter do
         ensure_started(instance, event_stream)
 
         GenServer.call(
-          #via_event_stream(instance, event_stream),
+          # via_event_stream(instance, event_stream),
           via(instance, event_stream),
           {:commit, events, expected_position},
           Keyword.get(opts, :timeout, 5000)
