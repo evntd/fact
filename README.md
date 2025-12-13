@@ -1,8 +1,14 @@
+[![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
+
+<div>
+    <p align="center">
+        <img alt="logo" src=".github/assets/logo.png" width="600">
+    </p>
+</div>
+
 # Fact
 
 A file system based event store.
-
-[![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
 
 ## Installation
 
