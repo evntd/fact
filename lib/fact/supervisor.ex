@@ -21,7 +21,7 @@ defmodule Fact.Supervisor do
       {Registry, keys: :unique, name: registry(instance)},
       {DynamicSupervisor,
        strategy: :one_for_one, name: via(instance, Fact.EventIndexerSupervisor)},
-      {Fact.EventPublisher, []},
+      {Phoenix.PubSub, name: instance},
       {Fact.Storage, storage_opts},
       {Fact.EventLedger, [instance: instance]},
       {Fact.EventIndexerManager, [instance: instance, indexers: indexers]},

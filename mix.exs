@@ -30,6 +30,7 @@ defmodule Fact.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4", optional: true},
+      {:phoenix_pubsub, "~> 2.2"},
       {:uuid, "~> 2.0", hex: :uuid_erl},
 
       # Tools

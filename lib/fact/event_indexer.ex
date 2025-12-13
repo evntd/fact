@@ -109,13 +109,13 @@ defmodule Fact.EventIndexer do
       @impl true
       def handle_continue(:rebuild_and_join, %{instance: instance, index: index} = state) do
         rebuild_index(state)
-        :ok = Fact.EventPublisher.subscribe(instance, self())
+        :ok = Fact.EventPublisher.subscribe(instance)
         notify_ready(state)
         {:noreply, state}
       end
 
       @impl true
-      def handle_info({:appended, {_, event} = record}, state) do
+      def handle_info({:event_record, {_, event} = record}, state) do
         append_index(record, state)
         {:noreply, state}
       end
