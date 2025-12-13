@@ -18,12 +18,13 @@ A file system based event store.
     - Read events from store (i.e. all)
     - Subscribe to event stream
     - Subscribe to store
-- Compliant with the [Dynamic Consistency Boundary specification](https://dcb.events/specification/).
-    - Append events using a **fail_if_match** query and optional **after_position**.
-    - Read events using a query.
-- Supports multiple instances for siloed isolation in multi-tenancy setups.
-- Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage).
-- Backup store contents to compressed file.
+- Compliant with the [Dynamic Consistency Boundary specification](https://dcb.events/specification/)
+    - Append events using a **fail_if_match** query and optional **after_position**
+    - Read events using a query
+- Just-in-time indexing for event data queries.
+- Supports multiple instances for siloed isolation in multi-tenancy setups
+- Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage)
+- Backup store contents to compressed file
 
 ## Installation
 
