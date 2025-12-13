@@ -2,7 +2,7 @@
 
 <div>
     <p align="center">
-        <img alt="logo" src=".github/assets/logo.png" width="600">
+        <img alt="logo" src=".github/assets/logo.png" width="400">
     </p>
 </div>
 
