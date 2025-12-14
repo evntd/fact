@@ -81,10 +81,6 @@ defmodule Fact.CatchUpSubscription do
 
   @impl true
   def handle_info(:replay, state) do
-    Logger.debug(
-      "[#{__MODULE__}] replay events from #{inspect(state.source)} #{state.position} to #{state.high_water_mark}"
-    )
-
     Fact.EventReader.read(state.instance, state.source,
       position: min(state.position, state.high_water_mark),
       direction: :forward
@@ -93,8 +89,6 @@ defmodule Fact.CatchUpSubscription do
       event_position(event, state.source) <= state.high_water_mark
     end)
     |> Enum.each(&deliver(&1, state))
-
-    Logger.debug("[#{__MODULE__}] replay complete from #{inspect(state.source)}")
 
     # Flush any buffered live events in order
     state.buffer
@@ -127,10 +121,6 @@ defmodule Fact.CatchUpSubscription do
 
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, _reason}, %{subscriber: pid} = state) do
-    Logger.debug(
-      "[Fact.CatchUpSubscription] Subscriber exited, shutting down source=#{inspect(state.source)}"
-    )
-
     {:stop, :normal, state}
   end
 
