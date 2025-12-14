@@ -65,6 +65,8 @@ defmodule Fact.CatchUpSubscription do
     |> Enum.sort_by(fn {pos, _} -> pos end)
     |> Enum.each(fn {_, record} -> deliver(record, state) end)
 
+    send(state.subscriber, :caught_up)
+
     {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
   end
 
