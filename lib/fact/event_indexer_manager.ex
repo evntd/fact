@@ -116,11 +116,8 @@ defmodule Fact.EventIndexerManager do
               # fail, if no indexer configuration exists, need the path for storing the index at a minimum
               {:reply, {:error, {:no_config, indexer}}, state}
             else
-              base_opts = Keyword.get(config, :opts, [])
-
               opts =
-                base_opts
-                |> Keyword.put_new(:instance, instance)
+                config
                 |> Keyword.put(:name, via(instance, indexer))
                 |> maybe_put_key(maybe_key)
 
