@@ -52,4 +52,5 @@ defmodule Fact.EventDataIndexer do
       false -> nil
     end
   end
+  def index_event(_event, _opts), do: nil
 end
