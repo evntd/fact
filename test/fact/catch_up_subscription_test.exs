@@ -48,6 +48,7 @@ defmodule Fact.CatchUpSubscriptionTest do
     instance = path |> String.to_atom()
     on_exit(instance, fn -> File.rm_rf!(path) end)
     {:ok, _pid} = Fact.start_link(instance)
+    Process.sleep(100)
 
     Fact.append(instance, @event)
     Fact.append_stream(instance, [@event, @event], @stream)
