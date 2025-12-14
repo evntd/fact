@@ -1,7 +1,7 @@
 [![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
 
 <div style="display: flex; justify-content: center;">
-  <img alt="logo" src=".github/assets/logo.png" style="width: 424px">
+  <img alt="logo" src=".github/assets/logo.png" width="424">
 </div>
 
 ## About
