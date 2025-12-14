@@ -1,30 +1,26 @@
 [![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
 
-<div>
-    <p align="center">
-        <img alt="logo" src=".github/assets/logo.png" width="400">
-    </p>
+<div style="display: flex; justify-content: center;">
+  <img alt="logo" src=".github/assets/logo.png" style="width: 424px">
 </div>
 
-# Fact
+## About
 
-A file system based event store.
+*Fact* is an **Elixir library** that provides a file system based event store database.
 
 ## Features
 
 - Traditional event sourcing capabilities:
-    - Append events to stream
-    - Read events from stream
-    - Read events from store (i.e. all)
-    - Subscribe to event stream
-    - Subscribe to store
+    - Append events to event streams
+    - Read events from specific event streams or all events in the event store
+    - Subscribe to specific event streams or all events in the event store
+    - [Optimistic concurrency control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control)
 - Compliant with the [Dynamic Consistency Boundary specification](https://dcb.events/specification/)
-    - Append events using a **fail_if_match** query and optional **after_position**
-    - Read events using a query
 - Just-in-time indexing for event data queries.
 - Supports multiple instances for siloed isolation in multi-tenancy setups
 - Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage)
 - Backup store contents to compressed file
+- Supported on Elixir 1.13+ and OTP 25+
 
 ## Installation
 
@@ -65,5 +61,4 @@ iex> Fact.read(:mydb, "journey-1") |> Enum.to_list()
   }
 ]
 ```
-
 
