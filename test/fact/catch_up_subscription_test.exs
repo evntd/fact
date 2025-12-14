@@ -1,0 +1,210 @@
+defmodule Fact.CatchUpSubscriptionTest do
+  use ExUnit.Case, async: false
+  use Fact.EventKeys
+
+  @moduletag capture_log: false
+
+  alias Fact.CatchUpSubscription
+
+  defmodule TestSubscriber do
+    use GenServer
+
+    def init(_) do
+      state = %{
+        caught_up: false,
+        catchup_events: [],
+        live_events: []
+      }
+
+      {:ok, state}
+    end
+
+    def get_state(pid) do
+      GenServer.call(pid, :get_state)
+    end
+
+    def handle_call(:get_state, _from, state) do
+      {:reply, state, state}
+    end
+
+    def handle_info({:event_record, {_record_id, event}}, %{caught_up: false} = state) do
+      {:noreply, %{state | catchup_events: [event | state.catchup_events]}}
+    end
+
+    def handle_info({:event_record, {_record_id, event}}, %{caught_up: true} = state) do
+      {:noreply, %{state | live_events: [event | state.live_events]}}
+    end
+
+    def handle_info(:caught_up, state) do
+      {:noreply, %{state | caught_up: true}}
+    end
+  end
+
+  @event %{type: "Test"}
+  @stream "stream-1"
+
+  setup_all do
+    path = "test_catchup_" <> Fact.Uuid.v4()
+    instance = path |> String.to_atom()
+    on_exit(instance, fn -> File.rm_rf!(path) end)
+    {:ok, _pid} = Fact.start_link(instance)
+
+    Fact.append(instance, @event)
+    Fact.append_stream(instance, [@event, @event], @stream)
+    Process.sleep(100)
+    {:ok, instance: instance}
+  end
+
+  test "subscribed to :all should receive all events", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), :all, 0)
+
+    assert_receive {:event_record,
+                    {_record_id, %{@event_type => "Test", @event_store_position => 1}}}
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 2,
+                       @event_stream => @stream,
+                       @event_stream_position => 1
+                     }}}
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 3,
+                       @event_stream => @stream,
+                       @event_stream_position => 2
+                     }}}
+
+    assert_receive :caught_up
+  end
+
+  test "subscribed to :all should receive events after start position", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), :all, 2)
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 3,
+                       @event_stream => @stream,
+                       @event_stream_position => 2
+                     }}}
+
+    assert_receive :caught_up
+  end
+
+  test "subscribed to :all from last position should receive :caught_up", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), :all, 3)
+    assert_receive :caught_up
+  end
+
+  test "subscribed to :all should receive events after caught up", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), :all, 3)
+    assert_receive :caught_up
+
+    Fact.append_stream(db, [@event, @event], @stream)
+    Process.sleep(100)
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 4,
+                       @event_stream => @stream,
+                       @event_stream_position => 3
+                     }}}
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 5,
+                       @event_stream => @stream,
+                       @event_stream_position => 4
+                     }}}
+  end
+
+  test "subscribed to stream should receive all events", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), @stream, 0)
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 2,
+                       @event_stream => @stream,
+                       @event_stream_position => 1
+                     }}}
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 3,
+                       @event_stream => @stream,
+                       @event_stream_position => 2
+                     }}}
+
+    assert_receive :caught_up
+  end
+
+  test "subscribed to stream should receive events after start position", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), @stream, 1)
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 3,
+                       @event_stream => @stream,
+                       @event_stream_position => 2
+                     }}}
+
+    assert_receive :caught_up
+  end
+
+  test "subscribed to stream from last position should receive :caught_up", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), @stream, 2)
+    assert_receive :caught_up
+  end
+
+  test "subscribed to stream should receive events after caught up", %{instance: db} do
+    CatchUpSubscription.start_link(db, self(), @stream, 2)
+    assert_receive :caught_up
+
+    Fact.append_stream(db, [@event, @event], @stream)
+    Process.sleep(100)
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 4,
+                       @event_stream => @stream,
+                       @event_stream_position => 3
+                     }}}
+
+    assert_receive {:event_record,
+                    {_record_id,
+                     %{
+                       @event_type => "Test",
+                       @event_store_position => 5,
+                       @event_stream => @stream,
+                       @event_stream_position => 4
+                     }}}
+  end
+
+  test "stops CatchUpSubscription when subscriber exists", %{instance: db} do
+    {:ok, subscriber} = GenServer.start(TestSubscriber, [], [])
+    {:ok, subscription} = CatchUpSubscription.start_link(db, subscriber, :all, 0)
+
+    Process.exit(subscriber, :kill)
+    Process.sleep(100)
+
+    assert false == Process.alive?(subscription)
+  end
+end
