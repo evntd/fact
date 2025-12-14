@@ -1,4 +1,4 @@
-defmodule FactTest do
+defmodule Fact.AppendTest do
   use ExUnit.Case, async: true
 
   alias Fact
