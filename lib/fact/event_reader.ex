@@ -74,6 +74,14 @@ defmodule Fact.EventReader do
     )
   end
 
+  def read(instance, %Fact.QueryItem{} = query, read_opts) do
+    read(instance, Fact.QueryItem.to_function(query), read_opts)
+  end
+
+  def read(instance, [%Fact.QueryItem{} | _] = query, read_opts) do
+    read(instance, Fact.QueryItem.to_function(query), read_opts)
+  end
+
   def read(instance, query, read_opts) when is_function(query) do
     do_read(
       instance,
