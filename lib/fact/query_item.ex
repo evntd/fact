@@ -179,7 +179,7 @@ defmodule Fact.QueryItem do
     case query_item do
       :all -> %__MODULE__{data: normalize_data(data)}
       :none -> :none
-      %__MODULE__{} -> %__MODULE__{query_item | data: normalize_data(data ++ query_item.data)}
+      %__MODULE__{} = q -> %__MODULE__{q | data: normalize_data(data ++ query_item.data)}
     end
   end
 
@@ -225,7 +225,7 @@ defmodule Fact.QueryItem do
     case query_item do
       :all -> %__MODULE__{tags: [tag]}
       :none -> :none
-      %__MODULE__{} -> %__MODULE__{query_item | tags: normalize_tags([tag | query_item.tags])}
+      %__MODULE__{} = q -> %__MODULE__{q | tags: normalize_tags([tag | query_item.tags])}
     end
   end
 
@@ -237,7 +237,7 @@ defmodule Fact.QueryItem do
     case query_item do
       :all -> %__MODULE__{tags: normalize_tags(tags)}
       :none -> :none
-      %__MODULE__{} -> %__MODULE__{query_item | tags: normalize_tags(tags ++ query_item.tags)}
+      %__MODULE__{} = q -> %__MODULE__{q | tags: normalize_tags(tags ++ query_item.tags)}
     end
   end
 
@@ -278,7 +278,7 @@ defmodule Fact.QueryItem do
     case query_item do
       :all -> %__MODULE__{types: [type]}
       :none -> :none
-      %__MODULE__{} -> %__MODULE__{query_item | types: normalize_types([type | query_item.types])}
+      %__MODULE__{} = q -> %__MODULE__{q | types: normalize_types([type | query_item.types])}
     end
   end
 
@@ -290,7 +290,7 @@ defmodule Fact.QueryItem do
     case query_item do
       :all -> %__MODULE__{types: normalize_types(types)}
       :none -> :none
-      %__MODULE__{} -> %__MODULE__{query_item | types: normalize_types(types ++ query_item.types)}
+      %__MODULE__{} = q -> %__MODULE__{q | types: normalize_types(types ++ query_item.types)}
     end
   end
 
