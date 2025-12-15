@@ -15,8 +15,9 @@ defmodule Fact.EventReader do
 
   The following options are accepted for all read strategies:
 
-    * `:position` — starting position within the index.
-      * `:start` (default) — begin at the start of the source.
+    * `:position` - The position to begin reading from the event source.
+      * `:start` - begin at the start position.
+      * `:end` - begin at the last position.
       * non-negative integer — starting offset, interpreted relative to the index used:
         * For `:all` and queries: uses `@event_store_position`
         * For event streams: uses `@event_stream_position`
@@ -111,7 +112,7 @@ defmodule Fact.EventReader do
         raise ArgumentError,
               "expected :direction to be :forward or :backward, got: #{inspect(direction)}"
 
-      not (position === :start or (is_integer(position) and position >= 0)) ->
+      not (position in [:start, :end] or (is_integer(position) and position >= 0)) ->
         raise ArgumentError,
               "expected :position to be a non-negative integer or :start, got: #{inspect(position)}"
 
