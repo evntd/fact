@@ -10,9 +10,13 @@ defmodule Fact.QueryItem do
 
   defstruct data: [], tags: [], types: []
 
+  @spec all() :: t()
   def all(), do: :all
+  
+  @spec none() :: t()
   def none(), do: :none
 
+  @spec data(t(), keyword()) :: t()
   def data(query_item \\ %__MODULE__{}, data) when is_list(data) do
     if not Enum.all?(data, &Keyword.keyword?/1) do
       raise ArgumentError, "all data values must be keywords"
@@ -25,6 +29,7 @@ defmodule Fact.QueryItem do
     end
   end
   
+  @spec tags(t(), Fact.Types.event_tag() | nonempty_list(Fact.Types.event_tag())) :: t()
   def tags(query_item \\ %__MODULE__{}, tags)
 
   def tags(query_item, tag) when is_binary(tag) do
@@ -47,6 +52,7 @@ defmodule Fact.QueryItem do
     end
   end
 
+  @spec types(t(), Fact.Types.event_type() | nonempty_list(Fact.Types.event_type())) :: t()
   def types(query_item \\ %__MODULE__{}, types)
   
   def types(query_item, type) when is_binary(type) do
@@ -69,9 +75,8 @@ defmodule Fact.QueryItem do
     end
   end
 
-  def join(nil), do: :none
+  @spec join(list(t())) :: list(t())
   def join([]), do: :all
-
   def join(query_items) when is_list(query_items) do
     if not Enum.all?(query_items, &is_query_item?/1) do
       raise ArgumentError, "contains values that are not valid query items"
@@ -96,10 +101,7 @@ defmodule Fact.QueryItem do
     end
   end
 
-  defp is_query_item?(value) do
-    match?(:all, value) or match?(:none, value) or match?(%__MODULE__{}, value)
-  end
-
+  @spec hash(t() | list(t)) :: String.t()
   def hash(query_items) when is_list(query_items) do
     join(query_items)
     |> :erlang.term_to_binary()
@@ -119,6 +121,7 @@ defmodule Fact.QueryItem do
     |> Base.encode16(case: :lower)
   end
 
+  @spec to_function(t() | nonempty_list(t())) :: Fact.Query.t()
   def to_function([%__MODULE__{} | _] = query_items) when is_list(query_items) do
     Fact.Query.combine!(:or, Enum.map(query_items, &to_function/1))
   end
@@ -131,7 +134,9 @@ defmodule Fact.QueryItem do
     fun
   end
 
-
+  defp is_query_item?(value) do
+    match?(:all, value) or match?(:none, value) or match?(%__MODULE__{}, value)
+  end
 
   defp normalize(:all), do: :all
   defp normalize(:none), do: :none
