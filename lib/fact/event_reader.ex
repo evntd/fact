@@ -49,6 +49,8 @@ defmodule Fact.EventReader do
         ) :: Enumerable.t()
   def read(instance, event_source, opts \\ [])
 
+  def read(_instance, :none, _read_opts), do: Stream.concat([])
+
   def read(instance, :all, read_opts) do
     do_read(
       instance,

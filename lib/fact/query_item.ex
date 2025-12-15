@@ -66,24 +66,6 @@ defmodule Fact.QueryItem do
   > #### Info {: .info}
   >
   > The normalization process used when joining may change the order of the query items.
-
-
-  ## Validation
-    
-  This module validates the inputs each function, and will raise `ArgumentError` or `FunctionClauseError`
-  when invalid inputs are provided.
-    
-      iex> Fact.QueryItem.tags([:not_a_tag])
-      ** (ArgumentError) all tags must be strings
-      
-      iex> Fact.QueryItem.tags(:not_a_tag)
-      ** (FunctionClauseError) no function clause matching in Fact.QueryItem.tags/2
-      
-      iex> Fact.QueryItem.types([1, 2, 3])
-      ** (ArgumentError) all types must be strings
-      
-      iex> Fact.QueryItem.data([{"customer_id", "123"}])
-      ** (ArgumentError) data values must be keywords
   """
 
   @type t ::
@@ -177,12 +159,21 @@ defmodule Fact.QueryItem do
       iex> import Fact.QueryItem
       iex> data(name: "Jake", name: "Jacob", name: "Jacob") |> data(name: "Jake")
       %Fact.QueryItem{data: [name: ["Jacob", "Jake"]], tags: [], types: []}
+    
+  Raises an ArgumentError when an invalid tag (not a string) is specified:
+    
+      iex> Fact.QueryItem.data({"key", "value"})
+      ** (ArgumentError) invalid data keyword
 
+      iex> Fact.QueryItem.data([{"key", "value"}])
+      ** (ArgumentError) invalid data keyword
   """
   @spec data(t(), keyword()) :: t()
-  def data(query_item \\ %__MODULE__{}, data) when is_list(data) do
+  def data(query_item \\ %__MODULE__{}, data)
+
+  def data(query_item, data) when is_list(data) do
     if not Keyword.keyword?(data) do
-      raise ArgumentError, "data values must be keywords"
+      raise ArgumentError, "invalid data keyword"
     end
 
     case query_item do
@@ -191,6 +182,8 @@ defmodule Fact.QueryItem do
       %__MODULE__{} -> %__MODULE__{query_item | data: normalize_data(data ++ query_item.data)}
     end
   end
+
+  def data(_, _), do: raise(ArgumentError, "invalid data keyword")
 
   @doc """
   Returns a query item that matches events with all specified event tags.
@@ -216,6 +209,14 @@ defmodule Fact.QueryItem do
       iex> import Fact.QueryItem
       iex> tags("tag1") |> tags(["tag1", "tag2", "tag2"])
       %Fact.QueryItem{data: [], tags: ["tag1", "tag2"], types: []}
+    
+  Raises an ArgumentError when an invalid tag (not a string) is specified:
+    
+      iex> Fact.QueryItem.tags(:not_a_tag)
+      ** (ArgumentError) invalid event tag
+
+      iex> Fact.QueryItem.tags([:not_a_tag])
+      ** (ArgumentError) invalid event tag
   """
   @spec tags(t(), Fact.Types.event_tag() | nonempty_list(Fact.Types.event_tag())) :: t()
   def tags(query_item \\ %__MODULE__{}, tags)
@@ -230,7 +231,7 @@ defmodule Fact.QueryItem do
 
   def tags(query_item, tags) when is_list(tags) do
     if not Enum.all?(tags, &is_binary/1) do
-      raise ArgumentError, "all tags must be strings"
+      raise ArgumentError, "invalid event tag"
     end
 
     case query_item do
@@ -239,6 +240,8 @@ defmodule Fact.QueryItem do
       %__MODULE__{} -> %__MODULE__{query_item | tags: normalize_tags(tags ++ query_item.tags)}
     end
   end
+
+  def tags(_, _), do: raise(ArgumentError, "invalid event tag")
 
   @doc """
   Returns a query item that matches events with any of the specified event types
@@ -259,6 +262,14 @@ defmodule Fact.QueryItem do
       iex> import Fact.QueryItem
       iex> types(["EventType1", "EventType2"]) |> types(["EventType1", "EventType2"])
       %Fact.QueryItem{data: [], tags: [], types: ["EventType1", "EventType2"]}
+
+  Raises an ArgumentError when an invalid type (not a string) is specified:
+    
+      iex> Fact.QueryItem.types(:not_a_type)
+      ** (ArgumentError) invalid event type
+
+      iex> Fact.QueryItem.types([:not_a_type])
+      ** (ArgumentError) invalid event type
   """
   @spec types(t(), Fact.Types.event_type() | nonempty_list(Fact.Types.event_type())) :: t()
   def types(query_item \\ %__MODULE__{}, types)
@@ -273,7 +284,7 @@ defmodule Fact.QueryItem do
 
   def types(query_item, types) when is_list(types) do
     if not Enum.all?(types, &is_binary/1) do
-      raise ArgumentError, "all types must be strings"
+      raise ArgumentError, "invalid event type"
     end
 
     case query_item do
@@ -282,6 +293,8 @@ defmodule Fact.QueryItem do
       %__MODULE__{} -> %__MODULE__{query_item | types: normalize_types(types ++ query_item.types)}
     end
   end
+
+  def types(_, _), do: raise(ArgumentError, "invalid event type")
 
   @doc """
   This combines multiple query items into a list of query items to describe a compound query.
@@ -350,13 +363,18 @@ defmodule Fact.QueryItem do
       ...>   none()
       ...> ])
       %Fact.QueryItem{data: [], tags: ["tag1", "tag2"], types: []}
+    
+  Raises an `ArgumentError` when an invalid query item is supplied.
+    
+      iex> Fact.QueryItem.join([:invalid_query_item])
+      ** (ArgumentError) invalid query item
   """
   @spec join(list(t())) :: list(t()) | t()
   def join([]), do: :all
 
   def join(query_items) when is_list(query_items) do
     if not Enum.all?(query_items, &is_query_item?/1) do
-      raise ArgumentError, "contains values that are not valid query items"
+      raise ArgumentError, "invalid query item"
     end
 
     cond do
@@ -369,8 +387,7 @@ defmodule Fact.QueryItem do
       true ->
         result =
           query_items
-          # filter out :none
-          |> Enum.filter(&match?(%__MODULE__{}, &1))
+          |> Enum.reject(&match?(:none, &1))
           |> Enum.reduce(%{}, fn query, acc ->
             Map.put(acc, hash(query), query)
           end)
@@ -378,7 +395,6 @@ defmodule Fact.QueryItem do
           |> Enum.map(fn {_hash, query} -> query end)
 
         case result do
-          [] -> :all
           [single] -> single
           [_first | _rest] -> result
         end
