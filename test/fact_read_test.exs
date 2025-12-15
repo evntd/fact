@@ -100,18 +100,18 @@ defmodule Fact.ReadTest do
       last_event = Enum.at(events, -1)
       assert 1 == last_event[@event_store_position]
     end
-    
+
     test "should read events backward starting at the end", %{instance: db} do
       events = Fact.read(db, :all, direction: :backward, position: :end) |> Enum.to_list()
       assert 10 == length(events)
-      
+
       first_event = Enum.at(events, 0)
       assert 10 == first_event[@event_store_position]
-      
+
       last_event = Enum.at(events, -1)
       assert 1 == last_event[@event_store_position]
     end
-    
+
     test "should read events forward starting at the end", %{instance: db} do
       events = Fact.read(db, :all, direction: :forward, position: :end) |> Enum.to_list()
       assert 0 == length(events)
