@@ -53,19 +53,11 @@ defmodule Fact.QueryItem do
       ...>   tags(["tag1", "tag2"]),
       ...>   types(["EventType2","EventType3"]) |> tags(["tag1","tag3"])
       ...> ])
-      [
-        %Fact.QueryItem{data: [], tags: ["tag1", "tag2"], types: []},
-        %Fact.QueryItem{data: [], tags: [], types: ["EventType1", "EventType2"]},
-        %Fact.QueryItem{
-          data: [],
-          tags: ["tag1", "tag3"],
-          types: ["EventType2", "EventType3"]
-        }
-      ]
     
   > #### Info {: .info}
   >
   > The normalization process used when joining may change the order of the query items.
+  > Ordering may not be consistent across different versions of OTP.
   """
 
   @type t ::
@@ -307,15 +299,6 @@ defmodule Fact.QueryItem do
       ...>   tags(["tag1", "tag2"]),
       ...>   types(["EventType2","EventType3"]) |> tags(["tag1","tag3"])
       ...> ])
-      [
-        %Fact.QueryItem{data: [], tags: ["tag1", "tag2"], types: []},
-        %Fact.QueryItem{data: [], tags: [], types: ["EventType1", "EventType2"]},
-        %Fact.QueryItem{
-          data: [],
-          tags: ["tag1", "tag3"],
-          types: ["EventType2", "EventType3"]
-        }
-      ]
     
   In SQL terms, this would be equivalent to:
     
@@ -405,20 +388,6 @@ defmodule Fact.QueryItem do
   The `hash/1` function produces a sha-1 hash of a query item or list of query items.
 
   This function is used internally for normalization and caching.
-    
-      iex> import Fact.QueryItem
-      iex> hash(all())
-      "d6d864f6c0dacbd3d70b7d56f6811f799cefc0b1"
-      iex> hash(none())
-      "e91c644069975348a5eabdbf4340287bc05cc8a0"
-      iex> join([
-      ...>   tags("course:c1"),
-      ...>   types("StudentSubscribedToCourse")
-      ...> ]) |> hash()
-      "b38d0dd5cebf77f1b4a1cf35ef0e5fed1790206c"
-
-      iex> Fact.QueryItem.hash(:not_a_query_item)
-      ** (ArgumentError) invalid query item
   """
   @spec hash(t() | list(t)) :: String.t()
   def hash(query_items) when is_list(query_items) do

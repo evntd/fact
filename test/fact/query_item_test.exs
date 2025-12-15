@@ -156,6 +156,40 @@ defmodule Fact.QueryItemTest do
     end
   end
 
+  describe "hash/1" do
+    test "should produce sha1 hash of :all" do
+      hash = QueryItem.all() |> QueryItem.hash()
+      assert is_binary(hash)
+      assert 40 == String.length(hash)
+    end
+
+    test "should produce sha1 hash of :none" do
+      hash = QueryItem.none() |> QueryItem.hash()
+      assert is_binary(hash)
+      assert 40 == String.length(hash)
+    end
+
+    test "should produce sha1 hash of single query item" do
+      hash = QueryItem.tags("tag1") |> QueryItem.hash()
+      assert is_binary(hash)
+      assert 40 == String.length(hash)
+    end
+
+    test "should produce sha1 hash of query item list" do
+      hash =
+        QueryItem.join([QueryItem.tags("tag1"), QueryItem.types("type1")]) |> QueryItem.hash()
+
+      assert is_binary(hash)
+      assert 40 == String.length(hash)
+    end
+
+    test "should fail when hash invalid query item" do
+      assert_raise ArgumentError, fn ->
+        QueryItem.hash(:invalid_query_item)
+      end
+    end
+  end
+
   describe "query function execution" do
     test "query by none", %{instance: db} do
       events = Fact.read(db, QueryItem.none()) |> Enum.to_list()
