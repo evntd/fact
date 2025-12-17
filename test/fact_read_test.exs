@@ -55,7 +55,6 @@ defmodule Fact.ReadTest do
     {:ok, instance: instance}
   end
 
-
   describe "Fact.read/3" do
     test "should default to read all events forward", %{instance: db} do
       events = Fact.read(db, :all) |> Enum.to_list()

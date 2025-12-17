@@ -167,7 +167,7 @@ defmodule Mix.Tasks.Fact.Create do
     {parsed, _argv} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
     quiet = Keyword.get(parsed, :quiet, false)
-    
+
     unless quiet, do: display_banner()
 
     name = get_name(parsed)
@@ -415,7 +415,7 @@ defmodule Mix.Tasks.Fact.Create do
     "event_data",
     "event_stream",
     "event_stream_category",
-    "event_streams",    
+    "event_streams",
     "event_streams_by_category",
     "event_tags",
     "event_type"

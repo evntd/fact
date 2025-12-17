@@ -63,8 +63,11 @@ defmodule Fact.Manifest do
   def load!(path, %{"manifest_version" => "0.1.0"} = manifest) when is_binary(path) do
     # Let's just assume everything is correct at the moment.
 
-    {:module, driver_module} = Code.ensure_loaded(@record_filename_schemes[manifest["records"]["filename_scheme"]])
-    {:module, format_module} = Code.ensure_loaded(@record_file_format[manifest["records"]["file_format"]])
+    {:module, driver_module} =
+      Code.ensure_loaded(@record_filename_schemes[manifest["records"]["filename_scheme"]])
+
+    {:module, format_module} =
+      Code.ensure_loaded(@record_file_format[manifest["records"]["file_format"]])
 
     config =
       %{
@@ -124,5 +127,4 @@ defmodule Fact.Manifest do
       Unsupported database manifest format.
       """
   end
-  
 end

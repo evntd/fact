@@ -1,6 +1,6 @@
 defmodule Fact.EventIndexerManager do
   use GenServer
-  
+
   require Logger
 
   @type indexer_status :: :stopped | :starting | :started | :ready

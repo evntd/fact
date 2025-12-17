@@ -84,7 +84,6 @@ defmodule Fact.Storage do
     end
   end
 
-
   @doc """
   Reads a single event record from disk and decodes it using the configured format.
 
@@ -147,7 +146,8 @@ defmodule Fact.Storage do
     end
   end
 
-  def write_checkpoint(%Fact.Instance{} = instance, indexer, position) when is_integer(position) do
+  def write_checkpoint(%Fact.Instance{} = instance, indexer, position)
+      when is_integer(position) do
     path = Fact.Instance.indexer_checkpoint_path(instance, indexer)
     File.write!(path, Integer.to_string(position))
   end
@@ -158,13 +158,15 @@ defmodule Fact.Storage do
   def write_index(_instance, _index, nil, _record_id), do: :ignored
   def write_index(_instance, _index, [], _record_id), do: :ignored
 
-  def write_index(%Fact.Instance{} = instance, index, index_key, record_id) when is_binary(index_key) do
+  def write_index(%Fact.Instance{} = instance, index, index_key, record_id)
+      when is_binary(index_key) do
     encode_path = Fact.Instance.index_path_encoder(instance, index)
     encoded_path = encode_path.(index_key)
     do_write_index(encoded_path, record_id)
   end
 
-  def write_index(%Fact.Instance{} = instance, indexer, index_keys, record_id) when is_list(index_keys) do
+  def write_index(%Fact.Instance{} = instance, indexer, index_keys, record_id)
+      when is_list(index_keys) do
     encode_path = Fact.Instance.index_path_encoder(instance, indexer)
 
     index_keys
@@ -204,8 +206,12 @@ defmodule Fact.Storage do
 
   def backup(%Fact.Instance{} = instance, backup_path) do
     database_path = Fact.Instance.database_path(instance)
-    events_path = Fact.Instance.events_path(instance) |> String.replace_prefix(database_path <> "/", "")
-    ledger_path = Fact.Instance.ledger_path(instance) |> String.replace_prefix(database_path <> "/", "")
+
+    events_path =
+      Fact.Instance.events_path(instance) |> String.replace_prefix(database_path <> "/", "")
+
+    ledger_path =
+      Fact.Instance.ledger_path(instance) |> String.replace_prefix(database_path <> "/", "")
 
     event_entries =
       read_ledger(instance, :forward)

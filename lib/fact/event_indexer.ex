@@ -48,7 +48,7 @@ defmodule Fact.EventIndexer do
 
       use GenServer
       use Fact.EventKeys
-      
+
       require Logger
 
       defstruct [:instance, :index, :index_opts]
@@ -78,7 +78,7 @@ defmodule Fact.EventIndexer do
           end
 
         instance = Keyword.fetch!(indexer_opts, :instance)
-        
+
         custom_opts = Keyword.get(indexer_opts, :opts, [])
 
         index_opts =
@@ -156,9 +156,10 @@ defmodule Fact.EventIndexer do
         Fact.Storage.write_index(instance, index, index_key, event_id)
         Fact.Storage.write_checkpoint(instance, index, event[@event_store_position])
       end
-      
+
       defp ensure_storage(%{instance: instance, index: index} = state) do
         checkpoint_path = Fact.Instance.indexer_checkpoint_path(instance, index)
+
         with :ok <- File.mkdir_p(Path.dirname(checkpoint_path)) do
           unless File.exists?(checkpoint_path),
             do: File.write(checkpoint_path, "0"),

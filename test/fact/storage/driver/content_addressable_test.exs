@@ -5,7 +5,16 @@ defmodule Fact.Storage.Driver.ContentAddressableTest do
   setup_all do
     name = "test-cas-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
     path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--quiet", "--record-filename-scheme", "cas"])
+
+    Mix.Tasks.Fact.Create.run([
+      "--name",
+      name,
+      "--path",
+      path,
+      "--quiet",
+      "--record-filename-scheme",
+      "cas"
+    ])
 
     on_exit(fn -> File.rm_rf!(path) end)
 
