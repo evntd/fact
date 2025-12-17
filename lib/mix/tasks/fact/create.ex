@@ -3,23 +3,25 @@ defmodule Mix.Tasks.Fact.Create do
   Creates a new database.
 
   This task initializes a database directory with a `manifest.json`, `.ledger`, `.gitignore`, and `events` and `indices`
-  directories. It also creates a sub-directory within `indices` and a `.checkpoint` file for each enabled indexer.
+  directories. It also creates a subdirectory within `indices` and a `.checkpoint` file for each enabled indexer.
 
   ## Usage
-
-      mix fact.create --name|-n NAME 
-        [--path|-p PATH]
-        [--record-file-format json]
-        [--record-filename-scheme RECORD_SCHEME]
-        [--cas-hash-algorithm HASH_ALGORITHM]
-        [--cas-hash-encoding ENCODING]
-        [--all-indexers]
-        [--index-filename-scheme INDEX_SCHEME]
-        [--index-hash-algorithm HASH_ALGORITHM]
-        [--index-hash-encoding ENCODING]
-        [--indexer|-i INDEXER]
-        [--indexer-option|-x INDEXER:INDEX_OPTION=VALUE]
     
+  ```sh
+  mix fact.create --name|-n NAME \\
+    [--path|-p PATH] \\
+    [--record-file-format json] \\
+    [--record-filename-scheme RECORD_SCHEME] \\
+    [--cas-hash-algorithm HASH_ALGORITHM] \\
+    [--cas-hash-encoding ENCODING] \\
+    [--all-indexers] \\
+    [--index-filename-scheme INDEX_SCHEME] \\
+    [--index-hash-algorithm HASH_ALGORITHM] \\
+    [--index-hash-encoding ENCODING] \\
+    [--indexer|-i INDEXER] \\
+    [--indexer-option|-x INDEXER:INDEX_OPTION=VALUE]
+  ```
+  
   By default, the database will be created in a directory matching
   the database name.
 
@@ -45,7 +47,7 @@ defmodule Mix.Tasks.Fact.Create do
     * `--index-filename-scheme` - Controls how index files are named (default: `raw`)
     * `--index-hash-algorithm` - The algorithm used to hash index files (default: `sha`)
     * `--index-hash-encoding` - Controls how the hashes are encoded (default: `encode16`)
-    * `--indexer-option`, `-x` - Overrides the filename-scheme, hash algorithm, or hash encoding on a per indexer basis.  
+    * `--indexer-option`, `-x` - Overrides the filename-scheme, hash algorithm, or hash encoding on a per-indexer basis.  
 
   Individual settings may be overridden on a per-indexer basis using the `--indexer-option`. 
   The specified value must conform to the following format: `<indexer>:<option>=<value>`
@@ -180,7 +182,6 @@ defmodule Mix.Tasks.Fact.Create do
     |> Enum.each(fn indexer ->
       index_path = Path.join(indices_path, indexer.name)
       File.mkdir!(index_path)
-      File.write!(Path.join(index_path, ".checkpoint"), "0")
     end)
 
     display_results(path, manifest)
@@ -277,14 +278,19 @@ defmodule Mix.Tasks.Fact.Create do
   end
 
   defp normalize_path(path), do: String.trim(path) |> Path.expand()
+  
+  @manifest_version "0.1.0"
+  @schema_version "0.1.0"
+  @storage_version "0.1.0"
 
   defp create_manifest_v1(name, parsed) do
     %{
-      format_version: 1,
+      manifest_version: @manifest_version,
+      engine_version: Fact.MixProject.project()[:version],
+      storage_version: @storage_version,
+      schema_version: @schema_version,
       database_id: generate_id(),
       database_name: name,
-      engine_version: Fact.MixProject.project()[:version],
-      schema_version: 1,
       created_at: DateTime.utc_now(:microsecond) |> DateTime.to_iso8601(),
       records: get_records_options(parsed),
       indexers: get_indexers(parsed)
