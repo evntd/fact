@@ -5,7 +5,7 @@ defmodule Fact.EventStreamWriter do
   """
   use GenServer
   use Fact.EventKeys
-  import Fact.Names
+
   require Logger
 
   @idle_timeout :timer.minutes(1)
@@ -28,12 +28,12 @@ defmodule Fact.EventStreamWriter do
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
     event_stream = Keyword.fetch!(opts, :event_stream)
-    start_opts = Keyword.put(opts, :name, via(instance, event_stream))
+    start_opts = Keyword.put(opts, :name, Fact.Instance.via(instance, event_stream))
     GenServer.start_link(__MODULE__, [instance: instance, event_stream: event_stream], start_opts)
   end
 
   @spec commit(
-          Fact.Types.instance_name(),
+          Fact.Instance.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Types.event_stream(),
           Fact.Types.event_position() | :any | :none | :exists,
@@ -41,16 +41,13 @@ defmodule Fact.EventStreamWriter do
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def commit(instance, events, event_stream, expected_position \\ :any, opts \\ [])
 
-  def commit(instance, event, event_stream, expected_position, opts)
+  def commit(%Fact.Instance{} = instance, event, event_stream, expected_position, opts)
       when is_map(event) and not is_list(event) do
     commit(instance, [event], event_stream, expected_position, opts)
   end
 
-  def commit(instance, events, event_stream, expected_position, opts) do
+  def commit(%Fact.Instance{} = instance, events, event_stream, expected_position, opts) do
     cond do
-      not is_atom(instance) ->
-        {:error, :invalid_instance}
-
       not is_list(events) ->
         {:error, :invalid_event_list}
 
@@ -71,19 +68,18 @@ defmodule Fact.EventStreamWriter do
         ensure_started(instance, event_stream)
 
         GenServer.call(
-          # via_event_stream(instance, event_stream),
-          via(instance, event_stream),
+          Fact.Instance.via(instance, event_stream),
           {:commit, events, expected_position},
           Keyword.get(opts, :timeout, 5000)
         )
     end
   end
 
-  defp ensure_started(instance, event_stream) do
-    case Registry.lookup(registry(instance), event_stream) do
+  defp ensure_started(%Fact.Instance{} = instance, event_stream) do
+    case Registry.lookup(Fact.Instance.registry(instance), event_stream) do
       [] ->
         DynamicSupervisor.start_child(
-          via(instance, Fact.EventStreamWriterSupervisor),
+          Fact.Instance.event_stream_writer_supervisor(instance),
           {__MODULE__, [instance: instance, event_stream: event_stream]}
         )
 

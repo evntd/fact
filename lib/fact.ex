@@ -168,13 +168,19 @@ defmodule Fact do
 
   """
   @spec append_stream(
-          Fact.Types.instance_name(),
+          Fact.Instance.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Types.event_stream(),
           Fact.Types.event_position() | :any | :none | :exists,
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def append_stream(instance, events, event_stream, expected_position \\ :any, opts \\ []) do
+  def append_stream(
+        %Fact.Instance{} = instance,
+        events,
+        event_stream,
+        expected_position \\ :any,
+        opts \\ []
+      ) do
     Fact.EventStreamWriter.commit(instance, events, event_stream, expected_position, opts)
   end
 
