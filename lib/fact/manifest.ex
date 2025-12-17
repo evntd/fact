@@ -19,6 +19,7 @@ defmodule Fact.Manifest do
   }
 
   @indexer_modules %{
+    "event_data" => Fact.EventDataIndexer,
     "event_type" => Fact.EventTypeIndexer,
     "event_tags" => Fact.EventTagsIndexer,
     "event_stream" => Fact.EventStreamIndexer,
@@ -62,6 +63,9 @@ defmodule Fact.Manifest do
   def load!(path, %{"manifest_version" => "0.1.0"} = manifest) when is_binary(path) do
     # Let's just assume everything is correct at the moment.
 
+    {:module, driver_module} = Code.ensure_loaded(@record_filename_schemes[manifest["records"]["filename_scheme"]])
+    {:module, format_module} = Code.ensure_loaded(@record_file_format[manifest["records"]["file_format"]])
+
     config =
       %{
         manifest_version: Version.parse!(manifest["manifest_version"]),
@@ -77,8 +81,8 @@ defmodule Fact.Manifest do
         records: %{
           file_format: String.to_atom(manifest["records"]["file_format"]),
           filename_scheme: String.to_atom(manifest["records"]["filename_scheme"]),
-          old_format: @record_file_format[manifest["records"]["file_format"]],
-          old_driver: @record_filename_schemes[manifest["records"]["filename_scheme"]]
+          old_format: format_module,
+          old_driver: driver_module
         },
         indexers:
           Enum.map(manifest["indexers"], fn indexer ->
@@ -104,8 +108,9 @@ defmodule Fact.Manifest do
                   else: nil
                 ),
               old_spec:
-                {@indexer_modules[indexer["name"]], [enabled: true, encoding: old_encoding]},
-              old_path: Path.join([path, "indices", to_string(module)])
+                {@indexer_modules[indexer["name"]], [enabled: indexer["name"] != "event_data"]},
+              old_path: Path.join([path, "indices", to_string(module)]),
+              old_encoding: old_encoding
             }
           end)
       }
@@ -119,4 +124,5 @@ defmodule Fact.Manifest do
       Unsupported database manifest format.
       """
   end
+  
 end

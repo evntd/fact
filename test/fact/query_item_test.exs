@@ -9,12 +9,13 @@ defmodule Fact.QueryItemTest do
   doctest QueryItem
 
   setup_all do
-    path = "query_item" <> Fact.Uuid.v4()
-    instance = path |> String.to_atom()
+    name = "test-queryitem-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
+    path = Path.join("tmp", name)
+    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--quiet"])
 
     on_exit(fn -> File.rm_rf!(path) end)
 
-    {:ok, _pid} = Fact.start_link(instance)
+    {:ok, instance} = Fact.open(path)
 
     events = [
       %{type: "CourseDefined", data: %{course_id: "c1"}, tags: ["course:c1"]},

@@ -65,6 +65,7 @@ defmodule Mix.Tasks.Fact.Create do
     * `event_type` - See `Fact.EventTypeIndexer`
     * `event_tags` - See `Fact.EventTagsIndexer`
     * `event_stream` - See `Fact.EventStreamIndexer`
+    * `event_data` - See `Fact.EventDataIndexer`
     * `event_stream_category` - See `Fact.EventStreamCategoryIndexer`
     * `event_streams` - See `Fact.EventStreamsIndexer`
     * `event_streams_by_category` - See `Fact.EventStreamsByCategoryIndexer`
@@ -149,21 +150,25 @@ defmodule Mix.Tasks.Fact.Create do
     index_hash_encoding: :string,
     indexer: :keep,
     indexer_option: :keep,
-    all_indexers: :boolean
+    all_indexers: :boolean,
+    quiet: :boolean
   ]
 
   @aliases [
     n: :name,
     p: :path,
     i: :indexer,
-    x: :indexer_option
+    x: :indexer_option,
+    q: :quiet
   ]
 
   @impl true
   def run(args) do
     {parsed, _argv} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
-    display_banner()
+    quiet = Keyword.get(parsed, :quiet, false)
+    
+    unless quiet, do: display_banner()
 
     name = get_name(parsed)
     path = get_path(parsed, name)
@@ -184,8 +189,10 @@ defmodule Mix.Tasks.Fact.Create do
       File.mkdir!(index_path)
     end)
 
-    display_results(path, manifest)
-    display_next_steps()
+    unless quiet do
+      display_results(path, manifest)
+      display_next_steps()
+    end
   end
 
   defp display_banner() do
@@ -405,14 +412,15 @@ defmodule Mix.Tasks.Fact.Create do
   end
 
   @valid_indexers [
+    "event_data",
     "event_stream",
     "event_stream_category",
-    "event_streams",
+    "event_streams",    
     "event_streams_by_category",
     "event_tags",
     "event_type"
   ]
-  @required_indexers ["event_stream", "event_tags", "event_type"]
+  @required_indexers ["event_data", "event_stream", "event_tags", "event_type"]
 
   defp get_indexers(parsed) do
     get_indexers(parsed, get_default_indexer_options(parsed))

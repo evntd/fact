@@ -91,7 +91,6 @@ defmodule Fact.EventLedger do
 
   @impl true
   def init(instance) do
-    :ok = Fact.Storage.ensure_ledger(instance)
     position = Fact.Storage.last_store_position(instance, :ledger)
     {:ok, %__MODULE__{instance: instance, position: position}}
   end

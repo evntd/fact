@@ -44,11 +44,13 @@ defmodule Fact.CatchUpSubscriptionTest do
   @stream "stream-1"
 
   setup_all do
-    path = "test_catchup_" <> Fact.Uuid.v4()
-    instance = path |> String.to_atom()
-    on_exit(instance, fn -> File.rm_rf!(path) end)
-    {:ok, _pid} = Fact.start_link(instance)
-    Process.sleep(100)
+    name = "catchup-" <> Fact.Uuid.v4()
+    path = Path.join("tmp", name)
+    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--quiet"])
+
+    on_exit(fn -> File.rm_rf!(path) end)
+
+    {:ok, instance} = Fact.open(path)
 
     Fact.append(instance, @event)
     Fact.append_stream(instance, [@event, @event], @stream)

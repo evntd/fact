@@ -7,12 +7,13 @@ defmodule Fact.QueryTest do
   @moduletag :capture_log
 
   setup_all do
-    path = "test_fact_query_" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
-    instance = path |> String.to_atom()
+    name = "test-query-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
+    path = Path.join("tmp", name)
+    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--quiet"])
 
     on_exit(fn -> File.rm_rf!(path) end)
 
-    {:ok, _pid} = Fact.start_link(instance)
+    {:ok, instance} = Fact.open(path)
 
     Fact.append(instance, [
       %{

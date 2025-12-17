@@ -1,6 +1,6 @@
 defmodule Fact.EventIndexerManager do
   use GenServer
-  import Fact.Names
+  
   require Logger
 
   @type indexer_status :: :stopped | :starting | :started | :ready
@@ -125,7 +125,7 @@ defmodule Fact.EventIndexerManager do
             else
               opts =
                 config
-                |> Keyword.put(:name, via(instance, indexer))
+                |> Keyword.put(:name, Fact.Instance.via(instance, indexer))
                 |> maybe_put_key(maybe_key)
 
               spec = {mod, opts}

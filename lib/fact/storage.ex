@@ -53,102 +53,6 @@ defmodule Fact.Storage do
   @type hash_algorithm :: :sha | :sha256
   @type encoding :: :raw | :hash | {:hash, hash_algorithm()}
 
-  @index_checkpoint ".checkpoint"
-
-  @doc """
-  Returns the child specification for a `Fact.Storage` instance.
-
-  This is an internal function used by `Fact.Supervisor` and related startup
-  infrastructure. It constructs a unique child ID based on the `:instance` value
-  and wires the process to start via `start_link/1`.
-  """
-  def child_spec(opts) do
-    %{
-      id: {__MODULE__, Keyword.fetch!(opts, :instance)},
-      start: {__MODULE__, :start_link, [opts]},
-      type: :worker
-    }
-  end
-
-  @doc """
-  Initializes and starts the storage engine for a Fact instance.
-
-  This function is responsible for:
-    * normalizing and preparing the on-disk storage directory
-    * loading the configured storage driver and event format modules
-    * creating the events directory and a `.gitignore`
-    * initializing the ETS metadata table used by all subsequent operations
-
-  The function completes setup and returns `{:ok, pid, :ignore}` to avoid
-  linking semantics used by other OTP behaviors.
-  """
-  def start_link(opts) do
-    instance = Keyword.fetch!(opts, :instance)
-    setup_table(instance)
-    {:ok, self()}
-  end
-
-  @doc """
-  Ensures that the directory structure and checkpoint file for a given index exist.
-
-  This function:
-    * computes the fully qualified path for the index and its checkpoint file
-    * creates directories and writes a default `.checkpoint` file if missing
-    * stores index metadata (paths and encoders) in the storage ETS table
-
-  The `encoding` argument determines how index keys are mapped into filenames,
-  which is handled via `encode_key/2`.
-  """
-  @spec ensure_index(atom(), term(), encoding()) :: :ok
-  def ensure_index(instance, index, encoding) do
-    index_path =
-      case index do
-        {index_module, index_module_key} ->
-          Path.join([
-            Fact.Instance.indices_path(instance),
-            to_string(index_module),
-            to_string(index_module_key)
-          ])
-
-        index_module ->
-          Path.join([Fact.Instance.indices_path(instance), to_string(index_module)])
-      end
-
-    checkpoint_path = Path.join(index_path, @index_checkpoint)
-
-    with :ok <- ensure_file(checkpoint_path, 0) do
-      table = Fact.Instance.storage_table(instance)
-      :ets.insert(table, {{index, :index_path}, index_path})
-      :ets.insert(table, {{index, :index_checkpoint_path}, checkpoint_path})
-      :ets.insert(table, {{index, :index_path_encoder}, index_path_encoder(index_path, encoding)})
-      :ok
-    end
-  end
-
-  @doc """
-  Ensures that the ledger file exists on disk.
-
-  The ledger is the global, append-only index of all events written for a Fact
-  instance. If the ledger file does not exist, this function creates it.
-  """
-  @spec ensure_ledger(atom()) ::
-          :ok | {:error, File.posix() | :badarg | :terminated | :system_limit}
-  def ensure_ledger(instance) do
-    ensure_file(ledger_path(instance))
-  end
-
-  defp ensure_directory(path) do
-    File.mkdir_p(path)
-  end
-
-  defp ensure_file(path, content \\ "") do
-    with :ok <- ensure_directory(Path.dirname(path)) do
-      unless File.exists?(path),
-        do: File.write(path, to_string(content)),
-        else: :ok
-    end
-  end
-
   @doc """
   Writes a single event to disk using the configured driver and format.
 
@@ -159,17 +63,16 @@ defmodule Fact.Storage do
     * On failure (e.g., duplicate record ID), it returns `{:error, reason, record_id}`.
   """
   @spec write_event(atom(), map()) :: {:ok, record_id()} | {:error, term(), record_id()}
-  def write_event(instance, event) do
-    inst_driver = driver(instance)
-    inst_format = format(instance)
-    inst_path = events_path(instance)
+  def write_event(%Fact.Instance{} = instance, event) do
+    inst_driver = Fact.Instance.driver(instance)
+    inst_format = Fact.Instance.format(instance)
 
     case inst_driver.prepare_record(event, &inst_format.encode/1) do
       {:error, {reason, record_id}} ->
         {:error, reason, record_id}
 
       {:ok, record_id, record} ->
-        record_path = Path.join(inst_path, record_id)
+        record_path = Fact.Instance.record_path(instance, record_id)
 
         case File.write(record_path, record, [:exclusive]) do
           :ok ->
@@ -181,23 +84,6 @@ defmodule Fact.Storage do
     end
   end
 
-  defp get_index_path_encoder(instance, index) do
-    [{{^index, :index_path_encoder}, path_encoder}] =
-      :ets.lookup(Fact.Instance.storage_table(instance), {index, :index_path_encoder})
-
-    path_encoder
-  end
-
-  defp get_checkpoint_path(instance, index) do
-    [{{^index, :index_checkpoint_path}, checkpoint_path}] =
-      :ets.lookup(Fact.Instance.storage_table(instance), {index, :index_checkpoint_path})
-
-    checkpoint_path
-  end
-
-  defp index_path_encoder(path, encoding) do
-    fn key -> Path.join(path, encode_key(key, encoding)) end
-  end
 
   @doc """
   Reads a single event record from disk and decodes it using the configured format.
@@ -211,42 +97,45 @@ defmodule Fact.Storage do
   It assumes the record exists and will raise if the underlying file is missing
   or unreadable.
   """
-  def read_event!(instance, record_id) do
-    record_path = Path.join(events_path(instance), record_id)
+  def read_event!(%Fact.Instance{} = instance, record_id) do
+    record_path = Fact.Instance.record_path(instance, record_id)
     encoded_event = File.read!(record_path)
-    event = format(instance).decode(encoded_event)
+    formatter = Fact.Instance.format(instance)
+    event = formatter.decode(encoded_event)
     {record_id, event}
   end
 
-  def read_ledger(instance, direction),
-    do: read_index_file(instance, ledger_path(instance), direction)
+  def read_ledger(%Fact.Instance{} = instance, direction),
+    do: read_index_file(instance, Fact.Instance.ledger_path(instance), direction)
 
-  def read_index(instance, indexer, index, direction) do
-    encode_path = get_index_path_encoder(instance, indexer)
+  def read_index(%Fact.Instance{} = instance, indexer, index, direction) do
+    encode_path = Fact.Instance.index_path_encoder(instance, indexer)
     encoded_path = encode_path.(index)
     read_index_file(instance, encoded_path, direction)
   end
 
-  defp read_index_file(instance, path, :backward) do
+  defp read_index_file(%Fact.Instance{} = instance, path, :backward) do
     if File.exists?(path) do
-      driver = driver(instance)
-      Fact.IndexFileReader.Backwards.Line.read(driver.record_id_length(), path)
+      driver = Fact.Instance.driver(instance)
+      length = driver.record_id_length()
+      Fact.IndexFileReader.Backwards.Line.read(length, path)
     else
       empty_stream()
     end
   end
 
-  defp read_index_file(instance, path, :forward) do
+  defp read_index_file(%Fact.Instance{} = instance, path, :forward) do
     if File.exists?(path) do
-      length = driver(instance).record_id_length()
+      driver = Fact.Instance.driver(instance)
+      length = driver.record_id_length()
       File.stream!(path) |> Stream.map(&String.slice(&1, 0, length))
     else
       empty_stream()
     end
   end
 
-  def read_checkpoint(instance, index) do
-    path = get_checkpoint_path(instance, index)
+  def read_checkpoint(%Fact.Instance{} = instance, indexer) do
+    path = Fact.Instance.indexer_checkpoint_path(instance, indexer)
 
     if File.exists?(path) do
       case File.read(path) do
@@ -258,25 +147,25 @@ defmodule Fact.Storage do
     end
   end
 
-  def write_checkpoint(instance, index, position) when is_integer(position) do
-    path = get_checkpoint_path(instance, index)
+  def write_checkpoint(%Fact.Instance{} = instance, indexer, position) when is_integer(position) do
+    path = Fact.Instance.indexer_checkpoint_path(instance, indexer)
     File.write!(path, Integer.to_string(position))
   end
 
-  def write_index(instance, :ledger, record_id),
-    do: do_write_index(ledger_path(instance), record_id)
+  def write_index(%Fact.Instance{} = instance, :ledger, record_id),
+    do: do_write_index(Fact.Instance.ledger_path(instance), record_id)
 
   def write_index(_instance, _index, nil, _record_id), do: :ignored
   def write_index(_instance, _index, [], _record_id), do: :ignored
 
-  def write_index(instance, index, index_key, record_id) when is_binary(index_key) do
-    encode_path = get_index_path_encoder(instance, index)
+  def write_index(%Fact.Instance{} = instance, index, index_key, record_id) when is_binary(index_key) do
+    encode_path = Fact.Instance.index_path_encoder(instance, index)
     encoded_path = encode_path.(index_key)
     do_write_index(encoded_path, record_id)
   end
 
-  def write_index(instance, index, index_keys, record_id) when is_list(index_keys) do
-    encode_path = get_index_path_encoder(instance, index)
+  def write_index(%Fact.Instance{} = instance, indexer, index_keys, record_id) when is_list(index_keys) do
+    encode_path = Fact.Instance.index_path_encoder(instance, indexer)
 
     index_keys
     |> Enum.uniq()
@@ -313,10 +202,10 @@ defmodule Fact.Storage do
     end
   end
 
-  def backup(instance, backup_path) do
-    storage_path = path(instance)
-    events_path = events_path(instance) |> String.replace_prefix(storage_path <> "/", "")
-    ledger_path = ledger_path(instance) |> String.replace_prefix(storage_path <> "/", "")
+  def backup(%Fact.Instance{} = instance, backup_path) do
+    database_path = Fact.Instance.database_path(instance)
+    events_path = Fact.Instance.events_path(instance) |> String.replace_prefix(database_path <> "/", "")
+    ledger_path = Fact.Instance.ledger_path(instance) |> String.replace_prefix(database_path <> "/", "")
 
     event_entries =
       read_ledger(instance, :forward)
@@ -327,68 +216,8 @@ defmodule Fact.Storage do
 
     :zip.create(backup_path, all_entries, [
       {:compress, :all},
-      {:cwd, String.to_charlist(storage_path)}
+      {:cwd, String.to_charlist(database_path)}
     ])
-  end
-
-  def path(instance) do
-    [{:path, path}] = :ets.lookup(Fact.Instance.storage_table(instance), :path)
-    path
-  end
-
-  def events_path(instance) do
-    [{:events_path, events_path}] =
-      :ets.lookup(Fact.Instance.storage_table(instance), :events_path)
-
-    events_path
-  end
-
-  def indices_path(instance) do
-    [{:indices_path, indices_path}] =
-      :ets.lookup(Fact.Instance.storage_table(instance), :indices_path)
-
-    indices_path
-  end
-
-  def ledger_path(instance) do
-    [{:ledger_path, ledger_path}] =
-      :ets.lookup(Fact.Instance.storage_table(instance), :ledger_path)
-
-    ledger_path
-  end
-
-  def driver(instance) do
-    [{:driver, driver_module}] = :ets.lookup(Fact.Instance.storage_table(instance), :driver)
-    driver_module
-  end
-
-  def format(instance) do
-    [{:format, format_module}] = :ets.lookup(Fact.Instance.storage_table(instance), :format)
-    format_module
-  end
-
-  defp encode_key(value, :raw), do: to_string(value)
-  defp encode_key(value, :hash), do: encode_key(value, {:hash, :sha})
-
-  defp encode_key(value, {:hash, algo}),
-    do: :crypto.hash(algo, to_string(value)) |> Base.encode16(case: :lower)
-
-  defp encode_key(_value, encoding),
-    do: raise(ArgumentError, "unsupported encoding: #{inspect(encoding)}")
-
-  defp setup_table(instance) do
-    # TODO: Remove these driver/format dependencies!
-    with {:module, _driver_module} <- Code.ensure_loaded(instance.manifest.records.old_driver),
-         {:module, _format_module} <- Code.ensure_loaded(instance.manifest.records.old_format) do
-      table = Fact.Instance.storage_table(instance)
-      :ets.new(table, [:named_table, :public, :set])
-      :ets.insert(table, {:path, Fact.Instance.database_path(instance)})
-      :ets.insert(table, {:events_path, Fact.Instance.events_path(instance)})
-      :ets.insert(table, {:ledger_path, Fact.Instance.ledger_path(instance)})
-      :ets.insert(table, {:indices_path, Fact.Instance.indices_path(instance)})
-      :ets.insert(table, {:driver, instance.manifest.records.old_driver})
-      :ets.insert(table, {:format, instance.manifest.records.old_format})
-    end
   end
 
   defp empty_stream(), do: Stream.concat([])

@@ -48,10 +48,10 @@ defmodule Fact.EventIndexer do
 
       use GenServer
       use Fact.EventKeys
-      import Fact.Names
+      
       require Logger
 
-      defstruct [:instance, :index, :index_opts, :encoding]
+      defstruct [:instance, :index, :index_opts]
 
       @doc """
       Starts the indexer process.
@@ -69,7 +69,7 @@ defmodule Fact.EventIndexer do
       """
       def start_link(opts \\ []) do
         {indexer_opts, start_opts} =
-          Keyword.split(opts, [:instance, :key, :encoding, :opts])
+          Keyword.split(opts, [:instance, :key, :opts])
 
         index =
           case Keyword.fetch(indexer_opts, :key) do
@@ -78,8 +78,7 @@ defmodule Fact.EventIndexer do
           end
 
         instance = Keyword.fetch!(indexer_opts, :instance)
-        encoding = Keyword.get(indexer_opts, :encoding, :raw)
-
+        
         custom_opts = Keyword.get(indexer_opts, :opts, [])
 
         index_opts =
@@ -91,18 +90,15 @@ defmodule Fact.EventIndexer do
         state = %__MODULE__{
           instance: instance,
           index: index,
-          index_opts: index_opts,
-          encoding: encoding
+          index_opts: index_opts
         }
-
-        # start_opts = Keyword.put_new(start_opts, :name, via(instance, __MODULE__))
 
         GenServer.start_link(__MODULE__, state, start_opts)
       end
 
       @impl true
-      def init(%{instance: instance, index: index, encoding: encoding} = state) do
-        :ok = Fact.Storage.ensure_index(instance, index, encoding)
+      def init(%{instance: instance, index: index} = state) do
+        :ok = ensure_storage(state)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
@@ -159,6 +155,15 @@ defmodule Fact.EventIndexer do
         index_key = index_event(event, index_opts)
         Fact.Storage.write_index(instance, index, index_key, event_id)
         Fact.Storage.write_checkpoint(instance, index, event[@event_store_position])
+      end
+      
+      defp ensure_storage(%{instance: instance, index: index} = state) do
+        checkpoint_path = Fact.Instance.indexer_checkpoint_path(instance, index)
+        with :ok <- File.mkdir_p(Path.dirname(checkpoint_path)) do
+          unless File.exists?(checkpoint_path),
+            do: File.write(checkpoint_path, "0"),
+            else: :ok
+        end
       end
     end
   end
