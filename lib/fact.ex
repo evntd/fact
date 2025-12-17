@@ -101,13 +101,19 @@ defmodule Fact do
   end
 
   @spec append(
-          Fact.Types.instance_name(),
+          Fact.Instance.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
           Fact.Types.event_position(),
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def append(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ []) do
+  def append(
+        %Fact.Instance{} = instance,
+        events,
+        fail_if_match \\ nil,
+        after_position \\ 0,
+        opts \\ []
+      ) do
     Fact.EventLedger.commit(instance, events, fail_if_match, after_position, opts)
   end
 

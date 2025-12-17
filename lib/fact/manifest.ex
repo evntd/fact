@@ -87,14 +87,22 @@ defmodule Fact.Manifest do
             old_encoding =
               if indexer["filename_scheme"] === "raw",
                 do: :raw,
-                else: {:hash, indexer["hash_algorithm"]}
+                else: {:hash, String.to_atom(indexer["hash_algorithm"])}
 
             %{
               module: module,
               name: String.to_atom(indexer["name"]),
               filename_scheme: String.to_atom(indexer["filename_scheme"]),
-              hash_algorithm: indexer["hash_algorithm"],
-              hash_encoding: indexer["hash_encoding"],
+              hash_algorithm:
+                if(not is_nil(indexer["hash_algorithm"]),
+                  do: String.to_atom(indexer["hash_algorithm"]),
+                  else: nil
+                ),
+              hash_encoding:
+                if(not is_nil(indexer["hash_encoding"]),
+                  do: String.to_atom(indexer["hash_encoding"]),
+                  else: nil
+                ),
               old_spec:
                 {@indexer_modules[indexer["name"]], [enabled: true, encoding: old_encoding]},
               old_path: Path.join([path, "indices", to_string(module)])

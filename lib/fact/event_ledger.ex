@@ -1,7 +1,7 @@
 defmodule Fact.EventLedger do
   use GenServer
   use Fact.EventKeys
-  import Fact.Names
+
   require Logger
 
   @type t :: %__MODULE__{
@@ -35,7 +35,7 @@ defmodule Fact.EventLedger do
 
   defstruct [:instance, position: 0]
 
-  @spec start_link([instance: atom()] | []) :: {:ok, pid()} | {:error, term()}
+  @spec start_link([instance: Fact.Instance.t()] | []) :: {:ok, pid()} | {:error, term()}
   def start_link(opts) do
     {ledger_opts, genserver_opts} = Keyword.split(opts, [:instance])
     instance = Keyword.fetch!(ledger_opts, :instance)
@@ -43,7 +43,7 @@ defmodule Fact.EventLedger do
   end
 
   @spec commit(
-          Fact.Types.instance_name(),
+          Fact.Instance.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
           Fact.Types.event_position(),
@@ -51,19 +51,18 @@ defmodule Fact.EventLedger do
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def commit(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
 
-  def commit(instance, events, nil, after_position, opts),
+  def commit(%Fact.Instance{} = instance, events, nil, after_position, opts),
     do: commit(instance, events, Fact.Query.from_none(), after_position, opts)
 
-  def commit(instance, event, fail_if_match, after_position, opts)
+  # TODO: Rework signatures to handle conversion of Fact.QueryItem to Fact.Query  
+
+  def commit(%Fact.Instance{} = instance, event, fail_if_match, after_position, opts)
       when is_map(event) and not is_list(event) do
     commit(instance, [event], fail_if_match, after_position, opts)
   end
 
-  def commit(instance, events, fail_if_match, after_position, opts) do
+  def commit(%Fact.Instance{} = instance, events, fail_if_match, after_position, opts) do
     cond do
-      not is_atom(instance) ->
-        {:error, :invalid_instance}
-
       not is_list(events) ->
         {:error, :invalid_event_list}
 
@@ -83,7 +82,7 @@ defmodule Fact.EventLedger do
         timeout = Keyword.get(opts, :timeout, 5000)
 
         GenServer.call(
-          via(instance, __MODULE__),
+          Fact.Instance.event_ledger(instance),
           {:commit, events, condition: {fail_if_match, after_position}},
           timeout
         )
