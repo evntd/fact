@@ -39,7 +39,6 @@ defmodule Fact.EventLedger do
   def start_link(opts) do
     {ledger_opts, genserver_opts} = Keyword.split(opts, [:instance])
     instance = Keyword.fetch!(ledger_opts, :instance)
-    genserver_opts = Keyword.put(genserver_opts, :name, via(instance, __MODULE__))
     GenServer.start_link(__MODULE__, instance, genserver_opts)
   end
 

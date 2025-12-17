@@ -95,7 +95,7 @@ defmodule Fact.EventIndexer do
           encoding: encoding
         }
 
-        start_opts = Keyword.put_new(start_opts, :name, via(instance, __MODULE__))
+        # start_opts = Keyword.put_new(start_opts, :name, via(instance, __MODULE__))
 
         GenServer.start_link(__MODULE__, state, start_opts)
       end
@@ -137,7 +137,10 @@ defmodule Fact.EventIndexer do
       end
 
       defp notify_ready(%{instance: instance, index: index}) do
-        GenServer.cast(via(instance, Fact.EventIndexerManager), {:indexer_ready, self(), index})
+        GenServer.cast(
+          Fact.Instance.event_indexer_manager(instance),
+          {:indexer_ready, self(), index}
+        )
       end
 
       defp rebuild_index(%{instance: instance, index: index} = state) do

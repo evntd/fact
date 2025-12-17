@@ -53,12 +53,6 @@ defmodule Fact.Storage do
   @type hash_algorithm :: :sha | :sha256
   @type encoding :: :raw | :hash | {:hash, hash_algorithm()}
 
-  @default_driver Fact.Storage.Driver.ByEventId
-  @default_format Fact.Storage.Format.Json
-
-  @events_path "events"
-  @indices_path "indices"
-  @ledger_path "ledger"
   @index_checkpoint ".checkpoint"
 
   @doc """
@@ -90,19 +84,8 @@ defmodule Fact.Storage do
   """
   def start_link(opts) do
     instance = Keyword.fetch!(opts, :instance)
-    path = Keyword.get(opts, :path, Path.join(File.cwd!(), normalize(instance)))
-    driver = Keyword.get(opts, :driver, @default_driver)
-    format = Keyword.get(opts, :format, @default_format)
-
-    events_path = Path.join(path, @events_path)
-
-    with :ok <- ensure_directory(events_path),
-         :ok <- ensure_file(Path.join(path, ".gitignore"), "*"),
-         {:module, _driver_module} <- Code.ensure_loaded(driver),
-         {:module, _format_module} <- Code.ensure_loaded(format) do
-      setup_table(instance, path, driver, format)
-      {:ok, self()}
-    end
+    setup_table(instance)
+    {:ok, self()}
   end
 
   @doc """
@@ -122,19 +105,19 @@ defmodule Fact.Storage do
       case index do
         {index_module, index_module_key} ->
           Path.join([
-            indices_path(instance),
+            Fact.Instance.indices_path(instance),
             to_string(index_module),
             to_string(index_module_key)
           ])
 
         index_module ->
-          Path.join([indices_path(instance), to_string(index_module)])
+          Path.join([Fact.Instance.indices_path(instance), to_string(index_module)])
       end
 
     checkpoint_path = Path.join(index_path, @index_checkpoint)
 
     with :ok <- ensure_file(checkpoint_path, 0) do
-      table = storage_table(instance)
+      table = Fact.Instance.storage_table(instance)
       :ets.insert(table, {{index, :index_path}, index_path})
       :ets.insert(table, {{index, :index_checkpoint_path}, checkpoint_path})
       :ets.insert(table, {{index, :index_path_encoder}, index_path_encoder(index_path, encoding)})
@@ -200,14 +183,14 @@ defmodule Fact.Storage do
 
   defp get_index_path_encoder(instance, index) do
     [{{^index, :index_path_encoder}, path_encoder}] =
-      :ets.lookup(storage_table(instance), {index, :index_path_encoder})
+      :ets.lookup(Fact.Instance.storage_table(instance), {index, :index_path_encoder})
 
     path_encoder
   end
 
   defp get_checkpoint_path(instance, index) do
     [{{^index, :index_checkpoint_path}, checkpoint_path}] =
-      :ets.lookup(storage_table(instance), {index, :index_checkpoint_path})
+      :ets.lookup(Fact.Instance.storage_table(instance), {index, :index_checkpoint_path})
 
     checkpoint_path
   end
@@ -349,32 +332,38 @@ defmodule Fact.Storage do
   end
 
   def path(instance) do
-    [{:path, path}] = :ets.lookup(storage_table(instance), :path)
+    [{:path, path}] = :ets.lookup(Fact.Instance.storage_table(instance), :path)
     path
   end
 
   def events_path(instance) do
-    [{:events_path, events_path}] = :ets.lookup(storage_table(instance), :events_path)
+    [{:events_path, events_path}] =
+      :ets.lookup(Fact.Instance.storage_table(instance), :events_path)
+
     events_path
   end
 
   def indices_path(instance) do
-    [{:indices_path, indices_path}] = :ets.lookup(storage_table(instance), :indices_path)
+    [{:indices_path, indices_path}] =
+      :ets.lookup(Fact.Instance.storage_table(instance), :indices_path)
+
     indices_path
   end
 
   def ledger_path(instance) do
-    [{:ledger_path, ledger_path}] = :ets.lookup(storage_table(instance), :ledger_path)
+    [{:ledger_path, ledger_path}] =
+      :ets.lookup(Fact.Instance.storage_table(instance), :ledger_path)
+
     ledger_path
   end
 
   def driver(instance) do
-    [{:driver, driver_module}] = :ets.lookup(storage_table(instance), :driver)
+    [{:driver, driver_module}] = :ets.lookup(Fact.Instance.storage_table(instance), :driver)
     driver_module
   end
 
   def format(instance) do
-    [{:format, format_module}] = :ets.lookup(storage_table(instance), :format)
+    [{:format, format_module}] = :ets.lookup(Fact.Instance.storage_table(instance), :format)
     format_module
   end
 
@@ -387,25 +376,20 @@ defmodule Fact.Storage do
   defp encode_key(_value, encoding),
     do: raise(ArgumentError, "unsupported encoding: #{inspect(encoding)}")
 
-  defp setup_table(instance, path, driver, format) do
-    table = storage_table(instance)
-    :ets.new(table, [:named_table, :public, :set])
-    :ets.insert(table, {:path, path})
-    :ets.insert(table, {:events_path, Path.join(path, @events_path)})
-    :ets.insert(table, {:ledger_path, Path.join(path, @ledger_path)})
-    :ets.insert(table, {:indices_path, Path.join(path, @indices_path)})
-    :ets.insert(table, {:driver, driver})
-    :ets.insert(table, {:format, format})
+  defp setup_table(instance) do
+    # TODO: Remove these driver/format dependencies!
+    with {:module, _driver_module} <- Code.ensure_loaded(instance.manifest.records.old_driver),
+         {:module, _format_module} <- Code.ensure_loaded(instance.manifest.records.old_format) do
+      table = Fact.Instance.storage_table(instance)
+      :ets.new(table, [:named_table, :public, :set])
+      :ets.insert(table, {:path, Fact.Instance.database_path(instance)})
+      :ets.insert(table, {:events_path, Fact.Instance.events_path(instance)})
+      :ets.insert(table, {:ledger_path, Fact.Instance.ledger_path(instance)})
+      :ets.insert(table, {:indices_path, Fact.Instance.indices_path(instance)})
+      :ets.insert(table, {:driver, instance.manifest.records.old_driver})
+      :ets.insert(table, {:format, instance.manifest.records.old_format})
+    end
   end
-
-  defp storage_table(instance), do: :"#{instance}.#{__MODULE__}"
 
   defp empty_stream(), do: Stream.concat([])
-
-  defp normalize(name) do
-    to_string(name)
-    |> String.replace_prefix("Elixir.", "")
-    |> String.replace("/", "_")
-    |> String.downcase()
-  end
 end

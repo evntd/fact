@@ -3,8 +3,8 @@ defmodule Fact.EventPublisher do
 
   @all_events "*"
 
-  def subscribe(instance, source) when is_binary(source) do
-    Phoenix.PubSub.subscribe(instance, source)
+  def subscribe(%Fact.Instance{} = instance, source) when is_binary(source) do
+    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), source)
   end
 
   def subscribe(instance, :all), do: subscribe(instance, @all_events)

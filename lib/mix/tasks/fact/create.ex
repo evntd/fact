@@ -21,7 +21,7 @@ defmodule Mix.Tasks.Fact.Create do
     [--indexer|-i INDEXER] \\
     [--indexer-option|-x INDEXER:INDEX_OPTION=VALUE]
   ```
-  
+
   By default, the database will be created in a directory matching
   the database name.
 
@@ -278,7 +278,7 @@ defmodule Mix.Tasks.Fact.Create do
   end
 
   defp normalize_path(path), do: String.trim(path) |> Path.expand()
-  
+
   @manifest_version "0.1.0"
   @schema_version "0.1.0"
   @storage_version "0.1.0"

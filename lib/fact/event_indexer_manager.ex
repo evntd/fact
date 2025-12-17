@@ -11,16 +11,18 @@ defmodule Fact.EventIndexerManager do
     {indexer_opts, genserver_opts} = Keyword.split(opts, [:instance, :indexers])
     instance = Keyword.fetch!(indexer_opts, :instance)
     indexers = Keyword.fetch!(indexer_opts, :indexers)
-    genserver_opts = Keyword.put(genserver_opts, :name, via(instance, __MODULE__))
     GenServer.start_link(__MODULE__, {instance, indexers}, genserver_opts)
   end
 
-  def ensure_indexer(instance, key) do
-    GenServer.call(via(instance, __MODULE__), {:ensure_indexer, key})
+  def ensure_indexer(%Fact.Instance{} = instance, key) do
+    GenServer.call(Fact.Instance.event_indexer_manager(instance), {:ensure_indexer, key})
   end
 
-  def stream!(instance, indexer, value, direction \\ :forward) do
-    GenServer.call(via(instance, __MODULE__), {:stream!, indexer, value, direction})
+  def stream!(%Fact.Instance{} = instance, indexer, value, direction \\ :forward) do
+    GenServer.call(
+      Fact.Instance.event_indexer_manager(instance),
+      {:stream!, indexer, value, direction}
+    )
   end
 
   @impl true
@@ -58,10 +60,15 @@ defmodule Fact.EventIndexerManager do
       ) do
     indexer_key = get_indexer_key(spec)
 
-    case Registry.lookup(registry(instance), indexer_key) do
+    case Registry.lookup(Fact.Instance.registry(instance), indexer_key) do
       [] ->
+        {mod, opts} = spec
+
         {:ok, indexer} =
-          DynamicSupervisor.start_child(via(instance, Fact.EventIndexerSupervisor), spec)
+          DynamicSupervisor.start_child(
+            Fact.Instance.event_indexer_supervisor(instance),
+            {mod, Keyword.put(opts, :instance, instance)}
+          )
 
         info = %{
           pid: indexer,

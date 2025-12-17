@@ -88,6 +88,13 @@ defmodule Fact do
 
   @default_instance_name :""
 
+  def open(path) do
+    manifest = Fact.Manifest.load!(path)
+    instance = Fact.Instance.new(manifest)
+    {:ok, _supervisor_pid} = Fact.Supervisor.start_link(instance: instance)
+    {:ok, instance}
+  end
+
   @spec start_link(instance :: atom(), opts :: keyword) :: {:ok, pid()} | {:error, term()}
   def start_link(instance \\ @default_instance_name, opts \\ []) do
     Fact.Supervisor.start_link(Keyword.put(opts, :instance, instance))
