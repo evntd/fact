@@ -176,7 +176,7 @@ defmodule Mix.Tasks.Fact.Create do
     indices_path = Path.join(path, "indices")
     File.mkdir!(indices_path)
 
-    manifest.indexing.indexers
+    manifest.indexers
     |> Enum.each(fn indexer ->
       index_path = Path.join(indices_path, indexer.name)
       File.mkdir!(index_path)
@@ -197,7 +197,7 @@ defmodule Mix.Tasks.Fact.Create do
           █████╗  ███████║██║         ██║   
           ██╔══╝  ██╔══██║██║         ██║   
           ██║     ██║  ██║╚██████╗    ██║   
-       🐢 ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project[:version]} (#{Fact.MixProject.project[:codename]})  
+       🐢 ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project()[:version]} (#{Fact.MixProject.project()[:codename]})  
 
     """)
   end
@@ -279,9 +279,6 @@ defmodule Mix.Tasks.Fact.Create do
   defp normalize_path(path), do: String.trim(path) |> Path.expand()
 
   defp create_manifest_v1(name, parsed) do
-    records = get_records_options(parsed)
-    indexing = get_indexing_options(parsed)
-
     %{
       format_version: 1,
       database_id: generate_id(),
@@ -289,9 +286,13 @@ defmodule Mix.Tasks.Fact.Create do
       engine_version: Fact.MixProject.project()[:version],
       schema_version: 1,
       created_at: DateTime.utc_now(:microsecond) |> DateTime.to_iso8601(),
-      records: records,
-      indexing: indexing
+      records: get_records_options(parsed),
+      indexers: get_indexers(parsed)
     }
+  end
+
+  defp generate_id() do
+    :uuid.get_v4() |> Base.encode32(padding: false)
   end
 
   defp get_records_options(parsed) do
@@ -397,12 +398,72 @@ defmodule Mix.Tasks.Fact.Create do
     cas_hash_encoding
   end
 
-  defp get_indexing_options(parsed) do
+  @valid_indexers [
+    "event_stream",
+    "event_stream_category",
+    "event_streams",
+    "event_streams_by_category",
+    "event_tags",
+    "event_type"
+  ]
+  @required_indexers ["event_stream", "event_tags", "event_type"]
+
+  defp get_indexers(parsed) do
+    get_indexers(parsed, get_default_indexer_options(parsed))
+  end
+
+  defp get_indexers(parsed, default_indexer_options) do
+    indexer_options = get_indexer_options(parsed)
+
+    indexer_list =
+      if Keyword.get(parsed, :all_indexers) do
+        @valid_indexers
+      else
+        Keyword.get_values(parsed, :indexer)
+        |> Enum.map(&normalize_string/1)
+        |> Enum.concat(@required_indexers)
+        |> Enum.uniq()
+      end
+
+    :ok = validate_indexers(indexer_list)
+
+    indexer_list
+    |> Enum.map(fn indexer ->
+      override_indexer_options =
+        Map.merge(
+          %{name: indexer},
+          Map.new(
+            indexer_options
+            |> Enum.filter(fn {i, _, _} -> i === indexer end)
+            |> Enum.map(fn {_, k, v} -> {String.to_atom(k), v} end)
+          )
+        )
+
+      usable_default_indexer_options =
+        case {override_indexer_options[:filename_scheme],
+              default_indexer_options[:filename_scheme]} do
+          {nil, "raw"} ->
+            Map.take(default_indexer_options, [:filename_scheme])
+
+          {"hash", "raw"} ->
+            Map.take(default_indexer_options, [:hash_algorithm, :hash_encoding])
+
+          {_, "hash"} ->
+            default_indexer_options
+
+          {"raw", _} ->
+            %{}
+        end
+
+      Map.merge(usable_default_indexer_options, override_indexer_options)
+    end)
+  end
+
+  defp get_default_indexer_options(parsed) do
     %{
       filename_scheme: get_index_filename_scheme(parsed),
       hash_algorithm: get_index_hash_algorithm(parsed),
-      hash_encoding: get_index_hash_encoding(parsed),
-      indexers: get_indexers(parsed)
+      hash_encoding: get_index_hash_encoding(parsed)
     }
   end
 
@@ -469,44 +530,6 @@ defmodule Mix.Tasks.Fact.Create do
     index_hash_encoding
   end
 
-  @valid_indexers [
-    "event_stream",
-    "event_stream_category",
-    "event_streams",
-    "event_streams_by_category",
-    "event_tags",
-    "event_type"
-  ]
-  @required_indexers ["event_stream", "event_tags", "event_type"]
-
-  defp get_indexers(parsed) do
-    indexer_options = get_indexer_options(parsed)
-
-    indexer_list =
-      if Keyword.get(parsed, :all_indexers) do
-        @valid_indexers
-      else
-        Keyword.get_values(parsed, :indexer)
-        |> Enum.map(&normalize_string/1)
-        |> Enum.concat(@required_indexers)
-        |> Enum.uniq()
-      end
-
-    :ok = validate_indexers(indexer_list)
-
-    indexer_list
-    |> Enum.map(fn indexer ->
-      Map.merge(
-        %{name: indexer},
-        Map.new(
-          indexer_options
-          |> Enum.filter(fn {i, _, _} -> i === indexer end)
-          |> Enum.map(fn {_, k, v} -> {String.to_atom(k), v} end)
-        )
-      )
-    end)
-  end
-
   defp get_indexer_options(parsed) do
     indexer_options =
       Keyword.get_values(parsed, :indexer_option)
@@ -555,9 +578,5 @@ defmodule Mix.Tasks.Fact.Create do
 
   defp validate_indexer(indexer) do
     validate_option("indexer", @valid_indexers, indexer)
-  end
-
-  defp generate_id() do
-    :uuid.get_v4() |> Base.encode32(padding: false)
   end
 end
