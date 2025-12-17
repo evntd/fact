@@ -3,12 +3,14 @@ defmodule Fact.MixProject do
 
   @name "Fact"
   @version "0.0.1"
+  @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
 
   def project do
     [
       app: :fact,
       version: @version,
+      codename: @codename,
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

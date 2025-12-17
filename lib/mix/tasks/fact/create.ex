@@ -184,6 +184,7 @@ defmodule Mix.Tasks.Fact.Create do
     end)
 
     display_results(path, manifest)
+    display_next_steps()
   end
 
   defp display_banner() do
@@ -196,8 +197,30 @@ defmodule Mix.Tasks.Fact.Create do
           █████╗  ███████║██║         ██║   
           ██╔══╝  ██╔══██║██║         ██║   
           ██║     ██║  ██║╚██████╗    ██║   
-          ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project()[:version]}   
+       🐢 ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project[:version]} (#{Fact.MixProject.project[:codename]})  
 
+    """)
+  end
+
+  defp display_results(path, manifest) do
+    Mix.Shell.IO.info("""
+        Database created, you're ready to rock!!! 🤘
+
+      ==============================================================================  
+          ID: #{manifest.database_id}
+        NAME: #{manifest.database_name}
+        PATH: #{path}
+      ==============================================================================    
+    """)
+  end
+
+  defp display_next_steps() do
+    Mix.Shell.IO.info("""
+        Next Steps:
+        
+          📖 \e]8;;#{Fact.MixProject.project()[:docs][:canonical]}\e\\Read the documentation\e]8;;\e\\ at #{Fact.MixProject.project()[:docs][:canonical]}
+          🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\ 
+          🍺 \e]8;;https://www.amazon.com/Complete-Joy-Homebrewing-Fourth-Revised/dp/0062215752\e\\Relax, don't worry, have a homebrew \e]8;;\e\\
     """)
   end
 
@@ -536,21 +559,5 @@ defmodule Mix.Tasks.Fact.Create do
 
   defp generate_id() do
     :uuid.get_v4() |> Base.encode32(padding: false)
-  end
-
-  defp display_results(path, manifest) do
-    Mix.Shell.IO.info("""
-        Database created, you're ready to rock 🤘
-
-          ID: #{manifest.database_id}
-        NAME: #{manifest.database_name}
-        PATH: #{path}
-      
-      
-        Next Steps:
-      
-          * \e]8;;#{Fact.MixProject.project()[:docs][:canonical]}\e\\Read the documentation\e]8;;\e\\ at #{Fact.MixProject.project()[:docs][:canonical]} 
-
-    """)
   end
 end
