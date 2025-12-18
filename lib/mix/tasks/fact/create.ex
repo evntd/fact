@@ -197,7 +197,7 @@ defmodule Mix.Tasks.Fact.Create do
 
   defp display_banner() do
     # ANSI Shadow
-    Mix.Shell.IO.info("""
+    Mix.shell().info("""
 
 
           ███████╗ █████╗  ██████╗ ████████╗
@@ -211,7 +211,7 @@ defmodule Mix.Tasks.Fact.Create do
   end
 
   defp display_results(path, manifest) do
-    Mix.Shell.IO.info("""
+    Mix.shell().info("""
         Database created, you're ready to rock!!! 🤘
 
       ==============================================================================  
@@ -223,12 +223,12 @@ defmodule Mix.Tasks.Fact.Create do
   end
 
   defp display_next_steps() do
-    Mix.Shell.IO.info("""
+    Mix.shell().info("""
         Next Steps:
         
           📖 \e]8;;#{Fact.MixProject.project()[:docs][:canonical]}\e\\Read the documentation\e]8;;\e\\ at #{Fact.MixProject.project()[:docs][:canonical]}
           🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\ 
-          🍺 \e]8;;https://www.amazon.com/Complete-Joy-Homebrewing-Fourth-Revised/dp/0062215752\e\\Relax, don't worry, have a homebrew \e]8;;\e\\
+          🍺 \e]8;;https://www.amazon.com/Complete-Joy-Homebrewing-Fourth-Revised/dp/0062215752\e\\Relax, don't worry, have a homebrew\e]8;;\e\\
     """)
   end
 
@@ -237,7 +237,7 @@ defmodule Mix.Tasks.Fact.Create do
 
     unless parsed_name do
       Mix.raise("""
-      Requires a name, use "mix fact.create --name <name>"
+      Missing database name, use "mix fact.create --name <name>"
       """)
     end
 
@@ -249,10 +249,16 @@ defmodule Mix.Tasks.Fact.Create do
   defp normalize_name(name), do: String.trim(name)
 
   defp validate_name(name) do
-    unless String.match?(name, ~r/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/) do
+    if String.length(name) > 63 do
       Mix.raise("""
-      Invalid database name, it may contain only the characters a-z, 0-9, and - (hyphen), and must be up to 63 characters long.
+      Invalid database name, it may only be up to 63 characters in length.
       """)
+    end
+
+    unless String.match?(name, ~r/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/) do
+      Mix.raise(
+        "Invalid database name, it may only contain the characters a-z, 0-9, and - (hyphen)."
+      )
     end
 
     :ok
@@ -270,7 +276,7 @@ defmodule Mix.Tasks.Fact.Create do
     if File.exists?(path) do
       if not File.dir?(path) do
         Mix.raise("""
-        Requires the path to be a directory, a file a specified: #{path}
+        Requires the path to be a directory, a file was specified: #{path}
         """)
       end
 
@@ -462,11 +468,11 @@ defmodule Mix.Tasks.Fact.Create do
           {"hash", "raw"} ->
             Map.take(default_indexer_options, [:hash_algorithm, :hash_encoding])
 
-          {_, "hash"} ->
-            default_indexer_options
-
           {"raw", _} ->
             %{}
+
+          {_, "hash"} ->
+            default_indexer_options
         end
 
       Map.merge(usable_default_indexer_options, override_indexer_options)
@@ -557,9 +563,15 @@ defmodule Mix.Tasks.Fact.Create do
   defp parse_indexer_options(options), do: Enum.map(options, &parse_indexer_option/1)
 
   defp parse_indexer_option(option) do
-    [indexer, option_part] = String.split(option, ":", parts: 2)
-    [option, value] = String.split(option_part, "=", parts: 2)
-    {indexer, option, value}
+    with [indexer, option_part] <- String.split(option, ":", parts: 2),
+         [option, value] <- String.split(option_part, "=", parts: 2) do
+      {indexer, option, value}
+    else
+      _ ->
+        Mix.raise("""
+        Invalid indexer option format, use <indexer>:<option>=value: #{option}
+        """)
+    end
   end
 
   @valid_indexer_options ["filename_scheme", "hash_algorithm", "hash_encoding"]
@@ -572,16 +584,13 @@ defmodule Mix.Tasks.Fact.Create do
 
     cond do
       option === "filename_scheme" ->
-        validate_option("#{indexer} filename scheme", @valid_index_filename_schemes, value)
+        validate_option("#{indexer} #{option} value", @valid_index_filename_schemes, value)
 
       option === "hash_algorithm" ->
-        validate_option("#{indexer} hash algorithm", @valid_index_hash_algorithms, value)
+        validate_option("#{indexer} #{option} value", @valid_index_hash_algorithms, value)
 
       option === "hash_encoding" ->
-        validate_option("#{indexer} hash encoding", @valid_index_hash_encodings, value)
-
-      true ->
-        :ok
+        validate_option("#{indexer} #{option} value", @valid_index_hash_encodings, value)
     end
   end
 

@@ -46,7 +46,7 @@ defmodule Fact.CatchUpSubscriptionTest do
   setup_all do
     name = "catchup-" <> Fact.Uuid.v4()
     path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--quiet"])
+    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--all-indexers", "--quiet"])
 
     on_exit(fn -> File.rm_rf!(path) end)
 
