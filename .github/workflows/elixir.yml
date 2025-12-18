@@ -108,8 +108,11 @@ jobs:
       - name: Match tag and version
         run: |
           GIT_TAG_VERSION=${GITHUB_REF_NAME#v}
-          MIX_VERSION=$(mix run -e 'IO.puts(Mix.Project.config[:version])')
-          [ "$GIT_TAG_VERSION" = "$MIX_VERSION" ]
+          MIX_VERSION=$(mix run -e 'IO.write(Mix.Project.config[:version])')
+          if [ "$GIT_TAG_VERSION" = "$MIX_VERSION" ]; then
+            echo "Error: Git tag ($GIT_TAG_VERSION) does not match mix.exs version ($MIX_VERSION)"
+            exit 1
+          fi
 
       - name: hex.publish
         env:
