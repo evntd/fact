@@ -309,7 +309,7 @@ defmodule Mix.Tasks.Fact.Create do
       index_version: @index_version,
       database_id: generate_id(),
       database_name: name,
-      created_at: DateTime.utc_now(:microsecond) |> DateTime.to_iso8601(),
+      created_at: DateTime.utc_now() |> DateTime.to_iso8601(),
       records: get_records_options(parsed),
       indexers: get_indexers(parsed)
     }
