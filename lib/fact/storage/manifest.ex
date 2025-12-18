@@ -1,7 +1,7 @@
 defmodule Fact.Storage.Manifest do
   require Logger
 
-  @manifest_filename "manifest.json"
+  @manifest_filename "manifest"
 
   @record_filename_schemes %{
     "id" => Fact.Storage.Driver.ByEventId,

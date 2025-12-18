@@ -195,7 +195,7 @@ defmodule Mix.Tasks.Fact.CreateTest do
       Create.run(["-n", "test", "-p", path, "-q"])
 
       assert File.dir?(path)
-      assert File.exists?(Path.join(path, "manifest.json"))
+      assert File.exists?(Path.join(path, "manifest"))
       assert File.exists?(Path.join(path, ".gitignore"))
       assert File.exists?(Path.join(path, ".ledger"))
       assert File.dir?(Path.join(path, "events"))
@@ -214,7 +214,7 @@ defmodule Mix.Tasks.Fact.CreateTest do
       Create.run(["-n", "test", "-p", path, "-q", "--all-indexers"])
 
       assert File.dir?(path)
-      assert File.exists?(Path.join(path, "manifest.json"))
+      assert File.exists?(Path.join(path, "manifest"))
       assert File.exists?(Path.join(path, ".gitignore"))
       assert File.exists?(Path.join(path, ".ledger"))
       assert File.dir?(Path.join(path, "events"))
@@ -233,7 +233,7 @@ defmodule Mix.Tasks.Fact.CreateTest do
       Create.run(["-n", "test", "-p", path, "-q", "--indexer", "event_streams"])
 
       assert File.dir?(path)
-      assert File.exists?(Path.join(path, "manifest.json"))
+      assert File.exists?(Path.join(path, "manifest"))
       assert File.exists?(Path.join(path, ".gitignore"))
       assert File.exists?(Path.join(path, ".ledger"))
       assert File.dir?(Path.join(path, "events"))
@@ -400,7 +400,7 @@ defmodule Mix.Tasks.Fact.CreateTest do
   end
 
   def read_manifest(path) do
-    "manifest.json"
+    "manifest"
     |> then(&Path.join(path, &1))
     |> File.read!()
     |> Fact.Json.decode!()

@@ -175,7 +175,7 @@ defmodule Mix.Tasks.Fact.Create do
     manifest = create_manifest_v1(name, parsed)
 
     File.mkdir_p!(path)
-    File.write!(Path.join(path, "manifest.json"), Fact.Json.encode!(manifest))
+    File.write!(Path.join(path, "manifest"), Fact.Json.encode!(manifest))
     File.mkdir!(Path.join(path, "events"))
     File.touch!(Path.join(path, ".ledger"))
     File.write!(Path.join(path, ".gitignore"), "*")
