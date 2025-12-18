@@ -57,7 +57,7 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "guides/introduction/overview.md",
-        "guides/versions/what-is-up-with-all-these-versions.md",
+        "guides/versions/whats-up-with-all-these-versions.md",
         "LICENSE"
       ],
       favicon: "guides/assets/images/turt-16.png",

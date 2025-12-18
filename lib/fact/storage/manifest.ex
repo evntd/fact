@@ -66,9 +66,12 @@ defmodule Fact.Storage.Manifest do
     config =
       %{
         manifest_version: Version.parse!(manifest["manifest_version"]),
+        elixir_version: Version.parse!(manifest["elixir_version"]),
         engine_version: Version.parse!(manifest["engine_version"]),
-        record_version: Version.parse!(manifest["record_version"]),
         index_version: Version.parse!(manifest["index_version"]),
+        os_version: manifest["os_version"],
+        otp_version: manifest["otp_version"],
+        record_version: Version.parse!(manifest["record_version"]),
         storage_version: Version.parse!(manifest["storage_version"]),
         database_id: manifest["database_id"],
         database_name: manifest["database_name"],

@@ -28,3 +28,19 @@ file formats, indexing schemes, and other configuration details the system relie
 
 The **storage version** describes the logical organization of the database on disk, including directories, file names,
 formats, and encoding schemes. It specifies how the system expects data to be arranged and accessed.
+
+## Operating System Version
+
+The **operating system version** identifies the OS and version under which the database was created or managed. It
+provides environmental context that can be useful for diagnostics, troubleshooting, and ensuring platform compatibility.
+
+## OTP Version
+
+The **OTP version** specifies the version of the Erlang/OTP runtime in use when the database was created or accessed. It
+ensures compatibility with runtime behaviors, libraries, and concurrency semantics that the system depends on.
+
+## Elixir Version
+
+The **Elixir version** identifies the version of the Elixir language runtime used by the Fact system. It provides
+context for language-level features, standard library behavior, and compilation semantics that may affect database
+operation or migration.

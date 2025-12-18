@@ -299,6 +299,9 @@ defmodule Mix.Tasks.Fact.Create do
 
   defp create_manifest_v1(name, parsed) do
     %{
+      os_version: os_version(),
+      otp_version: :erlang.system_info(:otp_release) |> to_string(),
+      elixir_version: System.version(),
       manifest_version: @manifest_version,
       engine_version: Fact.MixProject.project()[:version],
       storage_version: @storage_version,
@@ -314,6 +317,22 @@ defmodule Mix.Tasks.Fact.Create do
 
   defp generate_id() do
     :uuid.get_v4() |> Base.encode32(padding: false)
+  end
+
+  defp os_version() do
+    {_os_family, os_name} = :os.type()
+
+    os_version =
+      case :os.version() do
+        {major, minor, release} ->
+          %Version{major: major, minor: minor, patch: release}
+          |> Version.to_string()
+
+        version_string ->
+          version_string
+      end
+
+    "#{os_name} #{os_version}"
   end
 
   defp get_records_options(parsed) do
