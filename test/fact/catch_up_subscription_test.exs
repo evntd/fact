@@ -4,6 +4,7 @@ defmodule Fact.CatchUpSubscriptionTest do
 
   @moduletag capture_log: false
 
+  alias Fact.TestHelper
   alias Fact.CatchUpSubscription
 
   defmodule TestSubscriber do
@@ -44,12 +45,8 @@ defmodule Fact.CatchUpSubscriptionTest do
   @stream "stream-1"
 
   setup_all do
-    name = "catchup-" <> Fact.Uuid.v4()
-    path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--all-indexers", "--quiet"])
-
-    on_exit(fn -> File.rm_rf!(path) end)
-
+    path = TestHelper.create("catchup", :all_indexers)
+    on_exit(fn -> TestHelper.rm_rf(path) end)
     {:ok, instance} = Fact.open(path)
 
     Fact.append(instance, @event)

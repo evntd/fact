@@ -7,8 +7,8 @@ defmodule Fact.AppendTest do
   @moduletag capture_log: true
 
   setup_all do
-    path = TestHelper.create("test-append", :all_indexers)
-    on_exit(fn -> File.rm_rf!(path) end)
+    path = TestHelper.create("append", :all_indexers)
+    on_exit(fn -> TestHelper.rm_rf(path) end)
     {:ok, instance} = Fact.open(path)
     {:ok, instance: instance}
   end

@@ -2,14 +2,13 @@ defmodule Fact.ReadTest do
   use ExUnit.Case
   use Fact.Types
 
+  alias Fact.TestHelper
+
   @moduletag :capture_log
 
   setup_all do
-    name = "test-read-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
-    path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--all-indexers", "--quiet"])
-
-    on_exit(fn -> File.rm_rf!(path) end)
+    path = TestHelper.create("read", :all_indexers)
+    on_exit(fn -> TestHelper.rm_rf(path) end)
 
     {:ok, instance} = Fact.open(path)
 

@@ -2,6 +2,7 @@ defmodule Fact.QueryItemTest do
   use ExUnit.Case
   use Fact.Types
 
+  alias Fact.TestHelper
   alias Fact.QueryItem
 
   @moduletag :capture_log
@@ -9,11 +10,9 @@ defmodule Fact.QueryItemTest do
   doctest QueryItem
 
   setup_all do
-    name = "test-queryitem-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
-    path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--all-indexers", "--quiet"])
+    path = TestHelper.create("query-item")
 
-    on_exit(fn -> File.rm_rf!(path) end)
+    on_exit(fn -> TestHelper.rm_rf(path) end)
 
     {:ok, instance} = Fact.open(path)
 

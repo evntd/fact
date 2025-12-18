@@ -1,12 +1,13 @@
 defmodule Mix.Tasks.Fact.CreateTest do
   use ExUnit.Case
 
+  alias Fact.TestHelper
   alias Mix.Tasks.Fact.Create
 
   @moduletag :capture_log
 
   setup %{tmp_dir: path} do
-    on_exit(fn -> File.rm_rf!(path) end)
+    on_exit(fn -> TestHelper.rm_rf(path) end)
     :ok
   end
 

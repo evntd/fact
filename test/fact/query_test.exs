@@ -2,16 +2,14 @@ defmodule Fact.QueryTest do
   use ExUnit.Case, async: true
   use Fact.Types
 
+  alias Fact.TestHelper
   alias Fact.Query
 
   @moduletag :capture_log
 
   setup_all do
-    name = "test-query-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
-    path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--all-indexers", "--quiet"])
-
-    on_exit(fn -> File.rm_rf!(path) end)
+    path = TestHelper.create("query", :all_indexers)
+    on_exit(fn -> TestHelper.rm_rf(path) end)
 
     {:ok, instance} = Fact.open(path)
 
