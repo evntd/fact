@@ -11,9 +11,6 @@ on:
     tags:
       - v*
 
-env:
-  MIX_ENV: test
-
 permissions:
   contents: read
 
