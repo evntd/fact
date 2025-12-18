@@ -272,7 +272,7 @@ defmodule Mix.Tasks.Fact.CreateTest do
       refute has_indexer?(manifest["indexers"], "event_streams_by_category")
 
       assert Version.match?(manifest["manifest_version"], ">= 0.1.0")
-      assert Version.match?(manifest["engine_version"], ">= 0.0.1")
+      assert Version.match?(manifest["engine_version"], ">= 0.0.1-alpha.1")
       assert Version.match?(manifest["record_version"], ">= 0.0.1")
       assert Version.match?(manifest["index_version"], ">= 0.0.1")
       assert Version.match?(manifest["storage_version"], ">= 0.0.1")

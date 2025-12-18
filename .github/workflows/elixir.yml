@@ -8,7 +8,7 @@ name: Test
 on:
   pull_request:
   push:
-    branches: 
+    branches:
       - main
 
 env:
@@ -29,57 +29,90 @@ jobs:
           - elixir: 1.19.x
             otp: 28
             check_format: true
-            
+
           - elixir: 1.18.x
             otp: 27
             check_format: true
-            
+
           - elixir: 1.17.x
             otp: 27
             check_format: true
-            
+
           - elixir: 1.16.x
             otp: 26
             check_format: true
-            
+
           - elixir: 1.15.x
             otp: 26
             check_format: true
-            
+
           - elixir: 1.14.x
             otp: 26
             check_format: false
-            
+
           - elixir: 1.13.x
             otp: 25
             check_format: false
 
     steps:
       - uses: actions/checkout@v4
-        
+
       - name: Set up Elixir
         id: beam
         uses: erlef/setup-beam@v1.20.4 # See https://github.com/erlef/setup-beam
         with:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
-          
+
       - name: Restore dependencies cache
         uses: actions/cache@v3
         with:
           path: deps
           key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-
-          
+
       - name: Install dependencies
         run: mix do deps.get, deps.compile
-        
+
       - name: Check formatting
         if: ${{ matrix.check_format }}
         run: mix format --check-formatted
-        
+
       - name: Check compilation
         run: mix compile --warnings-as-errors
-        
+
       - name: Run tests
         run: mix test
+  
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1.20.4
+        with:
+          elixir-version: 1.18.x
+          otp-version: 27
+
+      - run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Match git tag with mix version
+        run: |
+          GIT_TAG_VERSION=${GITHUB_REF_NAME#v}
+          MIX_VERSION=$(mix run -e 'IO.puts(Mix.Project.config[:version]')
+          [ "$GIT_TAG_VERSION" = "$MIX_VERSION" ]
+
+      - name: Publish to Hex
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: mix hex.publish --yes
+          
+          
+          
+        
