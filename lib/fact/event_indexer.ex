@@ -47,7 +47,7 @@ defmodule Fact.EventIndexer do
       @behaviour Fact.EventIndexer
 
       use GenServer
-      use Fact.EventKeys
+      use Fact.Types
 
       require Logger
 

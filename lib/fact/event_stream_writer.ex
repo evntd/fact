@@ -4,7 +4,7 @@ defmodule Fact.EventStreamWriter do
   It ensures that events are appended in order, enriched with stream metadata, and committed atomically.
   """
   use GenServer
-  use Fact.EventKeys
+  use Fact.Types
 
   require Logger
 

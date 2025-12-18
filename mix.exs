@@ -68,7 +68,6 @@ defmodule Fact.MixProject do
       groups_for_modules: [
         Api: [
           Fact,
-          Fact.EventKeys,
           Fact.Instance,
           Fact.Types
         ],

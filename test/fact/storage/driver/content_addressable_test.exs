@@ -1,6 +1,6 @@
 defmodule Fact.Storage.Driver.ContentAddressableTest do
   use ExUnit.Case
-  use Fact.EventKeys
+  use Fact.Types
 
   setup_all do
     name = "test-cas-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())

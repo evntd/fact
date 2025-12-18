@@ -1,4 +1,17 @@
 defmodule Fact.Types do
+  @moduledoc """
+  Provides a set of common event field keys for use across modules in the
+  `Fact` system.
+
+  When `use Fact.Types` is invoked inside another module, it injects
+  a series of module attributes representing canonical keys used when
+  working with events - including their identifiers, metadata, payload,
+  and stream position information.
+
+  This helps maintain consistency across the codebase and avoids
+  scattering string literals throughout the system.
+  """
+
   @typedoc """
   A handle to a Fact database instance.
   """
@@ -30,4 +43,47 @@ defmodule Fact.Types do
         }
 
   @type record_id :: String.t()
+
+  @doc """
+  Injects module attributes into the calling module for consistent access to event record keys.
+
+  > #### DO THIS {: .tip}
+  >
+  > Use these instead of strings when accessing event records.
+  >  
+  >     type = event[@event_type]
+    
+  > #### DON'T DO THIS {: .error}
+  >
+  > If or when the event schema changes, this will give you a headache.
+  >
+  >     type = event["event_type"] 
+
+
+  The following module attributes are defined:
+
+    * `@event_data` - the data payload
+    * `@event_id` — the unique event identifier
+    * `@event_metadata` - the consumer defined metadata
+    * `@event_store_position` - the global position within the event store
+    * `@event_store_timestamp` - the timestamp when the event was created
+    * `@event_stream` — the name of the event stream, this may be undefined within the event record
+    * `@event_stream_position` — the position within the event stream, this may be undefined within the event record
+    * `@event_tags` — the list of tags associated with the event
+    * `@event_type` — the type of the event
+
+  """
+  defmacro __using__(_opts) do
+    quote do
+      @event_data "event_data"
+      @event_id "event_id"
+      @event_metadata "event_metadata"
+      @event_store_position "store_position"
+      @event_store_timestamp "store_timestamp"
+      @event_stream "stream_id"
+      @event_stream_position "stream_position"
+      @event_tags "event_tags"
+      @event_type "event_type"
+    end
+  end
 end

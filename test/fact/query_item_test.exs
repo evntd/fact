@@ -1,6 +1,6 @@
 defmodule Fact.QueryItemTest do
   use ExUnit.Case
-  use Fact.EventKeys
+  use Fact.Types
 
   alias Fact.QueryItem
 

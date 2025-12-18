@@ -46,7 +46,7 @@ defmodule Fact.Storage do
 
   """
 
-  use Fact.EventKeys
+  use Fact.Types
   require Logger
 
   @type record_id :: String.t()

@@ -10,7 +10,7 @@ defmodule Fact.ConcurrencyError do
   * `:actual` - the actual position during the append operation
   """
 
-  use Fact.EventKeys
+  use Fact.Types
 
   defexception [:source, :expected, :actual]
 

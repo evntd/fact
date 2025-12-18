@@ -1,6 +1,6 @@
 defmodule Fact.ReadTest do
   use ExUnit.Case
-  use Fact.EventKeys
+  use Fact.Types
 
   @moduletag :capture_log
 

@@ -32,7 +32,7 @@ defmodule Fact.CatchUpSubscription do
   """
 
   use GenServer
-  use Fact.EventKeys
+  use Fact.Types
 
   require Logger
 

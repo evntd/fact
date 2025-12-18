@@ -37,7 +37,7 @@ defmodule Fact.EventReader do
   and the reader applies positional filtering and count limiting on top of that.
   """
 
-  use Fact.EventKeys
+  use Fact.Types
 
   @doc """
   Reads events from the ledger, index, or the events matching an `EventQuery`.

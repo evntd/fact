@@ -1,6 +1,6 @@
 defmodule Fact.CatchUpSubscriptionTest do
   use ExUnit.Case, async: false
-  use Fact.EventKeys
+  use Fact.Types
 
   @moduletag capture_log: false
 

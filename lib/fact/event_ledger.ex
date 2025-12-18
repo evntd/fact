@@ -1,6 +1,6 @@
 defmodule Fact.EventLedger do
   use GenServer
-  use Fact.EventKeys
+  use Fact.Types
 
   require Logger
 

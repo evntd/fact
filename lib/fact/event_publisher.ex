@@ -1,5 +1,8 @@
 defmodule Fact.EventPublisher do
-  use Fact.EventKeys
+  @moduledoc """
+  TODO
+  """
+  use Fact.Types
 
   @all_events "*"
 

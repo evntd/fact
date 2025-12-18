@@ -10,7 +10,7 @@ defmodule Fact.Storage.Driver.ByEventId do
   """
 
   @behaviour Fact.Storage.Driver
-  use Fact.EventKeys
+  use Fact.Types
 
   @record_id_length 32
 
