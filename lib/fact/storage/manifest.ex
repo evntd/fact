@@ -67,7 +67,8 @@ defmodule Fact.Storage.Manifest do
       %{
         manifest_version: Version.parse!(manifest["manifest_version"]),
         engine_version: Version.parse!(manifest["engine_version"]),
-        schema_version: Version.parse!(manifest["schema_version"]),
+        record_version: Version.parse!(manifest["record_version"]),
+        index_version: Version.parse!(manifest["index_version"]),
         storage_version: Version.parse!(manifest["storage_version"]),
         database_id: manifest["database_id"],
         database_name: manifest["database_name"],

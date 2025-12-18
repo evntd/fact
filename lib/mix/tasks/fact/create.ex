@@ -293,7 +293,8 @@ defmodule Mix.Tasks.Fact.Create do
   defp normalize_path(path), do: String.trim(path) |> Path.expand()
 
   @manifest_version "0.1.0"
-  @schema_version "0.1.0"
+  @record_version "0.1.0"
+  @index_version "0.1.0"
   @storage_version "0.1.0"
 
   defp create_manifest_v1(name, parsed) do
@@ -301,7 +302,8 @@ defmodule Mix.Tasks.Fact.Create do
       manifest_version: @manifest_version,
       engine_version: Fact.MixProject.project()[:version],
       storage_version: @storage_version,
-      schema_version: @schema_version,
+      record_version: @record_version,
+      index_version: @index_version,
       database_id: generate_id(),
       database_name: name,
       created_at: DateTime.utc_now(:microsecond) |> DateTime.to_iso8601(),
