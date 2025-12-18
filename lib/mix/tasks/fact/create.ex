@@ -325,9 +325,7 @@ defmodule Mix.Tasks.Fact.Create do
     os_version =
       case :os.version() do
         {major, minor, release} ->
-          %Version{major: major, minor: minor, patch: release}
-          |> Version.to_string()
-
+          "#{major}.#{minor}.#{release}"
         version_string ->
           version_string
       end
