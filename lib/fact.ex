@@ -41,7 +41,7 @@ defmodule Fact do
   """
 
   def open(path) do
-    manifest = Fact.Manifest.load!(path)
+    manifest = Fact.Storage.Manifest.load!(path)
     instance = Fact.Instance.new(manifest)
     {:ok, _supervisor_pid} = Fact.Supervisor.start_link(instance: instance)
     {:ok, instance}

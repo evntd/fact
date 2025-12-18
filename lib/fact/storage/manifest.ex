@@ -1,10 +1,4 @@
-defmodule Fact.DatabaseError do
-  defexception [:message]
-end
-
-defmodule Fact.Manifest do
-  @moduledoc false
-
+defmodule Fact.Storage.Manifest do
   require Logger
 
   @manifest_filename "manifest.json"

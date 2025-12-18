@@ -5,6 +5,8 @@ defmodule Fact.MixProject do
   @version "0.0.1"
   @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
+  @maintainers ["Jake Bruun"]
+  @authors ["Jake Bruun"]
 
   def project do
     [
@@ -48,17 +50,79 @@ defmodule Fact.MixProject do
 
   defp docs do
     [
-      main: "Fact",
+      api_references: true,
+      authors: @authors,
       canonical: "https://hexdocs.pm/Fact",
-      favicon: ".github/assets/turt-64.png",
-      logo: ".github/assets/turt-128.png",
-      extras: ["README.md"]
+      cover: "guides/assets/images/epub-cover.png",
+      extra_section: "GUIDES",
+      extras: [
+        "guides/introduction/overview.md",
+        "LICENSE"
+      ],
+      favicon: "guides/assets/images/turt-16.png",
+      groups_for_extras: [
+        Introduction: [
+          "guides/introduction/overview.md"
+        ]
+      ],
+      groups_for_modules: [
+        Api: [
+          Fact,
+          Fact.EventKeys,
+          Fact.Instance,
+          Fact.Types
+        ],
+        Core: [
+          Fact.EventLedger,
+          Fact.EventReader,
+          Fact.EventStreamWriter,
+          Fact.Query,
+          Fact.QueryItem
+        ],
+        Indexing: [
+          Fact.EventDataIndexer,
+          Fact.EventIndexer,
+          Fact.EventIndexerManager,
+          Fact.EventStreamCategoryIndexer,
+          Fact.EventStreamIndexer,
+          Fact.EventStreamsByCategoryIndexer,
+          Fact.EventStreamsIndexer,
+          Fact.EventTagsIndexer,
+          Fact.EventTypeIndexer,
+          Fact.IndexFileReader.Backwards.Line,
+          Fact.IndexFileReader.Backwards.Chunked
+        ],
+        Process: [
+          Fact.Lock,
+          Fact.LockOwner,
+          Fact.Supervisor
+        ],
+        "Pub/Sub": [
+          Fact.CatchUpSubscription,
+          Fact.EventPublisher
+        ],
+        Storage: [
+          Fact.Storage,
+          Fact.Storage.Driver,
+          Fact.Storage.Driver.ByEventId,
+          Fact.Storage.Driver.ContentAddressable,
+          Fact.Storage.Format,
+          Fact.Storage.Format.Json,
+          Fact.Storage.Manifest
+        ]
+      ],
+      language: "en",
+      logo: "guides/assets/images/turt-48.png",
+      main: "overview",
+      nest_modules_by_prefix: [
+        Fact.IndexFileReader
+      ]
     ]
   end
 
   defp package do
     [
-      maintainers: ["Jake Bruun"],
+      maintainers: @maintainers,
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url
@@ -69,8 +133,7 @@ defmodule Fact.MixProject do
   defp test_coverage do
     [
       ignore_modules: [
-        Fact.EventIndexer,
-        Fact.IndexFileReader.Backwards.Chunked
+        Fact.EventIndexer
       ],
       summary: [
         threshold: 80

@@ -34,19 +34,23 @@ def deps do
 end
 ```
 
+Then create a database instance.
+
+```sh
+$ mix fact.create -p data/mydb
+```
+
 ## Basic Usage
 
 ```elixir
 # Start a database instance
-iex> Fact.start_link(:mydb)
-{:ok, #PID<0.1042.0>}
+iex> {:ok, mydb} = Fact.open("data/mydb")
 
 # Append an event to a stream
-iex> Fact.append_stream(:mydb, %{type: "EventSourcingJourneyStarted"}, "journey-1")
-{:ok, 1}
+iex> {:ok, pos} = Fact.append_stream(mydb, %{type: "EventSourcingJourneyStarted"}, "journey-1")
 
 # Read the event stream
-iex> Fact.read(:mydb, "journey-1") |> Enum.to_list()
+iex> Fact.read(mydb, "journey-1") |> Enum.to_list()
 [
   %{
     "event_data" => %{},
