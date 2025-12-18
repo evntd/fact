@@ -47,6 +47,8 @@ defmodule Fact.Instance do
 
   # === PATHS
 
+  @lock_filename "lock.sock"
+  @lock_metadata_filename "lock.json"
   @indexer_checkpoint_filename ".checkpoint"
 
   def database_path(%__MODULE__{} = instance) do
@@ -76,6 +78,14 @@ defmodule Fact.Instance do
 
   def ledger_path(%__MODULE__{} = instance) do
     instance.manifest.ledger_path
+  end
+
+  def lock_path(%__MODULE__{} = instance) do
+    Path.join(database_path(instance), @lock_filename)
+  end
+
+  def lock_metadata_path(%__MODULE__{} = instance) do
+    Path.join(database_path(instance), @lock_metadata_filename)
   end
 
   def record_path(%__MODULE__{} = instance, record_id) do

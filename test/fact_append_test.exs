@@ -2,18 +2,14 @@ defmodule Fact.AppendTest do
   use ExUnit.Case, async: true
 
   alias Fact
+  alias Fact.TestHelper
 
   @moduletag capture_log: true
 
   setup_all do
-    name = "test-append-" <> (DateTime.utc_now() |> DateTime.to_unix() |> to_string())
-    path = Path.join("tmp", name)
-    Mix.Tasks.Fact.Create.run(["--name", name, "--path", path, "--quiet", "--all-indexers"])
-
+    path = TestHelper.create("test-append", :all_indexers)
     on_exit(fn -> File.rm_rf!(path) end)
-
     {:ok, instance} = Fact.open(path)
-
     {:ok, instance: instance}
   end
 

@@ -29,6 +29,8 @@ defmodule Fact.Supervisor do
 
     children = [
       {Registry, keys: :unique, name: Fact.Instance.registry(instance)},
+      {Fact.LockOwner,
+       instance: instance, mode: :run, name: Fact.Instance.via(instance, Fact.LockOwner)},
       {DynamicSupervisor,
        strategy: :one_for_one, name: Fact.Instance.event_indexer_supervisor(instance)},
       {Phoenix.PubSub, name: Fact.Instance.pubsub(instance)},
