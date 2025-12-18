@@ -49,7 +49,10 @@ defmodule Fact.MixProject do
   defp docs do
     [
       main: "Fact",
-      canonical: "https://hexdocs.pm/Fact"
+      canonical: "https://hexdocs.pm/Fact",
+      favicon: ".github/assets/turt-64.png",
+      logo: ".github/assets/turt-128.png",
+      extras: ["README.md"]
     ]
   end
 
