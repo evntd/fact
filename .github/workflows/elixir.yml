@@ -108,7 +108,7 @@ jobs:
       - name: Match tag and version
         run: |
           GIT_TAG_VERSION=${GITHUB_REF_NAME#v}
-          MIX_VERSION=$(mix run -e 'IO.puts(Mix.Project.config[:version]')
+          MIX_VERSION=$(mix run -e 'IO.puts(Mix.Project.config[:version])')
           [ "$GIT_TAG_VERSION" = "$MIX_VERSION" ]
 
       - name: hex.publish
