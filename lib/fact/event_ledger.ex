@@ -185,7 +185,7 @@ defmodule Fact.EventLedger do
 
   defp commit_events(events, %{instance: instance} = _state) do
     with {:ok, written_records} <- Fact.Storage.write_events(instance, events) do
-      Fact.Storage.write_index(instance, :ledger, written_records)    
+      Fact.Storage.write_index(instance, :ledger, written_records)
     end
   end
 

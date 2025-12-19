@@ -99,7 +99,7 @@ defmodule Fact.Storage do
 
       {:ok, record_id, record} ->
         record_path = Fact.Instance.record_path(instance, record_id)
-        
+
         with {:ok, fd} <- File.open(record_path, [:write, :binary, :exclusive]),
              :ok <- IO.binwrite(fd, record),
              :ok <- :file.sync(fd),
@@ -184,6 +184,7 @@ defmodule Fact.Storage do
     case do_write_index(Fact.Instance.ledger_path(instance), record_ids) do
       {:ok, records} ->
         {:ok, records}
+
       {:error, reason} ->
         {:error, {:ledger_write_failed, reason}}
     end
