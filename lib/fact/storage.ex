@@ -53,6 +53,32 @@ defmodule Fact.Storage do
   @type hash_algorithm :: :sha | :sha256
   @type encoding :: :raw | :hash | {:hash, hash_algorithm()}
 
+  def write_events(instance, events) do
+    with write_results <-
+           Task.async_stream(events, &write_event(instance, &1),
+             max_concurrency: System.schedulers_online()
+           ),
+         {:ok, record_ids, []} <- process_write_results(write_results) do
+      {:ok, Enum.reverse(record_ids)}
+    else
+      {:error, _, errors} ->
+        {:error, {:event_write_failed, Enum.reverse(errors)}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp process_write_results(results) do
+    Enum.reduce(results, {:ok, [], []}, fn
+      {_, {:ok, record_id}}, {result, records, errors} ->
+        {result, [record_id | records], errors}
+
+      {_, {:error, posix, record_id}}, {_, records, errors} ->
+        {:error, records, [{posix, record_id} | errors]}
+    end)
+  end
+
   @doc """
   Writes a single event to disk using the configured driver and format.
 
@@ -73,11 +99,13 @@ defmodule Fact.Storage do
 
       {:ok, record_id, record} ->
         record_path = Fact.Instance.record_path(instance, record_id)
-
-        case File.write(record_path, record, [:exclusive]) do
-          :ok ->
-            {:ok, record_id}
-
+        
+        with {:ok, fd} <- File.open(record_path, [:write, :binary, :exclusive]),
+             :ok <- IO.binwrite(fd, record),
+             :ok <- :file.sync(fd),
+             :ok <- File.close(fd) do
+          {:ok, record_id}
+        else
           {:error, reason} ->
             {:error, reason, record_id}
         end
@@ -152,8 +180,14 @@ defmodule Fact.Storage do
     File.write!(path, Integer.to_string(position))
   end
 
-  def write_index(%Fact.Instance{} = instance, :ledger, record_id),
-    do: do_write_index(Fact.Instance.ledger_path(instance), record_id)
+  def write_index(%Fact.Instance{} = instance, :ledger, record_ids) do
+    case do_write_index(Fact.Instance.ledger_path(instance), record_ids) do
+      {:ok, records} ->
+        {:ok, records}
+      {:error, reason} ->
+        {:error, {:ledger_write_failed, reason}}
+    end
+  end
 
   def write_index(_instance, _index, nil, _record_id), do: :ignored
   def write_index(_instance, _index, [], _record_id), do: :ignored
@@ -180,7 +214,13 @@ defmodule Fact.Storage do
 
   defp do_write_index(index_file, record_ids) when is_list(record_ids) do
     iodata = Enum.reduce(record_ids, [], fn record_id, acc -> [acc, record_id, "\n"] end)
-    File.write(index_file, iodata, [:append])
+
+    with {:ok, fd} <- File.open(index_file, [:append, :binary]),
+         :ok <- IO.binwrite(fd, iodata),
+         :ok <- :file.sync(fd),
+         :ok <- File.close(fd) do
+      {:ok, record_ids}
+    end
   end
 
   def last_store_position(instance, indexer, index) do

@@ -184,44 +184,8 @@ defmodule Fact.EventLedger do
   end
 
   defp commit_events(events, %{instance: instance} = _state) do
-    with {:ok, written_records} <- write_events(events, instance) do
-      write_ledger(instance, written_records)
-    end
-  end
-
-  defp write_events(events, instance) do
-    Task.async_stream(events, &Fact.Storage.write_event(instance, &1),
-      max_concurrency: System.schedulers_online()
-    )
-    |> process_write_results()
-  end
-
-  defp write_ledger(instance, records) do
-    case Fact.Storage.write_index(instance, :ledger, records) do
-      :ok ->
-        {:ok, records}
-
-      {:error, reason} ->
-        {:error, {:ledger_write_failed, reason}}
-    end
-  end
-
-  defp process_write_results(write_results) do
-    result =
-      Enum.reduce(write_results, {:ok, [], []}, fn
-        {_, {:ok, record_id}}, {result, records, errors} ->
-          {result, [record_id | records], errors}
-
-        {_, {:error, posix, record_id}}, {_, records, errors} ->
-          {:error, records, [{posix, record_id} | errors]}
-      end)
-
-    case result do
-      {:ok, records, []} ->
-        {:ok, Enum.reverse(records)}
-
-      {:error, _, errors} ->
-        {:error, {:event_write_failed, Enum.reverse(errors)}}
+    with {:ok, written_records} <- Fact.Storage.write_events(instance, events) do
+      Fact.Storage.write_index(instance, :ledger, written_records)    
     end
   end
 
