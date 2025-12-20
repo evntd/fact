@@ -1,11 +1,19 @@
 defmodule Fact.EventIndexerManager do
   use GenServer
+  use Fact.Types
 
   require Logger
 
+  @topic "#{__MODULE__}"
   @type indexer_status :: :stopped | :starting | :started | :ready
 
-  defstruct [:instance, indexers: %{}, indexer_specs: []]
+  defstruct [
+    :instance,
+    indexers: %{},
+    indexer_specs: [],
+    chase_position: 0,
+    published_position: 0
+  ]
 
   def start_link(opts) do
     {indexer_opts, genserver_opts} = Keyword.split(opts, [:instance, :indexers])
@@ -25,13 +33,38 @@ defmodule Fact.EventIndexerManager do
     )
   end
 
+  def notify_ready(%Fact.Instance{} = instance, index, checkpoint) do
+    GenServer.cast(
+      Fact.Instance.event_indexer_manager(instance),
+      {:indexer_ready, self(), index, checkpoint}
+    )
+  end
+
+  def subscribe(%Fact.Instance{} = instance) do
+    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), @topic)
+  end
+
+  def get_state(%Fact.Instance{} = instance) do
+    GenServer.call(Fact.Instance.event_indexer_manager(instance), :get_state)
+  end
+
+  defp publish_indexed(%Fact.Instance{} = instance, position) do
+    Phoenix.PubSub.broadcast(Fact.Instance.pubsub(instance), @topic, {:indexed, position})
+  end
+
   @impl true
   def init({instance, indexers}) do
+    last_pos = Fact.Storage.last_store_position(instance)
+
     state = %__MODULE__{
       instance: instance,
       indexers: %{},
-      indexer_specs: indexers
+      indexer_specs: indexers,
+      chase_position: last_pos,
+      published_position: last_pos
     }
+
+    Fact.EventPublisher.subscribe(instance, :all)
 
     {:ok, state, {:continue, :start_indexers}}
   end
@@ -70,10 +103,14 @@ defmodule Fact.EventIndexerManager do
             {mod, Keyword.put(opts, :instance, instance)}
           )
 
+        # subscribe to indexer messages
+        apply(mod, :subscribe, [instance])
+
         info = %{
           pid: indexer,
           status: :started,
-          waiters: Map.get(indexers[indexer_key], :waiters, [])
+          waiters: Map.get(indexers[indexer_key], :waiters, []),
+          position: 0
         }
 
         new_indexers = Map.put(indexers, indexer_key, info)
@@ -85,12 +122,12 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
-  def handle_cast({:indexer_ready, pid, indexer_key}, %__MODULE__{} = state) do
+  def handle_cast({:indexer_ready, pid, indexer_key, checkpoint}, %__MODULE__{} = state) do
     # state book keeping, and extract waiting processes
     {waiters, indexers} =
       Map.get_and_update!(state.indexers, indexer_key, fn info ->
         waiters = Map.get(info, :waiters, [])
-        {waiters, %{info | status: :ready, pid: pid}}
+        {waiters, %{info | status: :ready, pid: pid, position: checkpoint}}
       end)
 
     # notify any process waiting on the indexer to be :ready
@@ -153,6 +190,11 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
+  def handle_call(:get_state, _from, state) do
+    {:reply, state, state}
+  end
+
+  @impl true
   def handle_call({:stream!, indexer, value, direction}, from, state) do
     case Map.get(state.indexers, indexer) do
       %{pid: pid} when is_pid(pid) ->
@@ -161,6 +203,43 @@ defmodule Fact.EventIndexerManager do
 
       _ ->
         {:reply, {:error, {:not_started, indexer}}, state}
+    end
+  end
+
+  @impl true
+  def handle_info(
+        {:event_record, {_, %{@event_store_position => position} = _event} = _record},
+        state
+      ) do
+    if position > state.chase_position do
+      {:noreply, %{state | chase_position: position}}
+    else
+      Logger.warning(
+        "[#{__MODULE__}] handle :event_record received event at #{position}, but high water mark is #{state.chase_position}"
+      )
+
+      {:noreply, state}
+    end
+  end
+
+  @impl true
+  def handle_info(
+        {:indexed, %{indexer: indexer, position: pos}},
+        %{instance: instance, indexers: indexers, published_position: pub_pos} = state
+      ) do
+    {_, new_indexers} =
+      Map.get_and_update(indexers, indexer, fn %{position: cur_pos} = info ->
+        new_pos = max(cur_pos, pos)
+        {new_pos, %{info | position: new_pos}}
+      end)
+
+    min_pos = Enum.map(new_indexers, fn {_, %{position: p}} -> p end) |> Enum.min()
+
+    if min_pos > pub_pos do
+      publish_indexed(instance, min_pos)
+      {:noreply, %{state | indexers: new_indexers, published_position: min_pos}}
+    else
+      {:noreply, %{state | indexers: new_indexers}}
     end
   end
 

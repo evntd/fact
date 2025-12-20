@@ -51,6 +51,8 @@ defmodule Fact.EventIndexer do
 
       require Logger
 
+      @topic "#{__MODULE__}"
+
       defstruct [:instance, :index, :index_opts]
 
       @doc """
@@ -96,6 +98,19 @@ defmodule Fact.EventIndexer do
         GenServer.start_link(__MODULE__, state, start_opts)
       end
 
+      def subscribe(%Fact.Instance{} = instance) do
+        Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), @topic)
+      end
+
+      defp publish_indexed(%Fact.Instance{} = instance, position, index_keys) do
+        Phoenix.PubSub.broadcast(
+          Fact.Instance.pubsub(instance),
+          @topic,
+          {:indexed,
+           %{indexer: __MODULE__, position: position, index_keys: List.wrap(index_keys)}}
+        )
+      end
+
       @impl true
       def init(%{instance: instance, index: index} = state) do
         :ok = ensure_storage(state)
@@ -104,9 +119,14 @@ defmodule Fact.EventIndexer do
 
       @impl true
       def handle_continue(:rebuild_and_join, %{instance: instance, index: index} = state) do
-        rebuild_index(state)
+        {:ok, position} = rebuild_index(state)
+
+        # subscribe to events
         :ok = Fact.EventPublisher.subscribe(instance, :all)
-        notify_ready(state)
+
+        # notify the indexer manager this indexer is ready
+        Fact.EventIndexerManager.notify_ready(instance, index, position)
+
         {:noreply, state}
       end
 
@@ -132,29 +152,25 @@ defmodule Fact.EventIndexer do
         {:noreply, state}
       end
 
-      defp notify_ready(%{instance: instance, index: index}) do
-        GenServer.cast(
-          Fact.Instance.event_indexer_manager(instance),
-          {:indexer_ready, self(), index}
-        )
-      end
-
       defp rebuild_index(%{instance: instance, index: index} = state) do
         position = Fact.Storage.read_checkpoint(instance, index)
 
         Fact.Storage.read_ledger(instance, position: position, return_type: :record)
         |> Stream.each(&append_index(&1, state))
         |> Stream.run()
+
+        {:ok, position}
       end
 
-      defp append_index({event_id, event} = _record, %{
+      defp append_index({event_id, %{@event_store_position => position} = event} = _record, %{
              instance: instance,
              index: index,
              index_opts: index_opts
            }) do
         index_key = index_event(event, index_opts)
         Fact.Storage.write_index(instance, index, index_key, event_id)
-        Fact.Storage.write_checkpoint(instance, index, event[@event_store_position])
+        Fact.Storage.write_checkpoint(instance, index, position)
+        publish_indexed(instance, position, index_key)
       end
 
       defp ensure_storage(%{instance: instance, index: index} = state) do
