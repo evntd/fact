@@ -131,8 +131,41 @@ defmodule Fact do
     Fact.EventStreamWriter.commit(instance, events, event_stream, expected_position, opts)
   end
 
-  def read(instance, event_source, read_opts \\ []) do
-    Fact.EventReader.read(instance, event_source, read_opts)
-    |> Stream.map(fn {_, record} -> record end)
+  @spec read(Fact.Instance.t(), Fact.Types.event_source(), Fact.Types.read_opts()) ::
+          Enumerable.t(Fact.Types.event_record())
+  def read(instance, event_source, opts \\ [])
+
+  def read(_instance, :none, _read_opts), do: Stream.concat([])
+
+  def read(instance, :all, read_opts) do
+    Fact.Storage.read_ledger(instance, read_opts)
+  end
+
+  def read(instance, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
+    Fact.Storage.read_index(instance, Fact.EventStreamIndexer, event_stream, read_opts)
+  end
+  
+  def read(instance, {:query, :all}, read_opts) do
+    read(instance, :all, read_opts)
+  end
+
+  def read(instance, {:query, :none}, read_opts) do
+    read(instance, :none, read_opts)
+  end
+
+  def read(instance, {:query, %Fact.QueryItem{} = query}, read_opts) do
+    read(instance, {:query, Fact.QueryItem.to_function(query)}, read_opts)
+  end
+
+  def read(instance, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do
+    read(instance, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
+  end
+
+  def read(instance, {:query, query_fun}, read_opts) when is_function(query_fun) do
+    Fact.Storage.read_query(instance, query_fun, read_opts)
+  end
+
+  def read(instance, {:index, indexer_mod, index}, read_opts) do
+    Fact.Storage.read_index(instance, indexer_mod, index, read_opts)
   end
 end

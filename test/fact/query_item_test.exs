@@ -1,5 +1,5 @@
 defmodule Fact.QueryItemTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   use Fact.Types
 
   alias Fact.TestHelper
@@ -192,41 +192,41 @@ defmodule Fact.QueryItemTest do
 
   describe "query function execution" do
     test "query by none", %{instance: db} do
-      events = Fact.read(db, QueryItem.none()) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.none()}) |> Enum.to_list()
       assert 0 == length(events)
     end
 
     test "query by none function", %{instance: db} do
       fun = QueryItem.none() |> QueryItem.to_function()
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert 0 == length(events)
     end
 
     test "query by all", %{instance: db} do
-      events = Fact.read(db, QueryItem.all()) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.all()}) |> Enum.to_list()
       assert 10 == length(events)
     end
 
     test "query by empty join, returns all events", %{instance: db} do
-      events = Fact.read(db, QueryItem.join([])) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.join([])}) |> Enum.to_list()
       assert 10 == length(events)
     end
 
     test "query by all function", %{instance: db} do
       fun = QueryItem.all() |> QueryItem.to_function()
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert 10 == length(events)
     end
 
     test "query by single type", %{instance: db} do
-      events = Fact.read(db, QueryItem.types("StudentSubscribedToCourse")) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.types("StudentSubscribedToCourse")}) |> Enum.to_list()
       assert 5 == length(events)
       assert contains_events_at_store_positions(events, [6, 7, 8, 9, 10])
     end
 
     test "query by multiple types", %{instance: db} do
       events =
-        Fact.read(db, QueryItem.types(["StudentRegistered", "StudentSubscribedToCourse"]))
+        Fact.read(db, {:query, QueryItem.types(["StudentRegistered", "StudentSubscribedToCourse"])})
         |> Enum.to_list()
 
       assert 7 == length(events)
@@ -234,31 +234,31 @@ defmodule Fact.QueryItemTest do
     end
 
     test "query by single tag", %{instance: db} do
-      events = Fact.read(db, QueryItem.tags("student:s1")) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.tags("student:s1")}) |> Enum.to_list()
       assert 4 == length(events)
       assert contains_events_at_store_positions(events, [4, 6, 7, 10])
     end
 
     test "query by multiple tags", %{instance: db} do
-      events = Fact.read(db, QueryItem.tags(["student:s1", "course:c2"])) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.tags(["student:s1", "course:c2"])}) |> Enum.to_list()
       assert 1 == length(events)
       assert contains_events_at_store_positions(events, [10])
     end
 
     test "query by single data property", %{instance: db} do
-      events = Fact.read(db, QueryItem.data(course_id: "c1")) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.data(course_id: "c1")}) |> Enum.to_list()
       assert 3 == length(events)
       assert contains_events_at_store_positions(events, [1, 6, 9])
     end
 
     test "query by multiple data properties", %{instance: db} do
-      events = Fact.read(db, QueryItem.data(course_id: "c1", student_id: "s2")) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.data(course_id: "c1", student_id: "s2")}) |> Enum.to_list()
       assert 1 == length(events)
       assert contains_events_at_store_positions(events, [9])
     end
 
     test "query by single data property with multiple values", %{instance: db} do
-      events = Fact.read(db, QueryItem.data(course_id: "c1", course_id: "c2")) |> Enum.to_list()
+      events = Fact.read(db, {:query, QueryItem.data(course_id: "c1", course_id: "c2")}) |> Enum.to_list()
       assert 6 == length(events)
       assert contains_events_at_store_positions(events, [1, 2, 6, 8, 9, 10])
     end

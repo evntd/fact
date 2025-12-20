@@ -65,17 +65,8 @@ defmodule Fact.EventStreamIndexer do
 
   """
   def last_stream_position(instance, event_stream) do
-    last_record_id =
-      Fact.Storage.read_index(instance, __MODULE__, event_stream, :backward)
-      |> Enum.at(0, :none)
-
-    case last_record_id do
-      :none ->
-        0
-
-      record_id ->
-        {_, event} = Fact.Storage.read_event!(instance, record_id)
-        event[@event_stream_position]
-    end
+    unless is_nil(record = Fact.Storage.last_record(instance, __MODULE__, event_stream)),
+      do: record[@event_stream_position],
+      else: 0
   end
 end

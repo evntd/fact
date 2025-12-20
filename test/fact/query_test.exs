@@ -1,5 +1,5 @@
 defmodule Fact.QueryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Fact.Types
 
   alias Fact.TestHelper
@@ -71,6 +71,7 @@ defmodule Fact.QueryTest do
         tags: ["course:c1", "student:s2"]
       }
     ])
+    Process.sleep(250)
 
     {:ok, instance: instance}
   end
@@ -95,14 +96,14 @@ defmodule Fact.QueryTest do
 
     test "should return correct result set", %{instance: db} do
       {:ok, fun} = Query.from_types("StudentSubscribedToCourse")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [6, 7])
     end
 
     test "should return correct result set for multiple types", %{instance: db} do
       {:ok, fun} = Query.from_types(["StudentRegistered", "StudentSubscribedToCourse"])
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 4
       assert contains_events_at_store_positions(events, [3, 5, 6, 7])
     end
@@ -124,14 +125,14 @@ defmodule Fact.QueryTest do
 
     test "should return correct result set", %{instance: db} do
       fun = Query.from_types!("StudentSubscribedToCourse")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [6, 7])
     end
 
     test "should return correct result set for multiple types", %{instance: db} do
       fun = Query.from_types!(["StudentRegistered", "StudentSubscribedToCourse"])
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 4
       assert contains_events_at_store_positions(events, [3, 5, 6, 7])
     end
@@ -157,14 +158,14 @@ defmodule Fact.QueryTest do
 
     test "should return correct result set", %{instance: db} do
       {:ok, fun} = Query.from_tags("student:s1")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [3, 6])
     end
 
     test "should return correct result set for multiple tags", %{instance: db} do
       {:ok, fun} = Query.from_tags(["student:s2", "course:c1"])
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [7])
     end
@@ -190,14 +191,14 @@ defmodule Fact.QueryTest do
 
     test "should return correct result set", %{instance: db} do
       fun = Query.from_tags!("student:s1")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [3, 6])
     end
 
     test "should return correct result set for multiple tags", %{instance: db} do
       fun = Query.from_tags!(["student:s2", "course:c1"])
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [7])
     end
@@ -224,27 +225,27 @@ defmodule Fact.QueryTest do
 
     test "should return correct result set", %{instance: db} do
       {:ok, fun} = Query.from_data(course_subject_code: "CST")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [1, 2])
     end
 
     test "should return correct result set for multiple matching keys", %{instance: db} do
       {:ok, fun} = Query.from_data(course_subject_code: "CST", course_subject_code: "MATH")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 3
       assert contains_events_at_store_positions(events, [1, 2, 4])
     end
 
     test "should return no events when no data properties match", %{instance: db} do
       {:ok, fun} = Query.from_data(course_subject_code: "LIT")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 0
     end
 
     test "should return correct result set for multiple different keys", %{instance: db} do
       {:ok, fun} = Query.from_data(course_subject_code: "CST", course_number: 126)
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [2])
     end
@@ -278,7 +279,7 @@ defmodule Fact.QueryTest do
 
     test "should return all events", %{instance: db} do
       fun = Query.from_all()
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert contains_events_at_store_positions(events, 1..7 |> Enum.to_list())
     end
   end
@@ -291,7 +292,7 @@ defmodule Fact.QueryTest do
 
     test "should return no events", %{instance: db} do
       fun = Query.from_none()
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 0
     end
   end
@@ -307,42 +308,42 @@ defmodule Fact.QueryTest do
 
     test "should return correct result set for single event type", %{instance: db} do
       {:ok, fun} = Fact.Query.from("StudentSubscribedToCourse")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [6, 7])
     end
 
     test "should return correct result set for single event tag", %{instance: db} do
       {:ok, fun} = Fact.Query.from([], ["student:s1"], [])
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [3, 6])
     end
 
     test "should return correct result set for single data criteria", %{instance: db} do
       {:ok, fun} = Fact.Query.from([], [], course_subject_code: "CST")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 2
       assert contains_events_at_store_positions(events, [1, 2])
     end
 
     test "should return correct result set for event type and tag criteria", %{instance: db} do
       {:ok, fun} = Fact.Query.from("StudentSubscribedToCourse", "student:s1", [])
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [6])
     end
 
     test "should return correct result set for event type and data criteria", %{instance: db} do
       {:ok, fun} = Fact.Query.from("CourseDefined", [], course_subject_code: "MATH")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [4])
     end
 
     test "should return correct result set for event tag and data criteria", %{instance: db} do
       {:ok, fun} = Fact.Query.from([], ["course:c1"], course_subject_code: "CST")
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [1])
     end
@@ -351,7 +352,7 @@ defmodule Fact.QueryTest do
       instance: db
     } do
       {:ok, fun} = Fact.Query.from(["CourseDefined"], ["department:d1"], course_number: 126)
-      events = Fact.read(db, fun) |> Enum.to_list()
+      events = Fact.read(db, {:query, fun}) |> Enum.to_list()
       assert length(events) == 1
       assert contains_events_at_store_positions(events, [2])
     end
@@ -381,7 +382,7 @@ defmodule Fact.QueryTest do
       {:ok, query1} = Fact.Query.from_tags("course:c1")
       {:ok, query2} = Fact.Query.from_data(course_subject_code: "MATH")
       {:ok, combined} = Fact.Query.combine(:or, [query1, query2])
-      events = Fact.read(db, combined) |> Enum.to_list()
+      events = Fact.read(db, {:query, combined}) |> Enum.to_list()
       assert length(events) == 4
       assert contains_events_at_store_positions(events, [1, 4, 6, 7])
     end
@@ -410,7 +411,7 @@ defmodule Fact.QueryTest do
       {:ok, query1} = Fact.Query.from_tags("course:c1")
       {:ok, query2} = Fact.Query.from_data(course_subject_code: "MATH")
       combined = Fact.Query.combine!(:or, [query1, query2])
-      events = Fact.read(db, combined) |> Enum.to_list()
+      events = Fact.read(db, {:query, combined}) |> Enum.to_list()
       assert length(events) == 4
       assert contains_events_at_store_positions(events, [1, 4, 6, 7])
     end

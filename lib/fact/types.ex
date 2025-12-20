@@ -17,6 +17,8 @@ defmodule Fact.Types do
   """
   @type instance_name :: atom()
 
+  @type unix_timestamp_microseconds() :: integer()
+
   @type event_id :: String.t()
   @type event_data :: map()
   @type event_metadata :: map()
@@ -42,7 +44,49 @@ defmodule Fact.Types do
           optional(:tags) => list(event_tag)
         }
 
+  @type event_record :: map()
+
+  #  @type event_record :: %{
+  #          required("event_data") => event_data(),
+  #          required("event_id") => event_id(),
+  #          required("event_metadata") => event_metadata(),
+  #          required("event_tags") => list(event_tag()),
+  #          required("event_type") => event_type(),
+  #          required("store_position") => event_position(),
+  #          required("store_timestamp") => unix_timestamp_microseconds(),
+  #          optional("stream_id") => event_stream(),
+  #          optional("stream_position") => event_position()
+  #        }
+
   @type record_id :: String.t()
+
+  @type index() :: String.t()
+  @type indexer_module() ::
+          {Fact.EventDataIndexer, String.t()}
+          | Fact.EventStreamCategoryIndexer
+          | Fact.EventStreamIndexer
+          | Fact.EventStreamsByCategoryIndexer
+          | Fact.EventStreamsIndexer
+          | Fact.EventTagsIndexer
+          | Fact.EventTypeIndexer
+
+  @type event_source ::
+          :all
+          | :none
+          | {:stream, Fact.Types.event_stream()}
+          | {:index, Fact.Types.indexer_module(), Fact.Types.index()}
+          | {:query, Fact.Query.t() | Fact.QueryItem.t() | nonempty_list(Fact.QueryItem.t())}
+
+  @type read_count :: :all | non_neg_integer()
+  @type read_direction :: :forward | :backward
+  @type read_position :: :start | :end | non_neg_integer()
+  @type read_return_type :: :event | :record | :record_id
+  @type read_opts :: [
+          direction: read_direction(),
+          position: read_position(),
+          count: read_count(),
+          return_type: read_return_type()
+        ]
 
   @doc """
   Injects module attributes into the calling module for consistent access to event record keys.

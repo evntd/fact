@@ -91,7 +91,11 @@ defmodule Fact.EventLedger do
 
   @impl true
   def init(instance) do
-    position = Fact.Storage.last_store_position(instance, :ledger)
+    position =
+      unless is_nil(record = Fact.Storage.last_record(instance)),
+        do: record[@event_store_position],
+        else: 0
+
     {:ok, %__MODULE__{instance: instance, position: position}}
   end
 
@@ -132,7 +136,7 @@ defmodule Fact.EventLedger do
   end
 
   defp check_query_condition(instance, {query, expected_pos}) do
-    Fact.EventReader.read(instance, query, position: expected_pos)
+    Fact.read(instance, {:query, query}, position: expected_pos, return_type: :record)
     |> Stream.take(-1)
     |> Enum.at(0)
     |> case do

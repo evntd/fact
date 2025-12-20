@@ -50,7 +50,7 @@ iex> {:ok, mydb} = Fact.open("data/mydb")
 iex> {:ok, pos} = Fact.append_stream(mydb, %{type: "EventSourcingJourneyStarted"}, "journey-1")
 
 # Read the event stream
-iex> Fact.read(mydb, "journey-1") |> Enum.to_list()
+iex> Fact.read(mydb, {:stream, "journey-1"}) |> Enum.to_list()
 [
   %{
     "event_data" => %{},

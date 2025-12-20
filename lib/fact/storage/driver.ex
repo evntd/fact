@@ -41,4 +41,5 @@ defmodule Fact.Storage.Driver do
   simplify indexing and improve performance in certain implementations.
   """
   @callback record_id_length() :: integer
+  @callback record_size() :: integer
 end

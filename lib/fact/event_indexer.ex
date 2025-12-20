@@ -127,7 +127,7 @@ defmodule Fact.EventIndexer do
             {:stream!, value, caller, direction},
             %{instance: instance, index: index} = state
           ) do
-        event_ids = Fact.Storage.read_index(instance, index, value, direction)
+        event_ids = Fact.Storage.read_index(instance, index, value, direction: direction)
         GenServer.reply(caller, event_ids)
         {:noreply, state}
       end
@@ -142,7 +142,7 @@ defmodule Fact.EventIndexer do
       defp rebuild_index(%{instance: instance, index: index} = state) do
         position = Fact.Storage.read_checkpoint(instance, index)
 
-        Fact.EventReader.read(instance, :all, position: position)
+        Fact.Storage.read_ledger(instance, position: position, return_type: :record)
         |> Stream.each(&append_index(&1, state))
         |> Stream.run()
       end

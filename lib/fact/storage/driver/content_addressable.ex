@@ -13,7 +13,7 @@ defmodule Fact.Storage.Driver.ContentAddressable do
   @behaviour Fact.Storage.Driver
 
   @hash_algorithm :sha
-  @record_id_length :crypto.hash(@hash_algorithm, "") |> Base.encode16() |> String.length()
+  @record_size :crypto.hash(@hash_algorithm, "") |> Base.encode16() |> String.length()
 
   @impl true
   @doc """
@@ -59,5 +59,8 @@ defmodule Fact.Storage.Driver.ContentAddressable do
     * an integer representing the record ID length
 
   """
-  def record_id_length(), do: @record_id_length
+  def record_id_length(), do: @record_size
+
+  @impl true
+  def record_size(), do: @record_size
 end

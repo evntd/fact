@@ -245,7 +245,7 @@ defmodule Fact.Query do
             ids =
               values
               |> Enum.flat_map(fn value ->
-                case Fact.EventIndexerManager.stream!(instance, indexer, value) do
+                case Fact.Storage.read_index(instance, indexer, value, return_type: :record_id) do
                   {:error, _} -> []
                   streamable -> Enum.to_list(streamable)
                 end
@@ -384,7 +384,7 @@ defmodule Fact.Query do
           matching_events =
             Enum.reduce(event_tags, :first, fn tag, acc ->
               matches_tag =
-                Fact.EventIndexerManager.stream!(instance, Fact.EventTagsIndexer, tag)
+                Fact.Storage.read_index(instance, Fact.EventTagsIndexer, tag, return_type: :record_id)
                 |> Enum.into(MapSet.new())
 
               case acc do
@@ -467,9 +467,7 @@ defmodule Fact.Query do
         fn instance ->
           matching_events =
             event_types
-            |> Stream.flat_map(
-              &Fact.EventIndexerManager.stream!(instance, Fact.EventTypeIndexer, &1)
-            )
+            |> Stream.flat_map(&Fact.Storage.read_index(instance, Fact.EventTypeIndexer, &1, return_type: :record_id))
             |> Enum.into(MapSet.new())
 
           fn event_id ->

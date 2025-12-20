@@ -39,7 +39,7 @@ defmodule Fact.CatchUpSubscription do
   @spec start_link(
           Fact.Types.instance_name(),
           pid(),
-          :all | Fact.Types.event_stream(),
+          Fact.Types.event_source(),
           :start | non_neg_integer(),
           keyword()
         ) :: {:ok, pid()} | {:error, term()}
@@ -81,9 +81,10 @@ defmodule Fact.CatchUpSubscription do
 
   @impl true
   def handle_info(:replay, state) do
-    Fact.EventReader.read(state.instance, state.source,
+    Fact.read(state.instance, state.source,
       position: min(state.position, state.high_water_mark),
-      direction: :forward
+      direction: :forward,
+      return_type: :record
     )
     |> Stream.take_while(fn {_, event} ->
       event_position(event, state.source) <= state.high_water_mark
@@ -130,11 +131,12 @@ defmodule Fact.CatchUpSubscription do
 
   defp event_position(event, :all), do: event[@event_store_position]
 
-  defp event_position(event, event_stream) when is_binary(event_stream),
+  defp event_position(event, {:stream, event_stream}) when is_binary(event_stream),
     do: event[@event_stream_position]
 
-  defp last_position(instance, :all), do: Fact.Storage.last_store_position(instance, :ledger)
+  defp last_position(instance, :all),
+    do: Fact.Storage.last_store_position(instance)
 
-  defp last_position(instance, event_stream) when is_binary(event_stream),
+  defp last_position(instance, {:stream, event_stream}) when is_binary(event_stream),
     do: Fact.EventStreamIndexer.last_stream_position(instance, event_stream)
 end

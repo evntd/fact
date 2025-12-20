@@ -132,33 +132,135 @@ defmodule Fact.Storage do
     {record_id, event}
   end
 
-  def read_ledger(%Fact.Instance{} = instance, direction),
-    do: read_index_file(instance, Fact.Instance.ledger_path(instance), direction)
-
-  def read_index(%Fact.Instance{} = instance, indexer, index, direction) do
+  def read_index(%Fact.Instance{} = instance, indexer, index, opts \\ []) when is_list(opts) do
     encode_path = Fact.Instance.index_path_encoder(instance, indexer)
-    encoded_path = encode_path.(index)
-    read_index_file(instance, encoded_path, direction)
+    path = encode_path.(index)
+    driver = Fact.Instance.driver(instance)
+    record_size = driver.record_size()
+
+    read_index_file(
+      path,
+      record_size,
+      Keyword.get(opts, :direction, :forward),
+      Keyword.get(opts, :position, :start),
+      Keyword.get(opts, :count, :all)
+    ) 
+    |> then(&to_return_type(instance, &1, Keyword.get(opts, :return_type, :event)))
+    
   end
 
-  defp read_index_file(%Fact.Instance{} = instance, path, :backward) do
-    if File.exists?(path) do
-      driver = Fact.Instance.driver(instance)
-      length = driver.record_id_length()
-      Fact.IndexFileReader.Backwards.Line.read(length, path)
+  def read_index_file(path, record_size, direction, position, count)
+      when is_binary(path) and
+             (is_integer(record_size) and record_size > 0) do
+    with :ok <- valid_direction?(direction),
+         :ok <- valid_position?(position),
+         :ok <- valid_count?(count) do
+      if File.exists?(path) do
+        apply(Fact.IndexFileReader.Line, direction, [path, position, record_size])
+        |> take(count)
+      else
+        empty_stream()
+      end
     else
-      empty_stream()
+      {:error, :invalid_direction} ->
+        raise Fact.DatabaseError, "invalid read direction: #{direction}"
+
+      {:error, :invalid_position} ->
+        raise Fact.DatabaseError, "invalid read position: #{position}"
+
+      {:error, :invalid_count} ->
+        raise Fact.DatabaseError, "invalid read count: #{count}"
+    end
+  end
+  
+  defp take(stream, count) do
+    case count do
+      :all ->
+        stream
+      n ->
+        Stream.take(stream, n)
+    end
+  end
+  
+  defp to_return_type(instance, stream, return_type) do
+    case return_type do
+      :event ->
+        stream
+        |> Stream.map(&read_event!(instance, &1))
+        |> Stream.map(fn {_, event} -> event end)
+
+      :record ->
+        stream
+        |> Stream.map(&read_event!(instance, &1))
+
+      :record_id ->
+        stream
+        
+      _ ->
+        raise Fact.DatabaseError, "invalid return type: #{return_type}"
     end
   end
 
-  defp read_index_file(%Fact.Instance{} = instance, path, :forward) do
-    if File.exists?(path) do
-      driver = Fact.Instance.driver(instance)
-      length = driver.record_id_length()
-      File.stream!(path) |> Stream.map(&String.slice(&1, 0, length))
-    else
-      empty_stream()
+  defp valid_direction?(direction) do
+    cond do
+      direction in [:forward, :backward] ->
+        :ok
+
+      true ->
+        {:error, :invalid_direction}
     end
+  end
+
+  defp valid_position?(position) do
+    cond do
+      position in [:start, :end] ->
+        :ok
+
+      is_integer(position) and position >= 0 ->
+        :ok
+
+      true ->
+        {:error, :invalid_position}
+    end
+  end
+
+  defp valid_count?(count) do
+    cond do
+      count === :all ->
+        :ok
+
+      is_integer(count) and count >= 0 ->
+        :ok
+
+      true ->
+        {:error, :invalid_count}
+    end
+  end
+  
+  def read_ledger(%Fact.Instance{} = instance, opts \\ []) when is_list(opts) do
+    path = Fact.Instance.ledger_path(instance)
+    driver = Fact.Instance.driver(instance)
+    record_size = driver.record_id_length()
+
+    read_index_file(
+      path,
+      record_size,
+      Keyword.get(opts, :direction, :forward),
+      Keyword.get(opts, :position, :start),
+      Keyword.get(opts, :count, :all)
+    ) |> then(&to_return_type(instance, &1, Keyword.get(opts, :return_type, :event)))
+  end
+
+  def read_query(%Fact.Instance{} = instance, query, opts \\ [])
+      when is_function(query) and is_list(opts) do
+    {maybe_count, read_ledger_opts} = Keyword.split(opts, [:count])
+
+    predicate = query.(instance)
+
+    read_ledger(instance, [return_type: :record_id] ++ read_ledger_opts)
+    |> Stream.filter(&predicate.(&1))
+    |> take(Keyword.get(maybe_count, :count, :all))
+    |> then(&to_return_type(instance, &1, Keyword.get(opts, :return_type, :event)))
   end
 
   def read_checkpoint(%Fact.Instance{} = instance, indexer) do
@@ -224,25 +326,26 @@ defmodule Fact.Storage do
     end
   end
 
-  def last_store_position(instance, indexer, index) do
-    do_last_store_position(instance, read_index(instance, indexer, index, direction: :backward))
+  @read_last_opts [direction: :backward, position: :end, count: 1, return_type: :event]
+
+  def last_record(%Fact.Instance{} = instance) do
+    read_ledger(instance, @read_last_opts) |> Enum.at(0)
   end
 
-  def last_store_position(instance, :ledger) do
-    do_last_store_position(instance, read_ledger(instance, :backward))
+  def last_record(%Fact.Instance{} = instance, indexer, index) do
+    read_index(instance, indexer, index, @read_last_opts) |> Enum.at(0)
   end
 
-  defp do_last_store_position(instance, stream) do
-    last_record_id = stream |> Enum.at(0, :none)
+  def last_store_position(%Fact.Instance{} = instance) do
+    unless is_nil(record = last_record(instance)),
+      do: record[@event_store_position],
+      else: 0
+  end
 
-    case last_record_id do
-      :none ->
-        0
-
-      record_id ->
-        {_, event} = read_event!(instance, record_id)
-        event[@event_store_position]
-    end
+  def last_store_position(%Fact.Instance{} = instance, indexer, index) do
+    unless is_nil(record = last_record(instance, indexer, index)),
+      do: record[@event_store_position],
+      else: 0
   end
 
   def backup(%Fact.Instance{} = instance, backup_path) do

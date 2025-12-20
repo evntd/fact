@@ -6,11 +6,15 @@ defmodule Fact.EventPublisher do
 
   @all_events "*"
 
-  def subscribe(%Fact.Instance{} = instance, source) when is_binary(source) do
-    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), source)
+  def subscribe(%Fact.Instance{} = instance, {:stream, stream}) when is_binary(stream) do
+    do_subscribe(instance, stream)
   end
 
-  def subscribe(%Fact.Instance{} = instance, :all), do: subscribe(instance, @all_events)
+  def subscribe(%Fact.Instance{} = instance, :all), do: do_subscribe(instance, @all_events)
+  
+  defp do_subscribe(%Fact.Instance{} = instance, topic) do
+    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), topic)
+  end
 
   def publish(%Fact.Instance{} = instance, event_ids) when is_list(event_ids) do
     Enum.each(event_ids, &publish(instance, &1))

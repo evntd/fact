@@ -129,7 +129,7 @@ defmodule Fact.CatchUpSubscriptionTest do
   end
 
   test "subscribed to stream should receive all events", %{instance: db} do
-    CatchUpSubscription.start_link(db, self(), @stream, 0)
+    CatchUpSubscription.start_link(db, self(), {:stream, @stream}, 0)
 
     assert_receive {:event_record,
                     {_record_id,
@@ -153,7 +153,7 @@ defmodule Fact.CatchUpSubscriptionTest do
   end
 
   test "subscribed to stream should receive events after start position", %{instance: db} do
-    CatchUpSubscription.start_link(db, self(), @stream, 1)
+    CatchUpSubscription.start_link(db, self(), {:stream, @stream}, 1)
 
     assert_receive {:event_record,
                     {_record_id,
@@ -168,12 +168,12 @@ defmodule Fact.CatchUpSubscriptionTest do
   end
 
   test "subscribed to stream from last position should receive :caught_up", %{instance: db} do
-    CatchUpSubscription.start_link(db, self(), @stream, 2)
+    CatchUpSubscription.start_link(db, self(), {:stream, @stream}, 2)
     assert_receive :caught_up
   end
 
   test "subscribed to stream should receive events after caught up", %{instance: db} do
-    CatchUpSubscription.start_link(db, self(), @stream, 2)
+    CatchUpSubscription.start_link(db, self(), {:stream, @stream}, 2)
     assert_receive :caught_up
 
     Fact.append_stream(db, [@event, @event], @stream)
