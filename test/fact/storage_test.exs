@@ -35,7 +35,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1, e2, e3]
@@ -46,7 +51,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       assert_raise Fact.DatabaseError, "invalid read position: -1", fn ->
-        Storage.read_ledger(instance, direction: :forward, position: -1, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: -1,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
       end
     end
@@ -56,7 +66,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 0, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 0,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1, e2, e3]
@@ -67,7 +82,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 1, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 1,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2, e3]
@@ -78,7 +98,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 2, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 2,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3]
@@ -89,7 +114,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 3, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 3,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -100,7 +130,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 4, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 4,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -111,7 +146,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :end, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :end,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -119,14 +159,24 @@ defmodule Fact.StorageTest do
 
     test "direction: :forward, position: :start, count: -1", %{instance: instance} do
       assert_raise Fact.DatabaseError, "invalid read count: -1", fn ->
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: -1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: -1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
       end
     end
 
     test "direction: :forward, position: :start, count: 0", %{instance: instance} do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: 0, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: 0,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -137,7 +187,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: 1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: 1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1]
@@ -148,7 +203,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: 2, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: 2,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1, e2]
@@ -159,7 +219,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: 3, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: 3,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1, e2, e3]
@@ -170,7 +235,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: :start, count: 4, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: :start,
+          count: 4,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1, e2, e3]
@@ -178,7 +248,12 @@ defmodule Fact.StorageTest do
 
     test "direction: :forward, position: 1, count: 0", %{instance: instance} do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 1, count: 0, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 1,
+          count: 0,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -189,7 +264,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 1, count: 1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 1,
+          count: 1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2]
@@ -200,7 +280,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 1, count: 2, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 1,
+          count: 2,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2, e3]
@@ -211,7 +296,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :forward, position: 1, count: 3, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :forward,
+          position: 1,
+          count: 3,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2, e3]
@@ -222,7 +312,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -233,7 +328,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       assert_raise Fact.DatabaseError, "invalid read position: -1", fn ->
-        Storage.read_ledger(instance, direction: :backward, position: -1, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: -1,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
       end
     end
@@ -243,7 +343,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 0, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 0,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -254,7 +359,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 1, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 1,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e1]
@@ -265,7 +375,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 2, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 2,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2, e1]
@@ -276,7 +391,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 3, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 3,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3, e2, e1]
@@ -287,7 +407,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 4, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 4,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3, e2, e1]
@@ -298,7 +423,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :end, count: :all, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :end,
+          count: :all,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3, e2, e1]
@@ -309,7 +439,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       assert_raise Fact.DatabaseError, "invalid read count: -1", fn ->
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: -1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: -1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
       end
     end
@@ -319,7 +454,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: 0, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: 0,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -330,7 +470,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :end, count: 0, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :end,
+          count: 0,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -341,7 +486,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: 1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: 1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -352,7 +502,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :end, count: 1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :end,
+          count: 1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3]
@@ -363,7 +518,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: 2, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: 2,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -374,7 +534,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :end, count: 2, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :end,
+          count: 2,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3, e2]
@@ -385,7 +550,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: 3, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: 3,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -396,7 +566,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :end, count: 3, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :end,
+          count: 3,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3, e2, e1]
@@ -407,7 +582,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :start, count: 4, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :start,
+          count: 4,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -418,7 +598,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: :end, count: 4, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: :end,
+          count: 4,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e3, e2, e1]
@@ -429,7 +614,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, _e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 2, count: 0, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 2,
+          count: 0,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == []
@@ -440,7 +630,12 @@ defmodule Fact.StorageTest do
       event_ids: {_e1, e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 2, count: 1, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 2,
+          count: 1,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2]
@@ -451,7 +646,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 2, count: 2, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 2,
+          count: 2,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2, e1]
@@ -462,7 +662,12 @@ defmodule Fact.StorageTest do
       event_ids: {e1, e2, _e3}
     } do
       read_result =
-        Storage.read_ledger(instance, direction: :backward, position: 2, count: 3, return_type: :record_id)
+        Storage.read_ledger(instance,
+          direction: :backward,
+          position: 2,
+          count: 3,
+          return_type: :record_id
+        )
         |> Enum.to_list()
 
       assert read_result == [e2, e1]

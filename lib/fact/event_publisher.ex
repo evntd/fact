@@ -11,7 +11,7 @@ defmodule Fact.EventPublisher do
   end
 
   def subscribe(%Fact.Instance{} = instance, :all), do: do_subscribe(instance, @all_events)
-  
+
   defp do_subscribe(%Fact.Instance{} = instance, topic) do
     Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), topic)
   end

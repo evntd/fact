@@ -71,6 +71,7 @@ defmodule Fact.QueryTest do
         tags: ["course:c1", "student:s2"]
       }
     ])
+
     Process.sleep(250)
 
     {:ok, instance: instance}

@@ -22,7 +22,7 @@ defmodule Fact.Query do
   @typedoc """
   A query is function which takes a database instance and returns an event_id predicate function. 
   """
-  @type t :: (Fact.Types.instance_name() -> (Fact.Types.event_id() -> boolean()))
+  @type t :: (Fact.Instance.t() -> (Fact.Types.event_id() -> boolean()))
 
   @doc """
   This combines multiple queries using logical boolean operations returning a new query as a tuple.
@@ -384,7 +384,9 @@ defmodule Fact.Query do
           matching_events =
             Enum.reduce(event_tags, :first, fn tag, acc ->
               matches_tag =
-                Fact.Storage.read_index(instance, Fact.EventTagsIndexer, tag, return_type: :record_id)
+                Fact.Storage.read_index(instance, Fact.EventTagsIndexer, tag,
+                  return_type: :record_id
+                )
                 |> Enum.into(MapSet.new())
 
               case acc do
@@ -467,7 +469,11 @@ defmodule Fact.Query do
         fn instance ->
           matching_events =
             event_types
-            |> Stream.flat_map(&Fact.Storage.read_index(instance, Fact.EventTypeIndexer, &1, return_type: :record_id))
+            |> Stream.flat_map(
+              &Fact.Storage.read_index(instance, Fact.EventTypeIndexer, &1,
+                return_type: :record_id
+              )
+            )
             |> Enum.into(MapSet.new())
 
           fn event_id ->

@@ -144,9 +144,8 @@ defmodule Fact.Storage do
       Keyword.get(opts, :direction, :forward),
       Keyword.get(opts, :position, :start),
       Keyword.get(opts, :count, :all)
-    ) 
+    )
     |> then(&to_return_type(instance, &1, Keyword.get(opts, :return_type, :event)))
-    
   end
 
   def read_index_file(path, record_size, direction, position, count)
@@ -172,16 +171,17 @@ defmodule Fact.Storage do
         raise Fact.DatabaseError, "invalid read count: #{count}"
     end
   end
-  
+
   defp take(stream, count) do
     case count do
       :all ->
         stream
+
       n ->
         Stream.take(stream, n)
     end
   end
-  
+
   defp to_return_type(instance, stream, return_type) do
     case return_type do
       :event ->
@@ -195,7 +195,7 @@ defmodule Fact.Storage do
 
       :record_id ->
         stream
-        
+
       _ ->
         raise Fact.DatabaseError, "invalid return type: #{return_type}"
     end
@@ -236,7 +236,7 @@ defmodule Fact.Storage do
         {:error, :invalid_count}
     end
   end
-  
+
   def read_ledger(%Fact.Instance{} = instance, opts \\ []) when is_list(opts) do
     path = Fact.Instance.ledger_path(instance)
     driver = Fact.Instance.driver(instance)
@@ -248,7 +248,8 @@ defmodule Fact.Storage do
       Keyword.get(opts, :direction, :forward),
       Keyword.get(opts, :position, :start),
       Keyword.get(opts, :count, :all)
-    ) |> then(&to_return_type(instance, &1, Keyword.get(opts, :return_type, :event)))
+    )
+    |> then(&to_return_type(instance, &1, Keyword.get(opts, :return_type, :event)))
   end
 
   def read_query(%Fact.Instance{} = instance, query, opts \\ [])

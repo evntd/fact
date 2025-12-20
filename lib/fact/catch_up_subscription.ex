@@ -37,10 +37,10 @@ defmodule Fact.CatchUpSubscription do
   require Logger
 
   @spec start_link(
-          Fact.Types.instance_name(),
+          Fact.Instance.t(),
           pid(),
-          Fact.Types.event_source(),
-          :start | non_neg_integer(),
+          Fact.Types.read_event_source(),
+          Fact.Types.read_position(),
           keyword()
         ) :: {:ok, pid()} | {:error, term()}
   def start_link(instance, subscriber, source \\ :all, position \\ 0, opts \\ []) do
