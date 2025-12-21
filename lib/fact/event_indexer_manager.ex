@@ -26,6 +26,10 @@ defmodule Fact.EventIndexerManager do
     GenServer.call(Fact.Instance.event_indexer_manager(instance), {:ensure_indexer, indexer_id})
   end
 
+  def start_indexer(%Fact.Instance{} = instance, child_spec) do
+    GenServer.call(Fact.Instance.event_indexer_manager(instance), {:start_indexer, child_spec})
+  end
+
   def notify_ready(%Fact.Instance{} = instance, index, checkpoint) do
     GenServer.cast(
       Fact.Instance.event_indexer_manager(instance),
@@ -72,7 +76,7 @@ defmodule Fact.EventIndexerManager do
       |> Enum.filter(fn {_mod, opts} -> Keyword.get(opts, :enabled, true) end)
       |> Enum.reduce(indexers, fn spec, acc ->
         indexer_key = get_indexer_id(spec)
-        GenServer.cast(self(), {:start_indexer, spec})
+        :ok = start_child_indexer(spec)
         Map.put(acc, indexer_key, %{pid: nil, status: :starting, waiters: [], position: 0})
       end)
 
@@ -81,7 +85,7 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def handle_cast(
-        {:start_indexer, spec},
+        {:start_child_indexer, spec},
         %__MODULE__{instance: instance, indexers: indexers} = state
       ) do
     indexer_id = get_indexer_id(spec)
@@ -100,7 +104,6 @@ defmodule Fact.EventIndexerManager do
             {mod, {instance, opts}}
           )
 
-        # setup some book keeping state for the indexer
         info = %{
           pid: pid,
           status: :started,
@@ -133,9 +136,30 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def handle_call(
+        {:start_indexer, indexer_spec},
+        _from,
+        %{indexers: indexers} = state
+      ) do
+    indexer_id = get_indexer_id(indexer_spec)
+
+    :ok = start_child_indexer(indexer_spec)
+
+    new_indexers =
+      Map.put_new(indexers, indexer_id, %{
+        pid: nil,
+        status: :starting,
+        waiters: [],
+        position: 0
+      })
+
+    {:reply, :ok, %{state | indexers: new_indexers}}
+  end
+
+  @impl true
+  def handle_call(
         {:ensure_indexer, indexer_id},
         from,
-        %__MODULE__{instance: instance, indexers: indexers} = state
+        %__MODULE__{indexers: indexers} = state
       ) do
     case Map.get(indexers, indexer_id) do
       # Not started
@@ -155,14 +179,13 @@ defmodule Fact.EventIndexerManager do
               # fail, if no indexer configuration exists, need the path for storing the index at a minimum
               {:reply, {:error, {:no_config, indexer_id}}, state}
             else
-              opts =
+              start_opts =
                 config
-                |> Keyword.put(:name, Fact.Instance.via(instance, indexer_id))
                 |> maybe_put_key(maybe_indexer_key)
 
-              spec = {indexer_mod, opts}
+              indexer_spec = {indexer_mod, start_opts}
 
-              GenServer.cast(self(), {:start_indexer, spec})
+              :ok = start_child_indexer(indexer_spec)
 
               indexers =
                 Map.put(state.indexers, indexer_id, %{
@@ -225,6 +248,10 @@ defmodule Fact.EventIndexerManager do
     else
       {:noreply, %{state | indexers: new_indexers}}
     end
+  end
+
+  defp start_child_indexer(indexer_spec) do
+    GenServer.cast(self(), {:start_child_indexer, indexer_spec})
   end
 
   defp normalize_indexer(indexer) do
