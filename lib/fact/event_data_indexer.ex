@@ -5,11 +5,11 @@ defmodule Fact.EventDataIndexer do
   use Fact.EventIndexer
 
   @doc """
-  Retrieves the value for the configured `:key` from the event's data payload.
+  Retrieves the value for the configured `:indexer_key` from the event's data payload.
 
   ### Options
 
-    * `:key` — required, specified the field to lookup within the event data
+    * `:indexer_key` — required, specified the field to lookup within the event data
 
   ### Examples
 
@@ -20,7 +20,7 @@ defmodule Fact.EventDataIndexer do
       ...>   "stream_id" => "turtle_mating-1234",
       ...>   "stream_position" => 3
       ...> }
-      iex> Fact.EventDataIndexer.index_event(event, [key: "eggs"])
+      iex> Fact.EventDataIndexer.index_event(event, [indexer_key: "eggs"])
       "42"
 
       iex> event = %{
@@ -28,7 +28,7 @@ defmodule Fact.EventDataIndexer do
       ...>   "event_data" => %{"turtle_id" => "t2", "clutch_id" => "c1"}, 
       ...>   "event_tags" => ["turtle:t2", "clutch:c1"], 
       ...> } 
-      iex> Fact.EventDataIndexer.index_event(event, [key: "turtle_id"])
+      iex> Fact.EventDataIndexer.index_event(event, [indexer_key: "turtle_id"])
       "t2"
 
       iex> event = %{
@@ -37,13 +37,13 @@ defmodule Fact.EventDataIndexer do
       ...>   "stream_id" => "__fact", 
       ...>   "stream_position" => "1"
       ...> }
-      iex> Fact.EventDataIndexer.index_event(event, [key: "turtle_id"])
+      iex> Fact.EventDataIndexer.index_event(event, [indexer_key: "turtle_id"])
       nil
 
   """
   @impl true
   def index_event(%{@event_data => data} = _event, opts) do
-    unless is_nil(val = data[Keyword.get(opts, :key)]) do
+    unless is_nil(val = data[Keyword.get(opts, :indexer_key)]) do
       to_string(val)
     else
       nil

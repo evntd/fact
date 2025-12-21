@@ -4,6 +4,8 @@ defmodule Fact.EventPublisher do
   """
   use Fact.Types
 
+  @type record_message :: {:event_record, Fact.Types.record()}
+
   @all_events "*"
 
   def subscribe(%Fact.Instance{} = instance, {:stream, stream}) when is_binary(stream) do

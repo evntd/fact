@@ -239,13 +239,13 @@ defmodule Fact.Query do
           data
           |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
           |> Enum.reduce_while(:first, fn {key, values}, acc ->
-            indexer = {Fact.EventDataIndexer, to_string(key)}
-            {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(instance, indexer)
+            indexer_id = {Fact.EventDataIndexer, to_string(key)}
+            {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(instance, indexer_id)
 
             ids =
               values
               |> Enum.flat_map(fn value ->
-                case Fact.Storage.read_index(instance, indexer, value, return_type: :record_id) do
+                case Fact.Storage.read_index(instance, indexer_id, value, return_type: :record_id) do
                   {:error, _} -> []
                   streamable -> Enum.to_list(streamable)
                 end

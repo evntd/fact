@@ -22,8 +22,8 @@ defmodule Fact.EventIndexerManager do
     GenServer.start_link(__MODULE__, {instance, indexers}, genserver_opts)
   end
 
-  def ensure_indexer(%Fact.Instance{} = instance, key) do
-    GenServer.call(Fact.Instance.event_indexer_manager(instance), {:ensure_indexer, key})
+  def ensure_indexer(%Fact.Instance{} = instance, indexer_id) do
+    GenServer.call(Fact.Instance.event_indexer_manager(instance), {:ensure_indexer, indexer_id})
   end
 
   def notify_ready(%Fact.Instance{} = instance, index, checkpoint) do
@@ -71,7 +71,7 @@ defmodule Fact.EventIndexerManager do
       indexer_specs
       |> Enum.filter(fn {_mod, opts} -> Keyword.get(opts, :enabled, true) end)
       |> Enum.reduce(indexers, fn spec, acc ->
-        indexer_key = get_indexer_key(spec)
+        indexer_key = get_indexer_id(spec)
         GenServer.cast(self(), {:start_indexer, spec})
         Map.put(acc, indexer_key, %{pid: nil, status: :starting, waiters: [], position: 0})
       end)
@@ -84,31 +84,31 @@ defmodule Fact.EventIndexerManager do
         {:start_indexer, spec},
         %__MODULE__{instance: instance, indexers: indexers} = state
       ) do
-    indexer = get_indexer_key(spec)
+    indexer_id = get_indexer_id(spec)
 
-    case Registry.lookup(Fact.Instance.registry(instance), indexer) do
+    case Registry.lookup(Fact.Instance.registry(instance), indexer_id) do
       [] ->
         {mod, opts} = spec
 
         # subscribe to indexer messages
-        Fact.EventIndexer.subscribe(instance, indexer)
+        Fact.EventIndexer.subscribe(instance, indexer_id)
 
         # start the indexer
         {:ok, pid} =
           DynamicSupervisor.start_child(
             Fact.Instance.event_indexer_supervisor(instance),
-            {mod, Keyword.put(opts, :instance, instance)}
+            {mod, {instance, opts}}
           )
 
         # setup some book keeping state for the indexer
         info = %{
           pid: pid,
           status: :started,
-          waiters: Map.get(indexers[indexer], :waiters, []),
+          waiters: Map.get(indexers[indexer_id], :waiters, []),
           position: 0
         }
 
-        new_indexers = Map.put(indexers, indexer, info)
+        new_indexers = Map.put(indexers, indexer_id, info)
         {:noreply, %__MODULE__{state | indexers: new_indexers}}
 
       [{_pid, _}] ->
@@ -133,39 +133,39 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def handle_call(
-        {:ensure_indexer, indexer},
+        {:ensure_indexer, indexer_id},
         from,
         %__MODULE__{instance: instance, indexers: indexers} = state
       ) do
-    case Map.get(indexers, indexer) do
+    case Map.get(indexers, indexer_id) do
       # Not started
       nil ->
         # indexer should be either the module, or a tuple {module, key}
-        case normalize_indexer(indexer) do
+        case normalize_indexer(indexer_id) do
           {:error, reason} ->
             {:reply, {:error, reason}, state}
 
-          {:ok, {mod, maybe_key}} ->
+          {:ok, {indexer_mod, maybe_indexer_key}} ->
             # lookup the indexer configuration by module
             config =
               state.indexer_specs
-              |> Enum.find_value(fn {m, c} -> if m == mod, do: c end)
+              |> Enum.find_value(fn {m, c} -> if m == indexer_mod, do: c end)
 
             unless config do
               # fail, if no indexer configuration exists, need the path for storing the index at a minimum
-              {:reply, {:error, {:no_config, indexer}}, state}
+              {:reply, {:error, {:no_config, indexer_id}}, state}
             else
               opts =
                 config
-                |> Keyword.put(:name, Fact.Instance.via(instance, indexer))
-                |> maybe_put_key(maybe_key)
+                |> Keyword.put(:name, Fact.Instance.via(instance, indexer_id))
+                |> maybe_put_key(maybe_indexer_key)
 
-              spec = {mod, opts}
+              spec = {indexer_mod, opts}
 
               GenServer.cast(self(), {:start_indexer, spec})
 
               indexers =
-                Map.put(state.indexers, get_indexer_key(spec), %{
+                Map.put(state.indexers, indexer_id, %{
                   pid: nil,
                   status: :starting,
                   waiters: [from],
@@ -177,7 +177,7 @@ defmodule Fact.EventIndexerManager do
         end
 
       %{status: status, waiters: waiters} = info when status in [:starting, :started] ->
-        indexers = Map.put(state.indexers, indexer, %{info | waiters: [from | waiters]})
+        indexers = Map.put(state.indexers, indexer_id, %{info | waiters: [from | waiters]})
         {:noreply, %__MODULE__{state | indexers: indexers}}
 
       %{status: :ready, pid: pid} ->
@@ -208,7 +208,7 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def handle_info(
-        {:indexed, %{indexer: indexer, position: pos}},
+        {:indexed, indexer, %{position: pos}},
         %{instance: instance, indexers: indexers, published_position: pub_pos} = state
       ) do
     {_, new_indexers} =
@@ -243,13 +243,13 @@ defmodule Fact.EventIndexerManager do
     end
   end
 
-  defp get_indexer_key({mod, opts}) do
-    case Keyword.get(opts, :key) do
-      nil -> mod
-      key -> {mod, key}
+  defp get_indexer_id({indexer_mod, indexer_opts}) do
+    case Keyword.get(indexer_opts, :indexer_key) do
+      nil -> indexer_mod
+      indexer_key -> {indexer_mod, indexer_key}
     end
   end
 
   defp maybe_put_key(opts, nil), do: opts
-  defp maybe_put_key(opts, key), do: Keyword.put(opts, :key, key)
+  defp maybe_put_key(opts, key), do: Keyword.put(opts, :indexer_key, key)
 end

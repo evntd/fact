@@ -113,45 +113,13 @@ defmodule Fact.Types do
   @type record :: {record_id(), event_record()}
 
   @typedoc """
-  The value produced by an `t:Fact.Types.indexer/0` when indexing an `t:Fact.Types.event_record/0`. 
-  """
-  @type index_value() :: String.t()
-
-  @typedoc """
-  The list of valid indexers. 
-  """
-  @type indexer() ::
-          {Fact.EventDataIndexer, String.t()}
-          | Fact.EventStreamCategoryIndexer
-          | Fact.EventStreamIndexer
-          | Fact.EventStreamsByCategoryIndexer
-          | Fact.EventStreamsIndexer
-          | Fact.EventTagsIndexer
-          | Fact.EventTypeIndexer
-          | indexer_module()
-          | {indexer_module(), indexer_key()}
-
-  @typedoc """
-  This is additional metadata for a specific `t:Fact.Types.indexer/0`.
-    
-  At the time of writing, only `Fact.EventDataIndexer` uses an `t:Fact.Types.indexer_key/0`, because there can be 
-  multiple processes running, each indexing a different key within an `t:Fact.Types.event_data/0`
-  """
-  @type indexer_key() :: String.t()
-
-  @typedoc """
-  A module that indexes `Fact.Type.event_record/0`.
-  """
-  @type indexer_module() :: :atom
-
-  @typedoc """
   The event sources which can be used in read operations.
   """
   @type read_event_source ::
           :all
           | :none
           | {:stream, Fact.Types.event_stream()}
-          | {:index, Fact.Types.indexer(), Fact.Types.index_value()}
+          | {:index, Fact.EventIndexer.indexer(), Fact.EventIndexer.index_value()}
           | {:query,
              :all
              | :none
