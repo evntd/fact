@@ -33,26 +33,15 @@ defmodule Fact.TestHelper do
     Fact.EventIndexerManager.subscribe(instance)
   end
 
-  def wait_for_event_position_to_be_indexed(instance, position, title, timeout \\ 10_000) do
+  def wait_for_event_position_to_be_indexed(position, timeout \\ 10_000) do
     receive do
       {:indexed, pos} when pos >= position ->
-        Logger.info("#{title}: #{pos} of #{position}")
         :ok
 
-      {:indexed, pos} ->
-        Logger.info("#{title}: #{pos} of #{position}")
-        wait_for_event_position_to_be_indexed(instance, position, title, timeout)
-
       true ->
-        wait_for_event_position_to_be_indexed(instance, position, title, timeout)
+        wait_for_event_position_to_be_indexed(position, timeout)
     after
       timeout ->
-        state = Fact.EventIndexerManager.get_state(instance)
-
-        Logger.info(
-          "#{title} state = #{inspect(Enum.map(state.indexers, fn {i, b} -> {i, b.position} end))}"
-        )
-
         raise "TIMED OUT waiting for #{position} to be indexed."
     end
   end

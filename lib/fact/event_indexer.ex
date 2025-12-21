@@ -179,12 +179,7 @@ defmodule Fact.EventIndexer do
             unindexed == 1 ->
               append_index(record, state)
 
-            unindexed == 0 ->
-              checkpoint
-
-            unindexed < 0 ->
-              # This should not be possible, if invariants hold true.
-              # But to be safe, let's not change anything...possibly making things worse.
+            unindexed <= 0 ->
               checkpoint
           end
 
