@@ -76,7 +76,7 @@ defmodule Fact.QueryTest do
 
     Fact.append(instance, events)
 
-    TestHelper.wait_for_event_position_to_be_indexed(length(events))
+    TestHelper.wait_for_event_position_to_be_indexed(length(events), __MODULE__)
 
     {:ok, instance: instance}
   end
