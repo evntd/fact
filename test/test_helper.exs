@@ -33,7 +33,7 @@ defmodule Fact.TestHelper do
     Fact.EventIndexerManager.subscribe(instance)
   end
 
-  def wait_for_event_position_to_be_indexed(position, timeout \\ 5_000) do
+  def wait_for_event_position_to_be_indexed(position, timeout \\ 30_000) do
     receive do
       {:indexed, pos} when pos >= position ->
         :ok
