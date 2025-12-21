@@ -26,13 +26,6 @@ defmodule Fact.EventIndexerManager do
     GenServer.call(Fact.Instance.event_indexer_manager(instance), {:ensure_indexer, key})
   end
 
-  def stream!(%Fact.Instance{} = instance, indexer, value, direction \\ :forward) do
-    GenServer.call(
-      Fact.Instance.event_indexer_manager(instance),
-      {:stream!, indexer, value, direction}
-    )
-  end
-
   def notify_ready(%Fact.Instance{} = instance, index, checkpoint) do
     GenServer.cast(
       Fact.Instance.event_indexer_manager(instance),
@@ -195,18 +188,6 @@ defmodule Fact.EventIndexerManager do
   @impl true
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
-  end
-
-  @impl true
-  def handle_call({:stream!, indexer, value, direction}, from, state) do
-    case Map.get(state.indexers, indexer) do
-      %{pid: pid} when is_pid(pid) ->
-        :ok = GenServer.cast(pid, {:stream!, value, from, direction})
-        {:noreply, state}
-
-      _ ->
-        {:reply, {:error, {:not_started, indexer}}, state}
-    end
   end
 
   @impl true

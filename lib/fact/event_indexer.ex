@@ -174,17 +174,6 @@ defmodule Fact.EventIndexer do
         {:noreply, state}
       end
 
-      @impl true
-      @doc false
-      def handle_cast(
-            {:stream!, value, caller, direction},
-            %{instance: instance, index: index} = state
-          ) do
-        event_ids = Fact.Storage.read_index(instance, index, value, direction: direction)
-        GenServer.reply(caller, event_ids)
-        {:noreply, state}
-      end
-
       defp rebuild_index(%{instance: instance, index: index} = state) do
         position = Fact.Storage.read_checkpoint(instance, index)
 
