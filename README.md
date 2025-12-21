@@ -46,14 +46,22 @@ $ mix fact.create -p data/turtles
 # Start a database instance
 iex> {:ok, db} = Fact.open("data/turtles")
 
-# Append an event to a stream
-iex> {:ok, pos} = Fact.append_stream(db, %{type: "egg_hatched", data: %{turtle_id: 1, name: "Turts"}}, "turtle-1")
+# Create an event
+iex> event = %{
+...>   type: "egg_hatched",
+...>   data: %{
+...>     name: "Turts"
+...>   }
+...> }
+
+# Append the event to a stream
+iex> {:ok, pos} = Fact.append_stream(db, event, "turtle-1")
 
 # Read the event stream
 iex> Fact.read(db, {:stream, "turtle-1"}) |> Enum.to_list()
 [
   %{
-    "event_data" => %{"turtle_id" => 1, "name" => "Turts"},
+    "event_data" => %{"name" => "Turts"},
     "event_id" => "3bb4808303c847fd9ceb0a1251ef95da",
     "event_tags" => []
     "event_type" => "egg_hatched",
