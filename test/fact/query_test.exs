@@ -1,5 +1,5 @@
 defmodule Fact.QueryTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Fact.Types
 
   alias Fact.TestHelper
@@ -13,7 +13,7 @@ defmodule Fact.QueryTest do
 
     {:ok, instance} = Fact.open(path)
 
-    Fact.append(instance, [
+    events = [
       %{
         type: "CourseDefined",
         data: %{
@@ -70,9 +70,13 @@ defmodule Fact.QueryTest do
         data: %{course_id: "c1", student_id: "s1"},
         tags: ["course:c1", "student:s2"]
       }
-    ])
+    ]
 
-    Process.sleep(250)
+    TestHelper.subscribe_to_indexing(instance)
+
+    Fact.append(instance, events)
+
+    TestHelper.wait_for_event_position_to_be_indexed(length(events))
 
     {:ok, instance: instance}
   end

@@ -150,6 +150,7 @@ defmodule Fact.EventIndexer do
       @doc false
       def init(%{instance: instance, index: index} = state) do
         :ok = ensure_storage(state)
+        :ok = Fact.EventPublisher.subscribe(instance, :all)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
@@ -157,13 +158,7 @@ defmodule Fact.EventIndexer do
       @doc false
       def handle_continue(:rebuild_and_join, %{instance: instance, index: index} = state) do
         {:ok, position} = rebuild_index(state)
-
-        # subscribe to events
-        :ok = Fact.EventPublisher.subscribe(instance, :all)
-
-        # notify the indexer manager this indexer is ready
         Fact.EventIndexerManager.notify_ready(instance, index, position)
-
         {:noreply, state}
       end
 

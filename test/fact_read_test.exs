@@ -1,5 +1,5 @@
 defmodule Fact.ReadTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   use Fact.Types
 
   alias Fact.TestHelper
@@ -48,10 +48,14 @@ defmodule Fact.ReadTest do
       }
     ]
 
+    events = non_stream_events ++ stream_events
+
+    TestHelper.subscribe_to_indexing(instance)
+
     Fact.append(instance, non_stream_events)
     Fact.append_stream(instance, stream_events, "student-s1")
 
-    Process.sleep(100)
+    TestHelper.wait_for_event_position_to_be_indexed(length(events))
 
     {:ok, instance: instance}
   end

@@ -1,5 +1,5 @@
 defmodule Fact.QueryItemTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   use Fact.Types
 
   alias Fact.TestHelper
@@ -49,7 +49,11 @@ defmodule Fact.QueryItemTest do
       }
     ]
 
+    TestHelper.subscribe_to_indexing(instance)
+
     Fact.append(instance, events)
+
+    TestHelper.wait_for_event_position_to_be_indexed(length(events))
 
     {:ok, instance: instance}
   end
