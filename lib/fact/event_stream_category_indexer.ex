@@ -5,6 +5,16 @@ defmodule Fact.EventStreamCategoryIndexer do
   """
   use Fact.EventIndexer
 
+  @typedoc """
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  """
+  @type option :: {:separator, String.t()} | Fact.EventIndexer.indexer_option()
+
+  @typedoc """
+  Custom options passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  """
+  @type options :: [option()]
+
   @default_separator "-"
 
   @doc """
@@ -45,6 +55,8 @@ defmodule Fact.EventStreamCategoryIndexer do
 
   """
   @impl true
+  @spec index_event(Fact.Types.event_record(), options()) ::
+          Fact.EventIndexer.index_event_result()
   def index_event(%{@event_stream => stream}, opts) do
     separator = Keyword.get(opts, :separator, @default_separator)
     stream |> String.split(separator, parts: 2) |> List.first()

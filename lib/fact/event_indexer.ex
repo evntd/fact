@@ -56,6 +56,11 @@ defmodule Fact.EventIndexer do
   """
 
   @typedoc """
+  The values that can be return by a `c:Fact.EventIndexer.index_event` callback function.
+  """
+  @type index_event_result :: Fact.Type.index_value() | list(Fact.Type.index_value()) | nil
+
+  @typedoc """
   This describes the results of the indexing process.
   """
   @type index_result :: %{
@@ -93,7 +98,7 @@ defmodule Fact.EventIndexer do
     
   ### Built-in Indexers
 
-    * `{Fact.EventDataIndexer, indexer_key()}`
+    * `Fact.EventDataIndexer` - requires an `t:Fact.EventIndexer.indexer_key/0`
     * `Fact.EventStreamCategoryIndexer`
     * `Fact.EventStreamIndexer`
     * `Fact.EventStreamsByCategoryIndexer`
@@ -125,7 +130,7 @@ defmodule Fact.EventIndexer do
   @type indexer_options() :: [indexer_option()]
 
   @typedoc """
-  Option values used by the `start_link` functions for indexer modules.
+  Option values used by the `start_link/2` functions for indexer modules.
   """
   @type start_option ::
           {:indexer_id, indexer_id()}
@@ -133,15 +138,25 @@ defmodule Fact.EventIndexer do
           | GenServer.option()
 
   @typedoc """
-  Options used by the `start_link` functions for indexer modules. 
+  Options used by the `start_link/2` functions for indexer modules. 
   """
   @type start_options :: [start_option()]
+
+  @typedoc """
+  The state structure used by indexers in the `GenServer` callback functions. 
+  """
+  @type t :: %{
+          required(:instance) => Fact.Instance.t(),
+          required(:indexer) => Fact.EventIndexer.indexer_id(),
+          required(:indexer_opts) => Fact.EventIndexer.indexer_options(),
+          required(:checkpoint) => Fact.Types.read_position()
+        }
 
   @doc """
   Called when an event needs to be indexed. 
   """
   @callback index_event(event :: Fact.Types.event_record(), indexer_options()) ::
-              Fact.Type.index_value() | list(Fact.Type.index_value()) | nil
+              index_event_result()
 
   @doc """
   Subscribe to messages published by the specified indexer. 
@@ -179,16 +194,9 @@ defmodule Fact.EventIndexer do
 
       require Logger
 
-      @type t :: %{
-              required(:instance) => Fact.Instance.t(),
-              required(:indexer) => Fact.EventIndexer.indexer_id(),
-              required(:indexer_opts) => Fact.EventIndexer.indexer_options(),
-              required(:checkpoint) => Fact.Types.read_position()
-            }
-
       defstruct [:instance, :indexer_id, :indexer_opts, :checkpoint]
 
-      @spec child_spec({Fact.Instace.t(), Fact.EventIndexer.start_options()}) ::
+      @spec child_spec({Fact.Instance.t(), Fact.EventIndexer.start_options()}) ::
               Supervisor.child_spec()
       def child_spec({instance, opts}) do
         indexer_id =
@@ -200,14 +208,16 @@ defmodule Fact.EventIndexer do
           Keyword.get(opts, :indexer_opts, [])
           |> Keyword.put(:indexer_key, indexer_key)
 
-        new_opts =
+        start_opts =
           opts
+          |> Keyword.drop([:indexer_key])
           |> Keyword.put(:indexer_opts, indexer_opts)
           |> Keyword.put(:indexer_id, indexer_id)
+          |> Keyword.put(:name, Fact.Instance.via(instance, indexer_id))
 
         %{
           id: indexer_id,
-          start: {__MODULE__, :start_link, [instance, new_opts]}
+          start: {__MODULE__, :start_link, [instance, start_opts]}
         }
       end
 

@@ -4,6 +4,16 @@ defmodule Fact.EventDataIndexer do
   """
   use Fact.EventIndexer
 
+  @typedoc """
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  """
+  @type option :: {:indexer_key, String.t()} | Fact.EventIndexer.indexer_option()
+
+  @typedoc """
+  Custom options passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  """
+  @type options :: [option()]
+
   @doc """
   Retrieves the value for the configured `:indexer_key` from the event's data payload.
 
@@ -42,6 +52,8 @@ defmodule Fact.EventDataIndexer do
 
   """
   @impl true
+  @spec index_event(Fact.Types.event_record(), options()) ::
+          Fact.EventIndexer.index_event_result()
   def index_event(%{@event_data => data} = _event, opts) do
     unless is_nil(val = data[Keyword.get(opts, :indexer_key)]) do
       to_string(val)

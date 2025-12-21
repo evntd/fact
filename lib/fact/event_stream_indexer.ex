@@ -37,6 +37,8 @@ defmodule Fact.EventStreamIndexer do
       "__fact"
   """
   @impl true
+  @spec index_event(event :: Fact.Types.event_record(), Fact.EventIndexer.indexer_options()) ::
+          Fact.EventIndexer.index_event_result()
   def index_event(event, _opts), do: event[@event_stream]
 
   @doc """

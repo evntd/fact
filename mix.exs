@@ -92,8 +92,8 @@ defmodule Fact.MixProject do
           Fact.EventStreamsIndexer,
           Fact.EventTagsIndexer,
           Fact.EventTypeIndexer,
-          Fact.IndexFileReader.Backwards.Line,
-          Fact.IndexFileReader.Backwards.Chunked
+          Fact.IndexFileReader.Line,
+          Fact.IndexFileReader.Chunked
         ],
         Process: [
           Fact.Lock,
@@ -118,7 +118,8 @@ defmodule Fact.MixProject do
       logo: "guides/assets/images/turt-48.png",
       main: "overview",
       nest_modules_by_prefix: [
-        Fact.IndexFileReader
+        Fact.IndexFileReader,
+        Fact.Storage
       ]
     ]
   end
