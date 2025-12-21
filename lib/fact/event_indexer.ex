@@ -68,15 +68,15 @@ defmodule Fact.EventIndexer do
   The message that is published immediately after an indexer processes a `t:Fact.Types.record/0`.
   """
   @type indexed_message ::
-          {:indexed, indexer(), index_result()}
+          {:indexed, indexer_id(), index_result()}
 
   @typedoc """
-  A module that indexes `Fact.Type.event_record/0`.
+  A module that implements the `Fact.EventIndexer` behaviour to index records.
   """
   @type indexer_module() :: :atom
 
   @typedoc """
-  This is additional metadata for a specific `t:Fact.EventIndexer.indexer/0`.
+  This is additional metadata for a specific `t:Fact.EventIndexer.indexer_id/0`.
     
   At the time of writing, only `Fact.EventDataIndexer` uses an `t:Fact.EventIndexer.indexer_key/0`, because there can be 
   multiple processes running, each indexing a different key within an `t:Fact.Types.event_data/0`
@@ -84,34 +84,57 @@ defmodule Fact.EventIndexer do
   @type indexer_key() :: String.t()
 
   @typedoc """
-  The value produced by an `t:Fact.EventIndexer.indexer/0` when indexing an `t:Fact.Types.event_record/0`. 
+  The value produced by an `t:Fact.EventIndexer.indexer_id/0` when indexing an `t:Fact.Types.event_record/0`. 
   """
   @type index_value() :: String.t()
 
   @typedoc """
-  The list of valid indexers. 
+  The unique identifier for an indexer.
+    
+  ### Built-in Indexers
+
+    * `{Fact.EventDataIndexer, indexer_key()}`
+    * `Fact.EventStreamCategoryIndexer`
+    * `Fact.EventStreamIndexer`
+    * `Fact.EventStreamsByCategoryIndexer`
+    * `Fact.EventStreamsIndexer`
+    * `Fact.EventTagsIndexer`
+    * `Fact.EventTypeIndexer`
   """
-  @type indexer() ::
+  @type indexer_id() ::
           indexer_module()
           | {indexer_module(), indexer_key()}
 
+  @typedoc """
+  Option values passed to the `c:Fact.EventIndexer.index_event/2` callback function to control the indexing of
+  of records.
+  """
   @type indexer_option() ::
-          {:enabled, boolean()}
-          | {:indexer_key, indexer_key()}
+          {:indexer_key, indexer_key()}
           | indexer_custom_option()
 
+  @typedoc """
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function to control the indexing 
+  of records.
+  """
   @type indexer_custom_option() :: {atom(), term()}
 
   @typedoc """
-  A keyword list of options an indexer can use to customize the indexing of a `t:Fact.Types.record/0`.
+  Options passed to the `c:Fact.EventIndexer.index_event/2` callback function to control the indexing of records.
   """
   @type indexer_options() :: [indexer_option()]
 
+  @typedoc """
+  Option values used by the `start_link` functions for indexer modules.
+  """
   @type start_option ::
-          {:indexer_id, indexer()}
+          {:indexer_id, indexer_id()}
           | {:indexer_opts, indexer_options()}
           | GenServer.option()
 
+  @typedoc """
+  Options used by the `start_link` functions for indexer modules. 
+  """
   @type start_options :: [start_option()]
 
   @doc """
@@ -128,7 +151,7 @@ defmodule Fact.EventIndexer do
     * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.Types.event_record/0` is processed 
     regardless of whether the event is included within the index.
   """
-  @spec subscribe(Fact.Instance.t(), indexer()) :: :ok
+  @spec subscribe(Fact.Instance.t(), indexer_id()) :: :ok
   def subscribe(%Fact.Instance{} = instance, indexer) do
     Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), topic(indexer))
   end
@@ -136,7 +159,7 @@ defmodule Fact.EventIndexer do
   @doc """
   Gets the name of the topic where the indexer publishes messages. 
   """
-  @spec topic(indexer()) :: String.t()
+  @spec topic(indexer_id()) :: String.t()
   def topic(indexer) do
     case indexer do
       {indexer_mod, indexer_key} ->
@@ -158,12 +181,12 @@ defmodule Fact.EventIndexer do
 
       @type t :: %{
               required(:instance) => Fact.Instance.t(),
-              required(:indexer) => Fact.EventIndexer.indexer(),
+              required(:indexer) => Fact.EventIndexer.indexer_id(),
               required(:indexer_opts) => Fact.EventIndexer.indexer_options(),
               required(:checkpoint) => Fact.Types.read_position()
             }
 
-      defstruct [:instance, :indexer, :indexer_opts, :checkpoint]
+      defstruct [:instance, :indexer_id, :indexer_opts, :checkpoint]
 
       @spec child_spec({Fact.Instace.t(), Fact.EventIndexer.start_options()}) ::
               Supervisor.child_spec()
@@ -202,7 +225,7 @@ defmodule Fact.EventIndexer do
 
         state = %__MODULE__{
           instance: instance,
-          indexer: indexer_id,
+          indexer_id: indexer_id,
           indexer_opts: indexer_opts,
           checkpoint: 0
         }
@@ -220,9 +243,12 @@ defmodule Fact.EventIndexer do
 
       @impl true
       @doc false
-      def handle_continue(:rebuild_and_join, %{instance: instance, indexer: indexer} = state) do
+      def handle_continue(
+            :rebuild_and_join,
+            %{instance: instance, indexer_id: indexer_id} = state
+          ) do
         checkpoint = rebuild_index(state)
-        Fact.EventIndexerManager.notify_ready(instance, indexer, checkpoint)
+        Fact.EventIndexerManager.notify_ready(instance, indexer_id, checkpoint)
         {:noreply, %{state | checkpoint: checkpoint}}
       end
 
@@ -251,8 +277,8 @@ defmodule Fact.EventIndexer do
       end
 
       @spec rebuild_index(Fact.EventIndexer.t()) :: Fact.Types.read_position()
-      defp rebuild_index(%{instance: instance, indexer: indexer} = state) do
-        initial_checkpoint = Fact.Storage.read_checkpoint(instance, indexer)
+      defp rebuild_index(%{instance: instance, indexer_id: indexer_id} = state) do
+        initial_checkpoint = Fact.Storage.read_checkpoint(instance, indexer_id)
 
         Fact.Storage.read_ledger(instance, position: initial_checkpoint, return_type: :record)
         |> Enum.reduce(initial_checkpoint, fn record, _acc ->
@@ -267,13 +293,13 @@ defmodule Fact.EventIndexer do
              {record_id, %{@event_store_position => position} = event} = _record,
              %{
                instance: instance,
-               indexer: indexer,
+               indexer_id: indexer_id,
                indexer_opts: indexer_opts
              } = state
            ) do
         index_values = index_event(event, indexer_opts)
-        Fact.Storage.write_index(instance, indexer, index_values, record_id)
-        Fact.Storage.write_checkpoint(instance, indexer, position)
+        Fact.Storage.write_index(instance, indexer_id, index_values, record_id)
+        Fact.Storage.write_checkpoint(instance, indexer_id, position)
 
         index_result = %{
           position: position,
@@ -288,8 +314,8 @@ defmodule Fact.EventIndexer do
 
       @spec ensure_storage(Fact.EventIndexer.t()) ::
               :ok | {:error, File.posix() | :badarg | :terminated | :system_limit}
-      defp ensure_storage(%{instance: instance, indexer: indexer} = state) do
-        checkpoint_path = Fact.Instance.indexer_checkpoint_path(instance, indexer)
+      defp ensure_storage(%{instance: instance, indexer_id: indexer_id} = state) do
+        checkpoint_path = Fact.Instance.indexer_checkpoint_path(instance, indexer_id)
 
         with :ok <- File.mkdir_p(Path.dirname(checkpoint_path)) do
           unless File.exists?(checkpoint_path),
@@ -300,11 +326,11 @@ defmodule Fact.EventIndexer do
 
       @spec publish(Fact.EventIndexer.t(), Fact.EventIndexer.index_result()) ::
               :ok | {:error, term()}
-      defp publish(%{instance: instance, indexer: indexer} = state, index_result) do
+      defp publish(%{instance: instance, indexer_id: indexer_id} = state, index_result) do
         Phoenix.PubSub.broadcast(
           Fact.Instance.pubsub(instance),
-          Fact.EventIndexer.topic(indexer),
-          {:indexed, indexer, index_result}
+          Fact.EventIndexer.topic(indexer_id),
+          {:indexed, indexer_id, index_result}
         )
       end
     end

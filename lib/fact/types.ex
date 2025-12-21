@@ -119,7 +119,7 @@ defmodule Fact.Types do
           :all
           | :none
           | {:stream, Fact.Types.event_stream()}
-          | {:index, Fact.EventIndexer.indexer(), Fact.EventIndexer.index_value()}
+          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index_value()}
           | {:query,
              :all
              | :none
