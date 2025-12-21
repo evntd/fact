@@ -2,21 +2,20 @@ defmodule Fact.EventIndexer do
   @moduledoc """
   Base behaviour and macro for building event indexers.
 
-  `Fact.EventIndexer` defines the callback and GenServer scaffolding used by
-  all event indexers in the `Fact` event storage system. An indexer listens
-  for new events, extracts one or more index keys from each event, and writes
-  those relationships into storage. This enables fast lookup of events by
-  category, type, tag, stream, or any domain-specific attribute.
+  `Fact.EventIndexer` defines the callbacks and GenServer scaffolding shared by all event indexers in the `Fact` storage
+  system. An indexer listens for new events and extracts zero, one, or many values from each even it processes. For each
+  extracted value, the indexer create or appends to a file, recording the event's `t:Fact.Types.record_id/0`.
+    
+  Indexers are just event projections, that filter the event ledger, and produce keyed, ordered sets of events.
+    
+  > #### Safe to Delete {: .info}
+  >
+  > It's safe to delete any of index files and folders written to the file system, **when the system is not operating**.
+  > They will be recreated, the next time indexer is started.
 
   ## Behaviour
 
-  An indexer must implement the `c:index_event/2` callback, which extracts an
-  index key from a given event. The returned value determines how the event is
-  indexed:
-
-    * a **string** — single index key  
-    * a **list of strings** — multiple keys  
-    * `nil` — event will not be indexed
+  An indexer must implement the `c:index_event/2` callback, which extracts values from the supplied event.
 
   The `__using__/1` macro injects the full GenServer implementation that:
 
@@ -24,23 +23,75 @@ defmodule Fact.EventIndexer do
     * rebuilds the index from history on startup
     * subscribes to live event notifications
     * updates the index as new events arrive
-    * responds to stream queries from other processes
 
-  Custom indexers only need to implement the callback and optionally define
-  module attributes through `use Fact.EventKeys`.
+    
+  ## Custom Indexers
 
-  ## Example
+  Custom indexers only need to implement the callback.
 
-      defmodule MyApp.UserEmailIndexer do
+  ### Examples
+    
+  This would produce an index for every user, including all the events which define a `user_id` in the event data.
+
+      defmodule YourApp.UserIndexer do
         use Fact.EventIndexer
 
         @impl true
-        def index_event(%{"data" => %{"email" => email}}, _opts), do: email
+        def index_event(%{@event_data => %{"user_id" => user_id}}, _opts), 
+          do: to_string(user_id)
+        
         def index_event(_, _), do: nil
+      end
+    
+  This would produce an index for every tenant, including all the events which define a `tenant_id` in the event 
+  metadata.
+    
+      defmodule YourApp.TenantIndexer do
+        use Fact.EventIndexer
+        def index_event(%{@event_metadata => %{"tenant_id" => tenant_id}}, _opts), 
+          do: to_string(tenant_id)
+        
+        def index_event(_, _), do: nil        
       end
 
   """
-  @callback index_event(event :: map(), state :: term()) :: list(String.t()) | String.t() | nil
+
+  @type indexed_message ::
+          {:indexed,
+           %{
+             required(:indexer) => Fact.Types.indexer(),
+             required(:position) => Fact.Types.event_position(),
+             required(:index_values) => list(Fact.Types.index_value())
+           }}
+
+  @doc """
+  Called when an event needs to be indexed. 
+  """
+  @callback index_event(event :: Fact.Types.event_record(), state :: term()) ::
+              Fact.Type.index_value() | list(Fact.Type.index_value()) | nil
+
+  @doc """
+  Subscribe to messages published by the specified indexer. 
+    
+  ## Messages
+    
+    * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.Types.event_record/0` is processed 
+    regardless of whether the event is included within the index.
+  """
+  @spec subscribe(Fact.Instance.t(), Fact.Types.indexer()) :: :ok
+  def subscribe(%Fact.Instance{} = instance, indexer) do
+    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), topic(indexer))
+  end
+
+  defp topic(indexer) do
+    case indexer do
+      {indexer_mod, indexer_key} ->
+        "#{indexer_mod}:#{indexer_key}"
+
+      indexer ->
+        to_string(indexer)
+    end
+  end
 
   defmacro __using__(_opts \\ []) do
     quote do
@@ -51,8 +102,6 @@ defmodule Fact.EventIndexer do
 
       require Logger
 
-      @topic "#{__MODULE__}"
-
       defstruct [:instance, :index, :index_opts]
 
       @doc """
@@ -62,8 +111,7 @@ defmodule Fact.EventIndexer do
       options. Indexer options include:
 
         * `:instance` — the storage instance (required)
-        * `:key` — optional secondary key used in parameterized indexers
-        * `:encoding` — the index encoding format (`:raw` by default)
+        * `:key` — optional secondary `t:Fact.Types.indexer_key/0` used for partitioned indexers
         * `:opts` — custom options forwarded to `index_event/2`
 
       The index name is automatically derived from the module or
@@ -98,26 +146,15 @@ defmodule Fact.EventIndexer do
         GenServer.start_link(__MODULE__, state, start_opts)
       end
 
-      def subscribe(%Fact.Instance{} = instance) do
-        Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), @topic)
-      end
-
-      defp publish_indexed(%Fact.Instance{} = instance, position, index_keys) do
-        Phoenix.PubSub.broadcast(
-          Fact.Instance.pubsub(instance),
-          @topic,
-          {:indexed,
-           %{indexer: __MODULE__, position: position, index_keys: List.wrap(index_keys)}}
-        )
-      end
-
       @impl true
+      @doc false
       def init(%{instance: instance, index: index} = state) do
         :ok = ensure_storage(state)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
       @impl true
+      @doc false
       def handle_continue(:rebuild_and_join, %{instance: instance, index: index} = state) do
         {:ok, position} = rebuild_index(state)
 
@@ -131,18 +168,14 @@ defmodule Fact.EventIndexer do
       end
 
       @impl true
+      @doc false
       def handle_info({:event_record, {_, event} = record}, state) do
         append_index(record, state)
         {:noreply, state}
       end
 
       @impl true
-      @doc """
-      Handles synchronous calls from clients requesting event IDs for a given
-      index key.
-
-      This is used by `Fact.Storage.read_index/4` and similar APIs.
-      """
+      @doc false
       def handle_cast(
             {:stream!, value, caller, direction},
             %{instance: instance, index: index} = state
@@ -164,13 +197,13 @@ defmodule Fact.EventIndexer do
 
       defp append_index({event_id, %{@event_store_position => position} = event} = _record, %{
              instance: instance,
-             index: index,
+             index: indexer,
              index_opts: index_opts
            }) do
-        index_key = index_event(event, index_opts)
-        Fact.Storage.write_index(instance, index, index_key, event_id)
-        Fact.Storage.write_checkpoint(instance, index, position)
-        publish_indexed(instance, position, index_key)
+        index_values = index_event(event, index_opts)
+        Fact.Storage.write_index(instance, indexer, index_values, event_id)
+        Fact.Storage.write_checkpoint(instance, indexer, position)
+        publish_indexed(instance, indexer, position, index_values)
       end
 
       defp ensure_storage(%{instance: instance, index: index} = state) do
@@ -180,6 +213,25 @@ defmodule Fact.EventIndexer do
           unless File.exists?(checkpoint_path),
             do: File.write(checkpoint_path, "0"),
             else: :ok
+        end
+      end
+
+      defp publish_indexed(%Fact.Instance{} = instance, indexer, position, index_values) do
+        Phoenix.PubSub.broadcast(
+          Fact.Instance.pubsub(instance),
+          topic(indexer),
+          {:indexed,
+           %{indexer: indexer, position: position, index_values: List.wrap(index_values)}}
+        )
+      end
+
+      defp topic(indexer) do
+        case indexer do
+          {indexer_mod, indexer_key} ->
+            "#{indexer_mod}:#{indexer_key}"
+
+          indexer ->
+            to_string(indexer)
         end
       end
     end

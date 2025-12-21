@@ -1,43 +1,13 @@
 defmodule Fact.EventStreamsByCategoryIndexer do
   @moduledoc """
   Indexes the first event of each event stream by the stream **category**. 
-  Like the `Fact.EventStreamCategoryIndexer` this splits the event stream using a specified
-  separator (default: `"-"`) and returns the first segment.
-    
-  This indexer creates an index file for each category, each index file contains the first
-  event in each stream within the category.
-    
-  Given the following events:
-    
-      [
-        %{"event_id" => "1", "stream_id" => "user-1", "stream_position" => 1},
-        %{"event_id" => "2", "stream_id" => "user-1", "stream_position" => 2},
-        %{"event_id" => "3", "stream_id" => "company-1", "stream_position" => 1},
-        %{"event_id" => "4", "stream_id" => "user-2", "stream_position" => 1},
-        %{"event_id" => "5", "stream_id" => "project-1", "stream_position" => 1},
-        %{"event_id" => "6", "stream_id" => "project-1", "stream_position" => 2},
-        %{"event_id" => "7", "stream_id" => "project-1", "stream_position" => 3},
-        %{"event_id" => "8", "stream_id" => "user-3", "stream_position" => 1},
-      ] 
 
-  Then this indexer will create the following three index files
+  Similar to the `Fact.EventStreamCategoryIndexer` this splits the event stream using a specified separator and returns 
+  the first segment, but behaves like the `Fact.EventStreamsIndexer` and only indexes the first event of each stream.
     
-  ```
-  # Fact.EventStreamsByCategoryIndexer/user
-  1
-  4
-  8
-  ```
-
-  ```
-  # Fact.EventStreamsByCategoryIndexer/company
-  3
-  ```
-    
-  ```
-  # Fact.EventStreamsByCategoryIndexer/project
-  5
-  ```
+  This results in creating an index file per-category, each containing the first event in for each stream in the
+  category. It is common in systems for all instances of an Aggregate root to write to the same "category", this indexer
+  makes it easy to find all the instances of that type (e.g. Get All Orders, Get All Customers, etc.).
   """
   use Fact.EventIndexer
 
@@ -46,28 +16,39 @@ defmodule Fact.EventStreamsByCategoryIndexer do
   @doc """
   Extracts the stream category from the first event of each event stream.
     
-  ## Options
+  ### Options
     
     * `:separator` - optional delimiter used to split the stream name.
       Defaults to "-".
 
-  ## Examples
-    
-      iex> event = %{"stream_id" => "user-1", "stream_position" => 1}
-      iex> Fact.EventStreamsByCategoryIndexer.index_event(event, [])
-      "user"
-    
-      iex> event = %{"stream_id" => "user-1", "stream_position" => 2}
+  ### Examples
+
+      iex> event = %{
+      ...>   "event_type" => "ClutchLaid", 
+      ...>   "event_data" => %{"turtle_id" => "t1", "clutch_id" => "c1", "eggs" => 42}, 
+      ...>   "event_tags" => ["turtle:t1", "clutch:c1"], 
+      ...>   "stream_id" => "turtle_mating-1234",
+      ...>   "stream_position" => 3
+      ...> }
       iex> Fact.EventStreamsByCategoryIndexer.index_event(event, [])
       nil
-    
-      iex> event = %{"stream_id" => "company-1", "stream_position" => 1}
+
+      iex> event = %{
+      ...>   "event_type" => "EggHatched", 
+      ...>   "event_data" => %{"turtle_id" => "t2", "clutch_id" => "c1"}, 
+      ...>   "event_tags" => ["turtle:t2", "clutch:c1"], 
+      ...> }
       iex> Fact.EventStreamsByCategoryIndexer.index_event(event, [])
-      "company"
-    
-      iex> event = %{"stream_id" => "project:stardust", "stream_position" => 1}
-      iex> Fact.EventStreamsByCategoryIndexer.index_event(event, separator: ":")
-      "project"
+      nil
+
+      iex> event = %{
+      ...>   "event_type" => "DatabaseCreated", 
+      ...>   "event_data" => %{"database_id" => "RVX27QR6PFDORJZF24C4DIICSQ"}, 
+      ...>   "stream_id" => "__fact", 
+      ...>   "stream_position" => 1
+      ...> }
+      iex> Fact.EventStreamsByCategoryIndexer.index_event(event, [])
+      "__fact"
   """
   @impl true
   def index_event(%{@event_stream => stream, @event_stream_position => 1}, opts) do

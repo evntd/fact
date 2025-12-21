@@ -4,12 +4,10 @@ defmodule Fact.Supervisor do
   require Logger
 
   def start_link(instance: instance) do
-    manifest = instance.manifest
-
     init_opts = [
       instance: instance,
       indexers:
-        Enum.map(manifest.indexers, fn x ->
+        Enum.map(instance.indexers, fn x ->
           {mod, opts} = x.old_spec
 
           {mod,

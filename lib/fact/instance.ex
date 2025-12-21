@@ -4,12 +4,15 @@ defmodule Fact.Instance do
         }
 
   @enforce_keys [:database_id]
-  defstruct [:database_id, :manifest]
+  defstruct [:database_id, :database_path, :driver, :format, :indexers]
 
   def new(manifest) when is_map(manifest) do
     %__MODULE__{
       database_id: manifest.database_id,
-      manifest: manifest
+      database_path: manifest.database_path,
+      driver: manifest.records.old_driver,
+      format: manifest.records.old_format,
+      indexers: manifest.indexers
     }
   end
 
@@ -50,13 +53,16 @@ defmodule Fact.Instance do
   @lock_filename "lock.sock"
   @lock_metadata_filename "lock.json"
   @indexer_checkpoint_filename ".checkpoint"
+  @events_path "events"
+  @indices_path "indices"
+  @ledger_path ".ledger"
 
   def database_path(%__MODULE__{} = instance) do
-    instance.manifest.database_path
+    instance.database_path
   end
 
   def events_path(%__MODULE__{} = instance) do
-    instance.manifest.events_path
+    Path.join(database_path(instance), @events_path)
   end
 
   def indexer_checkpoint_path(%__MODULE__{} = instance, indexer) do
@@ -73,11 +79,11 @@ defmodule Fact.Instance do
   end
 
   def indices_path(%__MODULE__{} = instance) do
-    instance.manifest.indices_path
+    Path.join(database_path(instance), @indices_path)
   end
 
   def ledger_path(%__MODULE__{} = instance) do
-    instance.manifest.ledger_path
+    Path.join(database_path(instance), @ledger_path)
   end
 
   def lock_path(%__MODULE__{} = instance) do
@@ -95,15 +101,15 @@ defmodule Fact.Instance do
   # == OLD
 
   def driver(%__MODULE__{} = instance) do
-    instance.manifest.records.old_driver
+    instance.driver
   end
 
   def format(%__MODULE__{} = instance) do
-    instance.manifest.records.old_format
+    instance.format
   end
 
   def indexer_config(%__MODULE__{} = instance, indexer_mod) when is_atom(indexer_mod) do
-    Enum.find(instance.manifest.indexers, fn i -> i.module === indexer_mod end)
+    Enum.find(instance.indexers, fn i -> i.module === indexer_mod end)
   end
 
   def indexer_config(%__MODULE__{} = instance, {indexer_mod, _index} = indexer)

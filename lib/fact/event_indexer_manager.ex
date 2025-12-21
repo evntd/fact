@@ -80,7 +80,7 @@ defmodule Fact.EventIndexerManager do
       |> Enum.reduce(indexers, fn spec, acc ->
         indexer_key = get_indexer_key(spec)
         GenServer.cast(self(), {:start_indexer, spec})
-        Map.put(acc, indexer_key, %{pid: nil, status: :starting, waiters: []})
+        Map.put(acc, indexer_key, %{pid: nil, status: :starting, waiters: [], position: 0})
       end)
 
     {:noreply, %{state | indexers: new_indexers}}
@@ -91,29 +91,31 @@ defmodule Fact.EventIndexerManager do
         {:start_indexer, spec},
         %__MODULE__{instance: instance, indexers: indexers} = state
       ) do
-    indexer_key = get_indexer_key(spec)
+    indexer = get_indexer_key(spec)
 
-    case Registry.lookup(Fact.Instance.registry(instance), indexer_key) do
+    case Registry.lookup(Fact.Instance.registry(instance), indexer) do
       [] ->
         {mod, opts} = spec
 
-        {:ok, indexer} =
+        # subscribe to indexer messages
+        Fact.EventIndexer.subscribe(instance, indexer)
+
+        # start the indexer
+        {:ok, pid} =
           DynamicSupervisor.start_child(
             Fact.Instance.event_indexer_supervisor(instance),
             {mod, Keyword.put(opts, :instance, instance)}
           )
 
-        # subscribe to indexer messages
-        apply(mod, :subscribe, [instance])
-
+        # setup some book keeping state for the indexer
         info = %{
-          pid: indexer,
+          pid: pid,
           status: :started,
-          waiters: Map.get(indexers[indexer_key], :waiters, []),
+          waiters: Map.get(indexers[indexer], :waiters, []),
           position: 0
         }
 
-        new_indexers = Map.put(indexers, indexer_key, info)
+        new_indexers = Map.put(indexers, indexer, info)
         {:noreply, %__MODULE__{state | indexers: new_indexers}}
 
       [{_pid, _}] ->
@@ -173,7 +175,8 @@ defmodule Fact.EventIndexerManager do
                 Map.put(state.indexers, get_indexer_key(spec), %{
                   pid: nil,
                   status: :starting,
-                  waiters: [from]
+                  waiters: [from],
+                  position: 0
                 })
 
               {:noreply, %__MODULE__{state | indexers: indexers}}

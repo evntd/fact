@@ -1,37 +1,38 @@
 defmodule Fact.EventTypeIndexer do
   @moduledoc """
-  An event indexer that extracts the type of an event.
-
-  This module implements the `Fact.EventIndexer` behaviour. It returns the value
-  stored under the event's type field.
-
-  This indexer is useful for grouping, filtering, or querying events by their
-  type within an event store or event-driven system.
+  Index events by their event type.
   """
   use Fact.EventIndexer
 
   @doc """
-  Retrieves the type of the event.
-
-  ## Parameters
-
-    * `event` — an event.
-    * `opts` — indexing options.
-
-  ## Returns
-
-    * the event type if present
-    * `nil` if the event has no type field
-
-  ## Examples
-
-      iex> event = %{"type" => "UserCreated"}
+  Extracts the type of the event.
+    
+      iex> event = %{
+      ...>   "event_type" => "ClutchLaid", 
+      ...>   "event_data" => %{"turtle_id" => "t1", "clutch_id" => "c1", "eggs" => 42}, 
+      ...>   "event_tags" => ["turtle:t1", "clutch:c1"], 
+      ...>   "stream_id" => "turtle_mating-1234",
+      ...>   "stream_position" => 3
+      ...> }
       iex> Fact.EventTypeIndexer.index_event(event, [])
-      "UserCreated"
+      "ClutchLaid"
 
-      iex> event = %{"type" => "InvoiceSent"}
+      iex> event = %{
+      ...>   "event_type" => "EggHatched", 
+      ...>   "event_data" => %{"turtle_id" => "t2", "clutch_id" => "c1"}, 
+      ...>   "event_tags" => ["turtle:t2", "clutch:c1"], 
+      ...> } 
       iex> Fact.EventTypeIndexer.index_event(event, [])
-      "InvoiceSent"
+      "EggHatched"
+
+      iex> event = %{
+      ...>   "event_type" => "DatabaseCreated", 
+      ...>   "event_data" => %{"database_id" => "RVX27QR6PFDORJZF24C4DIICSQ"}, 
+      ...>   "stream_id" => "__fact", 
+      ...>   "stream_position" => "1"
+      ...> }
+      iex> Fact.EventTypeIndexer.index_event(event, [])
+      "DatabaseCreated"
   """
   @impl true
   def index_event(event, _opts), do: event[@event_type]

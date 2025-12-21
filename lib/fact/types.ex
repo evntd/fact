@@ -113,9 +113,9 @@ defmodule Fact.Types do
   @type record :: {record_id(), event_record()}
 
   @typedoc """
-  A value associated with an `t:Fact.Types.indexer/0` that is a result of the indexing process. 
+  The value produced by an `t:Fact.Types.indexer/0` when indexing an `t:Fact.Types.event_record/0`. 
   """
-  @type index() :: String.t()
+  @type index_value() :: String.t()
 
   @typedoc """
   The list of valid indexers. 
@@ -151,7 +151,7 @@ defmodule Fact.Types do
           :all
           | :none
           | {:stream, Fact.Types.event_stream()}
-          | {:index, Fact.Types.indexer(), Fact.Types.index()}
+          | {:index, Fact.Types.indexer(), Fact.Types.index_value()}
           | {:query,
              :all
              | :none

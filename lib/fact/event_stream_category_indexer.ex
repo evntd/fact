@@ -1,7 +1,7 @@
 defmodule Fact.EventStreamCategoryIndexer do
   @moduledoc """
   Indexes events by the *category* portion of an event stream, by splitting the string on a 
-  specified separator (default :`"-"`) and returns the first segment.
+  specified separator and returns the first segment.
   """
   use Fact.EventIndexer
 
@@ -10,24 +10,38 @@ defmodule Fact.EventStreamCategoryIndexer do
   @doc """
   Extracts a category from an event stream id.
 
-  ## Options
+  ### Options
 
     * `:separator` - optional delimiter used to split the stream name.
         Defaults to `"-"`.
 
-  ## Examples
+  ### Examples 
 
-      iex> event = %{"event_type" => "TestEvent", "stream_id" => "user-123"}
+      iex> event = %{
+      ...>   "event_type" => "ClutchLaid", 
+      ...>   "event_data" => %{"turtle_id" => "t1", "clutch_id" => "c1", "eggs" => 42}, 
+      ...>   "event_tags" => ["turtle:t1", "clutch:c1"], 
+      ...>   "stream_id" => "turtle_mating-1234"
+      ...> }
       iex> Fact.EventStreamCategoryIndexer.index_event(event, [])
-      "user"
+      "turtle_mating"
 
-      iex> event = %{"event_type" => "TestEvent", "stream_id" => "order:987"}
-      iex> Fact.EventStreamCategoryIndexer.index_event(event, separator: ":")
-      "order"
-
-      iex> event = %{"event_type" => "TestEvent"}
+      iex> event = %{
+      ...>   "event_type" => "EggHatched", 
+      ...>   "event_data" => %{"turtle_id" => "t2", "clutch_id" => "c1"}, 
+      ...>   "event_tags" => ["turtle:t2", "clutch:c1"], 
+      ...> }
       iex> Fact.EventStreamCategoryIndexer.index_event(event, [])
       nil
+
+      iex> event = %{
+      ...>   "event_type" => "DatabaseCreated", 
+      ...>   "event_data" => %{"database_id" => "RVX27QR6PFDORJZF24C4DIICSQ"}, 
+      ...>   "stream_id" => "__fact", 
+      ...>   "stream_position" => 1
+      ...> }
+      iex> Fact.EventStreamCategoryIndexer.index_event(event, [])
+      "__fact"
 
   """
   @impl true
