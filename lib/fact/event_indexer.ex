@@ -102,7 +102,7 @@ defmodule Fact.EventIndexer do
 
       require Logger
 
-      defstruct [:instance, :index, :index_opts]
+      defstruct [:instance, :index, :index_opts, :checkpoint]
 
       @doc """
       Starts the indexer process.
@@ -140,7 +140,8 @@ defmodule Fact.EventIndexer do
         state = %__MODULE__{
           instance: instance,
           index: index,
-          index_opts: index_opts
+          index_opts: index_opts,
+          checkpoint: 0
         }
 
         GenServer.start_link(__MODULE__, state, start_opts)
@@ -157,37 +158,56 @@ defmodule Fact.EventIndexer do
       @impl true
       @doc false
       def handle_continue(:rebuild_and_join, %{instance: instance, index: index} = state) do
-        {:ok, position} = rebuild_index(state)
-        Fact.EventIndexerManager.notify_ready(instance, index, position)
-        {:noreply, state}
+        checkpoint = rebuild_index(state)
+        Fact.EventIndexerManager.notify_ready(instance, index, checkpoint)
+        {:noreply, %{state | checkpoint: checkpoint}}
       end
 
       @impl true
       @doc false
-      def handle_info({:event_record, {_, event} = record}, state) do
-        append_index(record, state)
-        {:noreply, state}
+      def handle_info(
+            {:event_record, {_, %{@event_store_position => position} = event} = record},
+            %{checkpoint: checkpoint} = state
+          ) do
+        unindexed = position - checkpoint
+
+        new_checkpoint =
+          cond do
+            unindexed > 1 ->
+              rebuild_index(state)
+
+            unindexed == 1 ->
+              append_index(record, state)
+
+            unindexed == 0 ->
+              checkpoint
+
+            unindexed < 0 ->
+              # This should not be possible, if invariants hold true.
+              # But to be safe, let's not change anything...possibly making things worse.
+              checkpoint
+          end
+
+        {:noreply, %{state | checkpoint: new_checkpoint}}
       end
 
       defp rebuild_index(%{instance: instance, index: index} = state) do
-        position = Fact.Storage.read_checkpoint(instance, index)
+        initial_checkpoint = Fact.Storage.read_checkpoint(instance, index)
 
-        Fact.Storage.read_ledger(instance, position: position, return_type: :record)
-        |> Stream.each(&append_index(&1, state))
-        |> Stream.run()
-
-        {:ok, position}
+        Fact.Storage.read_ledger(instance, position: initial_checkpoint, return_type: :record)
+        |> Enum.reduce(initial_checkpoint, fn record, _acc -> append_index(record, state) end)
       end
 
-      defp append_index({event_id, %{@event_store_position => position} = event} = _record, %{
+      defp append_index({record_id, %{@event_store_position => position} = event} = _record, %{
              instance: instance,
              index: indexer,
              index_opts: index_opts
            }) do
         index_values = index_event(event, index_opts)
-        Fact.Storage.write_index(instance, indexer, index_values, event_id)
+        Fact.Storage.write_index(instance, indexer, index_values, record_id)
         Fact.Storage.write_checkpoint(instance, indexer, position)
         publish_indexed(instance, indexer, position, index_values)
+        position
       end
 
       defp ensure_storage(%{instance: instance, index: index} = state) do
