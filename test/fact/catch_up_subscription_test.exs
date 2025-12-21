@@ -47,12 +47,16 @@ defmodule Fact.CatchUpSubscriptionTest do
   setup_all do
     path = TestHelper.create("catchup", :all_indexers)
     on_exit(fn -> TestHelper.rm_rf(path) end)
-    {:ok, instance} = Fact.open(path)
+    {:ok, db} = Fact.open(path)
 
-    Fact.append(instance, @event)
-    Fact.append_stream(instance, [@event, @event], @stream)
-    Process.sleep(100)
-    {:ok, instance: instance}
+    TestHelper.subscribe_to_indexing(db)
+
+    Fact.append(db, @event)
+    Fact.append_stream(db, [@event, @event], @stream)
+
+    TestHelper.wait_for_all_events_to_be_indexed(db)
+
+    {:ok, instance: db}
   end
 
   test "subscribed to :all should receive all events", %{instance: db} do
@@ -103,11 +107,12 @@ defmodule Fact.CatchUpSubscriptionTest do
   end
 
   test "subscribed to :all should receive events after caught up", %{instance: db} do
+    TestHelper.subscribe_to_indexing(db)
     CatchUpSubscription.start_link(db, self(), :all, 3)
     assert_receive :caught_up
 
     Fact.append_stream(db, [@event, @event], @stream)
-    Process.sleep(100)
+    TestHelper.wait_for_all_events_to_be_indexed(db)
 
     assert_receive {:event_record,
                     {_record_id,
@@ -173,11 +178,12 @@ defmodule Fact.CatchUpSubscriptionTest do
   end
 
   test "subscribed to stream should receive events after caught up", %{instance: db} do
+    TestHelper.subscribe_to_indexing(db)
     CatchUpSubscription.start_link(db, self(), {:stream, @stream}, 2)
     assert_receive :caught_up
 
     Fact.append_stream(db, [@event, @event], @stream)
-    Process.sleep(100)
+    TestHelper.wait_for_all_events_to_be_indexed(db)
 
     assert_receive {:event_record,
                     {_record_id,

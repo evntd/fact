@@ -7,9 +7,7 @@ defmodule Fact.Storage.Driver.ContentAddressableTest do
   setup_all do
     path = TestHelper.create("cas", :default, ["--record-filename-scheme", "cas"])
     on_exit(fn -> TestHelper.rm_rf(path) end)
-
     {:ok, instance} = Fact.open(path)
-
     {:ok, instance: instance}
   end
 
@@ -18,7 +16,6 @@ defmodule Fact.Storage.Driver.ContentAddressableTest do
       instance: db
     } do
       Fact.append(db, %{type: "Test"})
-      Process.sleep(50)
 
       [event] = Fact.read(db, :all) |> Enum.take(1)
       event_hash = :crypto.hash(:sha, Fact.Json.encode!(event)) |> Base.encode16(case: :lower)

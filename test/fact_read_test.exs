@@ -48,14 +48,12 @@ defmodule Fact.ReadTest do
       }
     ]
 
-    events = non_stream_events ++ stream_events
-
     TestHelper.subscribe_to_indexing(instance)
 
     Fact.append(instance, non_stream_events)
     Fact.append_stream(instance, stream_events, "student-s1")
 
-    TestHelper.wait_for_event_position_to_be_indexed(length(events))
+    TestHelper.wait_for_all_events_to_be_indexed(instance)
 
     {:ok, instance: instance}
   end
