@@ -1,18 +1,20 @@
 defmodule Fact.Storage.V2 do
   @moduledoc false
 
+  @spec write_event(%Fact.Context{}, Fact.Types.event_record()) ::
+          {:ok, Fact.Types.record_id()} | {:error, term()}
   def write_event(%Fact.Context{} = context, event_record) do
-    case Fact.RecordFileFormat.encode(context, event_record) do
+    case Fact.RecordFileContent.encode(context, event_record) do
       {:ok, encoded_record} ->
-        record_id = Fact.RecordFileName.for(context, event_record, encoded_record)
-        record_path = Fact.StorageLayout.record_path(context, record_id)
+        with record_id <- Fact.RecordFileName.for(context, event_record, encoded_record),
+             record_path <- Fact.StorageLayout.record_path(context, record_id) do
+          case write_sync(record_path, encoded_record, [:write, :binary, :exclusive]) do
+            :ok ->
+              {:ok, record_id}
 
-        case write_sync(record_path, encoded_record) do
-          :ok ->
-            {:ok, record_id}
-
-          {:error, reason} ->
-            {:error, {reason, record_id}}
+            {:error, reason} ->
+              {:error, {reason, record_id}}
+          end
         end
 
       {:error, reason} ->
@@ -36,6 +38,24 @@ defmodule Fact.Storage.V2 do
     end
   end
 
+  def write_ledger(%Fact.Context{} = context, record_ids) do
+    case Fact.LedgerFileContent.encode(context, record_ids) do
+      {:ok, content} ->
+        with path <- Fact.StorageLayout.ledger_path(context) do
+          case write_sync(path, content, [:append, :binary]) do
+            :ok ->
+              {:ok, record_ids}
+
+            {:error, _} = error ->
+              error
+          end
+        end
+
+      {:error, reason} ->
+        {:error, {:encode_failed, reason}}
+    end
+  end
+
   defp process_write_results(results) do
     Enum.reduce(results, {:ok, [], []}, fn
       {_, {:ok, record_id}}, {result, records, errors} ->
@@ -46,9 +66,9 @@ defmodule Fact.Storage.V2 do
     end)
   end
 
-  @spec write_sync(Path.t(), iodata()) :: :ok | {:error, term()}
-  defp write_sync(path, content) do
-    case File.open(path, [:write, :binary, :exclusive]) do
+  @spec write_sync(Path.t(), iodata(), [File.mode()]) :: :ok | {:error, term()}
+  defp write_sync(path, content, modes) do
+    case File.open(path, modes) do
       {:ok, fd} ->
         try do
           with :ok <- IO.binwrite(fd, content),
