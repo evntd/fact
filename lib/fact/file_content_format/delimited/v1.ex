@@ -1,20 +1,20 @@
 defmodule Fact.FileContentFormat.Delimited.V1 do
-  @behaviour Fact.FileContentFormat
+  @behaviour Fact.Seam.FileContentFormat
 
   @enforce_keys [:delimiter]
   defstruct [:delimiter]
 
   @impl true
-  def id(), do: :delimited
+  def family(), do: :delimited
 
   @impl true
   def version(), do: 1
 
   @impl true
-  def metadata(), do: %{delimiter: "\n"}
+  def default_options(), do: %{delimiter: "\n"}
 
   @impl true
-  def init(metadata), do: struct(__MODULE__, metadata)
+  def init(%{} = options), do: struct(__MODULE__, options)
 
   @impl true
   def normalize_options(%{} = _options), do: {:ok, %{}}

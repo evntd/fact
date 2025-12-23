@@ -1,5 +1,5 @@
 defmodule Fact.FileNameFormat.ContentAddressable.V1 do
-  @behaviour Fact.FileNameFormat
+  @behaviour Fact.Seam.FileNameFormat
 
   defstruct [:algorithm, :encoding]
 
@@ -9,16 +9,16 @@ defmodule Fact.FileNameFormat.ContentAddressable.V1 do
   }
 
   @impl true
-  def id(), do: :content_addressable
+  def family(), do: :content_addressable
 
   @impl true
   def version(), do: 1
 
   @impl true
-  def metadata(), do: %{algorithm: :sha256, encoding: :base64}
+  def default_options(), do: %{algorithm: :sha256, encoding: :base64}
 
   @impl true
-  def init(metadata), do: struct(__MODULE__, Map.merge(metadata(), metadata))
+  def init(options), do: struct(__MODULE__, Map.merge(default_options(), options))
 
   @impl true
   def normalize_options(%{} = options) do

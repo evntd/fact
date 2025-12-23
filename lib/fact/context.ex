@@ -9,7 +9,7 @@ defmodule Fact.Context do
     # Seams (instances -> modules + structs)
     :index_file_content_format,
     :index_file_name_format,
-    :index_file_reader,    
+    :index_file_reader,
     :ledger_file_content_format,
     :record_file_content_format,
     :record_file_name_format,

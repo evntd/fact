@@ -1,4 +1,4 @@
-defmodule Fact.RecordSchemaFormat do
+defmodule Fact.Seam.RecordSchemaFormat do
   use Fact.Seam
 
   @callback event_data(format :: t(), record :: Fact.Types.event_record()) ::

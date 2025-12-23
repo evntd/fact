@@ -1,5 +1,5 @@
 defmodule Fact.FileNameFormat.Raw.V1 do
-  @behaviour Fact.FileNameFormat
+  @behaviour Fact.Seam.FileNameFormat
 
   @type t :: %__MODULE__{}
 
@@ -8,24 +8,24 @@ defmodule Fact.FileNameFormat.Raw.V1 do
   defstruct []
 
   @impl true
-  @spec id() :: :raw
-  def id(), do: :raw
+  @spec family() :: :raw
+  def family(), do: :raw
 
   @impl true
   @spec version() :: 1
   def version(), do: 1
 
   @impl true
-  @spec metadata() :: %{}
-  def metadata(), do: %{}
+  @spec default_options() :: %{}
+  def default_options(), do: %{}
 
   @impl true
   @spec init(map) :: t() | {:error, reason()}
-  def init(metadata) do
-    if map_size(metadata) == 0 do
+  def init(options) do
+    if map_size(options) == 0 do
       struct(__MODULE__, %{})
     else
-      {:error, {:unknown_option, metadata}}
+      {:error, {:unknown_option, options}}
     end
   end
 
@@ -41,5 +41,5 @@ defmodule Fact.FileNameFormat.Raw.V1 do
 
   @impl true
   @spec for(t(), Fact.EventIndexer.index_value()) :: Path.t() | {:error, reason()}
-  def for(%__MODULE{} = _format, index_value), do: index_value
+  def for(%__MODULE{}, index_value), do: index_value
 end

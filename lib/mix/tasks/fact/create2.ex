@@ -45,7 +45,7 @@ defmodule Mix.Tasks.Fact.Create2 do
       path: path,
       storage_layout:
         resolve_format(
-          Fact.StorageLayout.Registry,
+          Fact.StorageLayout,
           parse_format_selector(parsed[:storage_layout]),
           parse_format_options(parsed[:storage_layout_options])
         ),
@@ -111,10 +111,13 @@ defmodule Mix.Tasks.Fact.Create2 do
     |> Map.new()
   end
 
-  defp resolve_format(registry, selector, options) do
+  defp resolve_format(abstraction, selector, options) do
+    
+    registry = abstraction.registry()
+    
     {id, version} =
       case selector do
-        :default -> registry.default()
+        :default -> abstraction.default_options() 
         {id, :default} -> {id, registry.latest_version(id)}
         {id, version} -> {id, version}
       end

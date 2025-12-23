@@ -1,4 +1,4 @@
-defmodule Fact.StorageLayoutFormat do
+defmodule Fact.Seam.StorageLayoutFormat do
   use Fact.Seam
 
   @callback init_storage(format :: t(), root :: Path.t()) :: :ok | {:error, term()}

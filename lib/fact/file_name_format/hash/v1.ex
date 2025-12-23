@@ -1,5 +1,5 @@
 defmodule Fact.FileNameFormat.Hash.V1 do
-  @behaviour Fact.FileNameFormat
+  @behaviour Fact.Seam.FileNameFormat
 
   @type t :: %{
           required(:algorithm) => algorithm(),
@@ -46,19 +46,19 @@ defmodule Fact.FileNameFormat.Hash.V1 do
   }
 
   @impl true
-  def id(), do: :hash
+  def family(), do: :hash
 
   @impl true
   def version(), do: 1
 
   @impl true
-  def metadata(), do: %{algorithm: :sha, encoding: :base16}
+  def default_options(), do: %{algorithm: :sha, encoding: :base16}
 
   @impl true
   @spec init(map()) :: t() | {:error, reason()}
-  def init(metadata) when is_map(metadata) do
-    metadata()
-    |> Map.merge(metadata)
+  def init(options) when is_map(options) do
+    default_options()
+    |> Map.merge(options)
     |> validate_options(@option_specs)
     |> case do
       {:ok, valid} ->
@@ -86,8 +86,8 @@ defmodule Fact.FileNameFormat.Hash.V1 do
 
   @impl true
   @spec for(t(), term()) :: Path.t() | {:error, reason()}
-  def for(%__MODULE__{algorithm: algorithm, encoding: encoding} = format, index_value) do
-    with {:ok, _} <- validate_options(Map.from_struct(format), @option_specs) do
+  def for(%__MODULE__{algorithm: algorithm, encoding: encoding} = impl_struct, index_value) do
+    with {:ok, _} <- validate_options(Map.from_struct(impl_struct), @option_specs) do
       hash = :crypto.hash(algorithm, to_string(index_value))
 
       case encoding do

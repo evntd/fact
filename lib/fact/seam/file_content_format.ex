@@ -1,4 +1,4 @@
-defmodule Fact.FileContentFormat do
+defmodule Fact.Seam.FileContentFormat do
   use Fact.Seam
 
   @callback can_decode?(t()) :: boolean()

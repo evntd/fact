@@ -25,7 +25,8 @@ defmodule Fact.FileNameFormat.RegistryTest do
     end
 
     test "given :content_addressable, 1 should resolve" do
-      assert Fact.FileNameFormat.ContentAddressable.V1 == Registry.resolve(:content_addressable, 1)
+      assert Fact.FileNameFormat.ContentAddressable.V1 ==
+               Registry.resolve(:content_addressable, 1)
     end
 
     test "given :other, 1 should fail" do

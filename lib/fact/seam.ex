@@ -3,9 +3,9 @@ defmodule Fact.Seam do
     quote do
       @type t :: struct()
 
-      @callback id() :: atom()
+      @callback family() :: atom()
       @callback version() :: non_neg_integer()
-      @callback metadata() :: map()
+      @callback default_options() :: map()
       @callback init(map()) :: struct() | {:error, term()}
       @callback normalize_options(map()) :: {:ok, map()} | {:error, term()}
     end

@@ -1,25 +1,25 @@
 defmodule Fact.StorageLayoutFormat.Default.V1 do
-  @behaviour Fact.StorageLayoutFormat
+  @behaviour Fact.Seam.StorageLayoutFormat
 
   defstruct []
 
   @impl true
-  def id(), do: :default
+  def family(), do: :default
 
   @impl true
   def version(), do: 1
 
   @impl true
-  def metadata(), do: %{}
+  def default_options(), do: %{}
 
   @impl true
-  def init(_metadata), do: %__MODULE__{}
+  def init(%{} = _options), do: struct(__MODULE__, %{})
 
   @impl true
   def normalize_options(%{} = _options), do: {:ok, %{}}
 
   @impl true
-  def init_storage(format, path) do
+  def init_storage(%__MODULE__{} = format, path) do
     # INVARIANTS
     # - Path MUST be a directory
     # - Path SHOULD not exist
@@ -33,13 +33,13 @@ defmodule Fact.StorageLayoutFormat.Default.V1 do
   end
 
   @impl true
-  def records_path(_format, root), do: Path.join(root, "events")
+  def records_path(%__MODULE__{}, root), do: Path.join(root, "events")
 
   @impl true
-  def indices_path(_format, root), do: Path.join(root, "indices")
+  def indices_path(%__MODULE__{}, root), do: Path.join(root, "indices")
 
   @impl true
-  def ledger_path(_format, root), do: Path.join(root, ".ledger")
+  def ledger_path(%__MODULE__{}, root), do: Path.join(root, ".ledger")
 
   defp ensure_is_dir_or_does_not_exist(path) do
     cond do

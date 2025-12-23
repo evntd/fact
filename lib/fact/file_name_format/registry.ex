@@ -1,6 +1,6 @@
 defmodule Fact.FileNameFormat.Registry do
   use Fact.Seam.Registry,
-    formats: [
+    impls: [
       Fact.FileNameFormat.ContentAddressable.V1,
       Fact.FileNameFormat.EventId.V1,
       Fact.FileNameFormat.Hash.V1,

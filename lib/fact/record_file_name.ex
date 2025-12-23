@@ -13,7 +13,6 @@ defmodule Fact.RecordFileName do
         event_record,
         encoded_record
       ) do
-    
     mod.for(s, if(mod.id() === :content_addressable, do: encoded_record, else: event_record))
   end
 end

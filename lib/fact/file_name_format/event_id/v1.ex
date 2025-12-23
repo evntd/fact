@@ -1,27 +1,27 @@
 defmodule Fact.FileNameFormat.EventId.V1 do
-  @behaviour Fact.FileNameFormat
-  
+  @behaviour Fact.Seam.FileNameFormat
+
   use Fact.Types
-  
+
   defstruct []
 
   @impl true
-  def id(), do: :event_id
+  def family(), do: :event_id
 
   @impl true
   def version(), do: 1
 
   @impl true
-  def metadata(), do: %{}
+  def default_options(), do: %{}
 
   @impl true
-  def init(_metadata), do: %__MODULE__{}
+  def init(_options), do: %__MODULE__{}
 
   @impl true
   def normalize_options(%{} = _options), do: {:ok, %{}}
 
   @impl true
-  def for(_format, event_record) do
+  def for(%__MODULE__{}, event_record) do
     event_record[@event_id]
   end
 end
