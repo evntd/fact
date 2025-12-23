@@ -47,7 +47,7 @@ defmodule Fact.IndexFileName.Hash.V1Test do
       assert %V1{encoding: :base32, algorithm: algo} == V1.init(%{encoding: :base32})
     end
 
-    test "given invalid algoritm, should" do
+    test "given invalid algorithm, should" do
       assert {:error, {:invalid_algorithm, :bad}} == V1.init(%{algorithm: :bad})
     end
 

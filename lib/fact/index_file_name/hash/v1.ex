@@ -1,15 +1,20 @@
 defmodule Fact.IndexFileName.Hash.V1 do
   @behaviour Fact.IndexFileName
 
-  @type encoding :: :base16 | :base32 | :base64url
-
-  @type algorithm ::
-          :sha | :md5 | :sha256 | :sha512 | :sha3_256 | :sha3_512 | :blake2b | :blake2s
-
   @type t :: %{
           required(:algorithm) => algorithm(),
           required(:encoding) => encoding()
         }
+
+  @type algorithm ::
+          :sha | :md5 | :sha256 | :sha512 | :sha3_256 | :sha3_512 | :blake2b | :blake2s
+
+  @type encoding :: :base16 | :base32 | :base64url
+
+  @type reason ::
+          {:invalid_algorithm, term()}
+          | {:invalid_encoding, term()}
+          | {:unknown_option, term()}
 
   @enforce_keys [:algorithm, :encoding]
   defstruct [:algorithm, :encoding]
@@ -50,7 +55,7 @@ defmodule Fact.IndexFileName.Hash.V1 do
   def metadata(), do: %{algorithm: :sha, encoding: :base16}
 
   @impl true
-  @spec init(map()) :: t() | {:error, term()}
+  @spec init(map()) :: t() | {:error, reason()}
   def init(metadata) when is_map(metadata) do
     metadata()
     |> Map.merge(metadata)
@@ -65,7 +70,7 @@ defmodule Fact.IndexFileName.Hash.V1 do
   end
 
   @impl true
-  @spec normalize_options(%{atom() => String.t()}) :: t() | {:error, term()}
+  @spec normalize_options(%{atom() => String.t()}) :: t() | {:error, reason()}
   def normalize_options(%{} = options) do
     options
     |> Map.take(Map.keys(@option_specs))
@@ -80,7 +85,7 @@ defmodule Fact.IndexFileName.Hash.V1 do
   end
 
   @impl true
-  @spec for(t(), term()) :: Path.t()
+  @spec for(t(), term()) :: Path.t() | {:error, reason()}
   def for(%__MODULE__{algorithm: algorithm, encoding: encoding} = format, index_value) do
     with {:ok, _} <- validate_options(Map.from_struct(format), @option_specs) do
       hash = :crypto.hash(algorithm, to_string(index_value))

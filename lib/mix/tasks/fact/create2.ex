@@ -121,7 +121,7 @@ defmodule Mix.Tasks.Fact.Create2 do
 
     module = registry.resolve(id, version)
 
-    with {:ok, normalized_options } <- normalize_options(module, options),
+    with {:ok, normalized_options} <- normalize_options(module, options),
          final_options <- module.metadata() |> Map.merge(normalized_options) do
       %{
         id: id,
