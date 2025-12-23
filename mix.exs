@@ -158,7 +158,7 @@ defmodule Fact.MixProject do
       ]
     ]
   end
-  
+
   defp dialyzer do
     [
       plt_add_apps: [:ex_unit, :mix, :phoenix_pubsub]

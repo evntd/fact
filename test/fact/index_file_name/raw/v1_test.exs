@@ -50,4 +50,10 @@ defmodule Fact.IndexFileName.Raw.V1Test do
                V1.normalize_options(%{invalid: "test"})
     end
   end
+
+  describe "for/2" do
+    test "should return the supplied index_value" do
+      assert "test" == V1.for(V1.init(%{}), "test")
+    end
+  end
 end
