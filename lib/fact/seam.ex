@@ -6,8 +6,8 @@ defmodule Fact.Seam do
       @callback id() :: atom()
       @callback version() :: non_neg_integer()
       @callback metadata() :: map()
-      @callback init(metadata :: map()) :: struct()
-      @callback normalize_options(map()) :: map()
+      @callback init(map()) :: struct() | {:error, term()}
+      @callback normalize_options(map()) :: {:ok, map()} | {:error, term()}
     end
   end
 end

@@ -16,7 +16,7 @@ defmodule Fact.RecordFileFormat.Json.V1 do
   def init(_metadata), do: %__MODULE__{}
 
   @impl true
-  def normalize_options(%{} = _options), do: %{}
+  def normalize_options(%{} = _options), do: {:ok, %{}}
 
   cond do
     Code.ensure_loaded?(Elixir.JSON) ->

@@ -24,9 +24,9 @@ defmodule Fact.RecordFileName.ContentAddressable.V1 do
   def normalize_options(%{} = options) do
     options
     |> Map.take([:algorithm, :encoding])
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
+    |> Enum.reduce({:ok, %{}}, fn {key, value}, {:ok, acc} ->
       parsed = apply(__MODULE__, @parser_funs[key], [value])
-      unless parsed, do: acc, else: Map.put(acc, key, parsed)
+      unless parsed, do: {:ok, acc}, else: {:ok, Map.put(acc, key, parsed)}
     end)
   end
 

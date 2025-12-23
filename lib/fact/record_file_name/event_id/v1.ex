@@ -18,7 +18,7 @@ defmodule Fact.RecordFileName.EventId.V1 do
   def init(_metadata), do: %__MODULE__{}
 
   @impl true
-  def normalize_options(%{} = _options), do: %{}
+  def normalize_options(%{} = _options), do: {:ok, %{}}
 
   @impl true
   def for(_format, record, _encoded_record) do

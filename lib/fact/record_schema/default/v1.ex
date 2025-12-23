@@ -16,7 +16,7 @@ defmodule Fact.RecordSchema.Default.V1 do
   def init(_metadata), do: %__MODULE__{}
 
   @impl true
-  def normalize_options(%{} = _options), do: %{}
+  def normalize_options(%{} = _options), do: {:ok, %{}}
 
   @impl true
   def event_data(_format, record), do: record["event_data"]

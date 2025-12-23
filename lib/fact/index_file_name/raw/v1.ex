@@ -16,8 +16,8 @@ defmodule Fact.IndexFileName.Raw.V1 do
   def init(_metadata), do: %__MODULE__{}
 
   @impl true
-  def normalize_options(%{} = _options), do: %{}
+  def normalize_options(%{} = _options), do: {:ok, %{}}
 
   @impl true
-  def filename(_format, index_value), do: index_value
+  def for(_format, index_value), do: index_value
 end

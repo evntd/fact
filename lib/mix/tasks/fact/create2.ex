@@ -49,15 +49,15 @@ defmodule Mix.Tasks.Fact.Create2 do
           parse_format_selector(parsed[:storage_layout]),
           parse_format_options(parsed[:storage_layout_options])
         ),
-      record_content:
+      record_file_format:
         resolve_format(
           Fact.RecordFileFormat.Registry,
           parse_format_selector(parsed[:record_content]),
           parse_format_options(parsed[:record_content_options])
         ),
-      record_filename:
+      record_file_name:
         resolve_format(
-          Fact.RecordFilename.Registry,
+          Fact.RecordFileName.Registry,
           parse_format_selector(parsed[:record_filename]),
           parse_format_options(parsed[:record_filename_options])
         ),
@@ -67,15 +67,15 @@ defmodule Mix.Tasks.Fact.Create2 do
           parse_format_selector(parsed[:record_schema]),
           parse_format_options(parsed[:record_schema_options])
         ),
-      #      index_content:
-      #        resolve_format(
-      #          Fact.IndexContentFormat.Registry,
-      #          parse_format_selector(parsed[:index_content]),
-      #          parse_format_options(parsed[:index_content_options])
-      #        ),
-      index_filename:
+      index_file_format:
         resolve_format(
-          Fact.IndexFilename.Registry,
+          Fact.IndexFileFormat.Registry,
+          parse_format_selector(parsed[:index_content]),
+          parse_format_options(parsed[:index_content_options])
+        ),
+      index_file_name:
+        resolve_format(
+          Fact.IndexFileName.Registry,
           parse_format_selector(parsed[:index_filename]),
           parse_format_options(parsed[:index_filename_options])
         )
@@ -121,15 +121,20 @@ defmodule Mix.Tasks.Fact.Create2 do
 
     module = registry.resolve(id, version)
 
-    final_options =
-      module.metadata()
-      |> Map.merge((options == :default && %{}) || module.normalize_options(options))
+    with {:ok, normalized_options } <- normalize_options(module, options),
+         final_options <- module.metadata() |> Map.merge(normalized_options) do
+      %{
+        id: id,
+        version: version,
+        options: final_options,
+        module: module
+      }
+    end
+  end
 
-    %{
-      id: id,
-      version: version,
-      options: final_options,
-      module: module
-    }
+  defp normalize_options(_module, :default), do: {:ok, %{}}
+
+  defp normalize_options(module, options) when is_map(options) do
+    module.normalize_options(options)
   end
 end

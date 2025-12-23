@@ -1,11 +1,43 @@
 defmodule Fact.IndexFileName.Hash.V1 do
   @behaviour Fact.IndexFileName
 
+  @type encoding :: :base16 | :base32 | :base64url
+
+  @type algorithm ::
+          :sha | :md5 | :sha256 | :sha512 | :sha3_256 | :sha3_512 | :blake2b | :blake2s
+
+  @type t :: %{
+          required(:algorithm) => algorithm(),
+          required(:encoding) => encoding()
+        }
+
+  @enforce_keys [:algorithm, :encoding]
   defstruct [:algorithm, :encoding]
 
-  @parser_funs %{
-    algorithm: :parse_algorithm,
-    encoding: :parse_encoding
+  @option_specs %{
+    algorithm: %{
+      allowed: [
+        :sha,
+        :md5,
+        :sha256,
+        :sha512,
+        :sha3_256,
+        :sha3_512,
+        :blake2b,
+        :blake2s
+      ],
+      parse: &__MODULE__.parse_existing_atom/1,
+      error: :invalid_algorithm
+    },
+    encoding: %{
+      allowed: [
+        :base16,
+        :base32,
+        :base64url
+      ],
+      parse: &__MODULE__.parse_existing_atom/1,
+      error: :invalid_encoding
+    }
   }
 
   @impl true
@@ -18,39 +50,82 @@ defmodule Fact.IndexFileName.Hash.V1 do
   def metadata(), do: %{algorithm: :sha, encoding: :base16}
 
   @impl true
-  def init(metadata), do: struct(__MODULE__, Map.merge(metadata(), metadata))
+  @spec init(map()) :: t() | {:error, term()}
+  def init(metadata) when is_map(metadata) do
+    metadata()
+    |> Map.merge(metadata)
+    |> validate_options(@option_specs)
+    |> case do
+      {:ok, valid} ->
+        struct(__MODULE__, valid)
 
-  @impl true
-  def normalize_options(%{} = options) do
-    options
-    |> Map.take([:algorithm, :encoding])
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      parsed = apply(__MODULE__, @parser_funs[key], [value])
-      unless parsed, do: acc, else: Map.put(acc, key, parsed)
-    end)
-  end
-
-  @impl true
-  def filename(%__MODULE__{algorithm: algorithm, encoding: encoding} = _format, index_value) do
-    hash = :crypto.hash(algorithm, to_string(index_value))
-
-    case encoding do
-      :base64 ->
-        Base.url_encode64(hash, padding: false)
-
-      :base32 ->
-        Base.encode32(hash, case: :lower, padding: false)
-
-      :base16 ->
-        Base.encode16(hash, case: :lower)
+      {:error, _} = error ->
+        error
     end
   end
 
-  def parse_algorithm(value) do
-    if value, do: String.to_atom(value), else: nil
+  @impl true
+  @spec normalize_options(%{atom() => String.t()}) :: t() | {:error, term()}
+  def normalize_options(%{} = options) do
+    options
+    |> Map.take(Map.keys(@option_specs))
+    |> validate_options(@option_specs)
+    |> case do
+      {:ok, valid} ->
+        valid
+
+      {:error, _} = error ->
+        error
+    end
   end
 
-  def parse_encoding(value) do
-    if value, do: String.to_atom(value), else: nil
+  @impl true
+  @spec for(t(), term()) :: Path.t()
+  def for(%__MODULE__{algorithm: algorithm, encoding: encoding} = format, index_value) do
+    with {:ok, _} <- validate_options(Map.from_struct(format), @option_specs) do
+      hash = :crypto.hash(algorithm, to_string(index_value))
+
+      case encoding do
+        :base64url ->
+          Base.url_encode64(hash, padding: false)
+
+        :base32 ->
+          Base.encode32(hash, case: :lower, padding: false)
+
+        :base16 ->
+          Base.encode16(hash, case: :lower)
+      end
+    end
   end
+
+  defp validate_options(options, specs) when is_map(options) do
+    Enum.reduce_while(options, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      case Map.fetch(specs, key) do
+        :error ->
+          {:halt, {:error, {:unknown_option, key}}}
+
+        {:ok, %{parse: parse, allowed: allowed, error: error}} ->
+          case parse.(value) do
+            {:ok, parsed} ->
+              if parsed in allowed do
+                {:cont, {:ok, Map.put(acc, key, parsed)}}
+              else
+                {:halt, {:error, {error, value}}}
+              end
+
+            _ ->
+              {:halt, {:error, {error, value}}}
+          end
+      end
+    end)
+  end
+
+  def parse_existing_atom(value) when is_binary(value) do
+    {:ok, String.to_existing_atom(value)}
+  rescue
+    ArgumentError -> :error
+  end
+
+  def parse_existing_atom(value) when is_atom(value), do: {:ok, value}
+  def parse_existing_atom(_), do: :error
 end
