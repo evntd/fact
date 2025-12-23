@@ -17,6 +17,7 @@ defmodule Fact.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
+      dialyzer: dialyzer(),
       docs: docs(),
       package: package(),
       name: @name,
@@ -38,6 +39,7 @@ defmodule Fact.MixProject do
       {:uuid, "~> 2.0", hex: :uuid_erl},
 
       # Tools
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
@@ -154,6 +156,12 @@ defmodule Fact.MixProject do
         Fact.Storage,
         Fact.StorageLayout
       ]
+    ]
+  end
+  
+  defp dialyzer do
+    [
+      plt_add_apps: [:ex_unit, :mix, :phoenix_pubsub]
     ]
   end
 
