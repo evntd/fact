@@ -36,6 +36,7 @@ defmodule Fact.Types do
   Aggregate Roots.
   """
   @type event_stream :: non_whitespace_string()
+  @type event_stream_id :: event_stream()
 
   @typedoc """
   A consumer defined, domain-specific metadata for an event, allowing for custom logical partitioning. Similar in
@@ -43,6 +44,8 @@ defmodule Fact.Types do
   are used to define `Fact.Query`s and provide the foundation for dynamic consistency boundaries.
   """
   @type event_tag :: non_whitespace_string()
+
+  @type event_tags :: list(event_tag())
 
   @typedoc """
   The date and time when an `t:Fact.Types.event_record/0` was written to disk.
@@ -70,7 +73,7 @@ defmodule Fact.Types do
           optional(:id) => event_id,
           optional(:data) => event_data,
           optional(:metadata) => event_metadata,
-          optional(:tags) => list(event_tag)
+          optional(:tags) => event_tags
         }
 
   @typedoc """

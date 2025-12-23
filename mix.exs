@@ -75,6 +75,9 @@ defmodule Fact.MixProject do
           Fact.Instance,
           Fact.Types
         ],
+        Bootstrapping: [
+          Fact.Genesis
+        ],
         Core: [
           Fact.EventLedger,
           Fact.EventReader,
@@ -104,6 +107,30 @@ defmodule Fact.MixProject do
           Fact.CatchUpSubscription,
           Fact.EventPublisher
         ],
+        Seams: [
+          Fact.IndexFileFormat,
+          Fact.IndexFileFormat.DelimitedList.V1,
+          Fact.IndexFileFormat.Registry,
+          Fact.IndexFilename,
+          Fact.IndexFilename.Hash.V1,
+          Fact.IndexFilename.Raw.V1,
+          Fact.IndexFilename.Registry,
+          Fact.RecordFileFormat,
+          Fact.RecordFileFormat.Json.V1,
+          Fact.RecordFileFormat.Registry,
+          Fact.RecordFilename,
+          Fact.RecordFilename.ContentAddressable.V1,
+          Fact.RecordFilename.EventId.V1,
+          Fact.RecordFilename.Registry,
+          Fact.RecordSchema,
+          Fact.RecordSchema.Default.V1,
+          Fact.RecordSchema.Registry,
+          Fact.Seam,
+          Fact.SeamRegistry,
+          Fact.StorageLayout,
+          Fact.StorageLayout.Default.V1,
+          Fact.StorageLayout.Registry
+        ],
         Storage: [
           Fact.Storage,
           Fact.Storage.Driver,
@@ -118,8 +145,14 @@ defmodule Fact.MixProject do
       logo: "guides/assets/images/turt-48.png",
       main: "overview",
       nest_modules_by_prefix: [
+        Fact.IndexFileFormat,
         Fact.IndexFileReader,
-        Fact.Storage
+        Fact.IndexFilename,
+        Fact.RecordFileFormat,
+        Fact.RecordFilename,
+        Fact.RecordSchema,
+        Fact.Storage,
+        Fact.StorageLayout
       ]
     ]
   end
