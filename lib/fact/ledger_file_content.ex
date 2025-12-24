@@ -1,7 +1,7 @@
 defmodule Fact.LedgerFileContent do
   use Fact.Seam.Adapter,
-      registry: Fact.Seam.FileContent.Registry,
-      allowed_impls: [{:delimited, 1}]
+    registry: Fact.Seam.FileContent.Registry,
+    allowed_impls: [{:delimited, 1}]
 
   alias Fact.Context
 

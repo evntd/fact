@@ -16,7 +16,7 @@ defmodule Fact.Seam.FileName.Hash.V1Test do
       assert {:hash, 1} === V1.id()
     end
   end
-  
+
   describe "family/0" do
     test "should be :hash" do
       assert :hash === V1.family()
@@ -54,11 +54,11 @@ defmodule Fact.Seam.FileName.Hash.V1Test do
     end
 
     test "given invalid algorithm, should" do
-      assert {:error, {:invalid_algorithm, :bad}} == V1.init(%{algorithm: :bad})
+      assert {:error, {:invalid_algorithm_option, :bad}} == V1.init(%{algorithm: :bad})
     end
 
     test "given invalid encoding, should fail" do
-      assert {:error, {:invalid_encoding, :bad}} == V1.init(%{encoding: :bad})
+      assert {:error, {:invalid_encoding_option, :bad}} == V1.init(%{encoding: :bad})
     end
 
     test "given invalid key, should fail" do
@@ -94,11 +94,11 @@ defmodule Fact.Seam.FileName.Hash.V1Test do
     end
 
     test "given invalid algorithm values, should fail with :invalid_algorithm" do
-      assert {:error, {:invalid_algorithm, "a bunch of gobley gook"}} ==
+      assert {:error, {:invalid_algorithm_option, "a bunch of gobley gook"}} ==
                V1.normalize_options(%{algorithm: "a bunch of gobley gook"})
 
-      assert {:error, {:invalid_algorithm, 1}} == V1.normalize_options(%{algorithm: 1})
-      assert {:error, {:invalid_algorithm, nil}} == V1.normalize_options(%{algorithm: nil})
+      assert {:error, {:invalid_algorithm_option, 1}} == V1.normalize_options(%{algorithm: 1})
+      assert {:error, {:invalid_algorithm_option, nil}} == V1.normalize_options(%{algorithm: nil})
     end
 
     test "given valid encoding value as string, should convert to atom" do
@@ -114,11 +114,11 @@ defmodule Fact.Seam.FileName.Hash.V1Test do
     end
 
     test "given invalid encoding values, should fail with :invalid_encoding" do
-      assert {:error, {:invalid_encoding, "base64"}} ==
+      assert {:error, {:invalid_encoding_option, "base64"}} ==
                V1.normalize_options(%{encoding: "base64"})
 
-      assert {:error, {:invalid_encoding, 1}} == V1.normalize_options(%{encoding: 1})
-      assert {:error, {:invalid_encoding, nil}} == V1.normalize_options(%{encoding: nil})
+      assert {:error, {:invalid_encoding_option, 1}} == V1.normalize_options(%{encoding: 1})
+      assert {:error, {:invalid_encoding_option, nil}} == V1.normalize_options(%{encoding: nil})
     end
 
     test "unknown keys should be removed" do
@@ -149,12 +149,12 @@ defmodule Fact.Seam.FileName.Hash.V1Test do
 
     test "manual construction of the struct with invalid algorithm should fail" do
       invalid_algo = %V1{algorithm: :sha384, encoding: :base32}
-      assert {:error, {:invalid_algorithm, :sha384}} == V1.for(invalid_algo, "test")
+      assert {:error, {:invalid_algorithm_option, :sha384}} == V1.for(invalid_algo, "test")
     end
 
     test "manual construction of the struct with invalid encoding should fail" do
       invalid_algo = %V1{algorithm: :sha256, encoding: :base64}
-      assert {:error, {:invalid_encoding, :base64}} == V1.for(invalid_algo, "test")
+      assert {:error, {:invalid_encoding_option, :base64}} == V1.for(invalid_algo, "test")
     end
   end
 end

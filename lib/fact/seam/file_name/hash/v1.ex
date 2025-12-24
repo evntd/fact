@@ -14,8 +14,8 @@ defmodule Fact.Seam.FileName.Hash.V1 do
   @type encoding :: :base16 | :base32 | :base64url
 
   @type reason ::
-          {:invalid_algorithm, term()}
-          | {:invalid_encoding, term()}
+          {:invalid_algorithm_option, term()}
+          | {:invalid_encoding_option, term()}
           | {:unknown_option, term()}
 
   @enforce_keys [:algorithm, :encoding]
@@ -34,7 +34,7 @@ defmodule Fact.Seam.FileName.Hash.V1 do
         :blake2s
       ],
       parse: &__MODULE__.parse_existing_atom/1,
-      error: :invalid_algorithm
+      error: :invalid_algorithm_option
     },
     encoding: %{
       allowed: [
@@ -43,7 +43,7 @@ defmodule Fact.Seam.FileName.Hash.V1 do
         :base64url
       ],
       parse: &__MODULE__.parse_existing_atom/1,
-      error: :invalid_encoding
+      error: :invalid_encoding_option
     }
   }
 

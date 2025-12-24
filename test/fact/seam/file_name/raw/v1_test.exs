@@ -10,7 +10,7 @@ defmodule Fact.Seam.FileName.Raw.V1Test do
   test "module exists" do
     assert is_list(V1.module_info())
   end
-  
+
   describe "id/0" do
     test "should be {:raw, 1}" do
       assert {:raw, 1} === V1.id()

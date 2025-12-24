@@ -1,6 +1,6 @@
 defmodule Fact.LedgerFileWriter do
   use Fact.Seam.Adapter,
-      registry: Fact.Seam.FileWriter.Registry
+    registry: Fact.Seam.FileWriter.Registry
 
   alias Fact.Context
 
@@ -19,5 +19,4 @@ defmodule Fact.LedgerFileWriter do
   def finalize(%Context{ledger_file_writer: instance}, handle) do
     __seam_call__(instance, :finalize, [handle])
   end
-  
 end

@@ -1,7 +1,7 @@
 defmodule Fact.StorageLayout do
   use Fact.Seam.Adapter,
     registry: Fact.Seam.StorageLayout.Registry
-    
+
   alias Fact.Context
 
   def records_path(%Context{database_path: root, storage_layout: layout}) do

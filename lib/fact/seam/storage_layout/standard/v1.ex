@@ -2,7 +2,7 @@ defmodule Fact.Seam.StorageLayout.Standard.V1 do
   use Fact.Seam.StorageLayout,
     family: :standard,
     version: 1
-  
+
   defstruct []
 
   @impl true

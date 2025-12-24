@@ -1,7 +1,7 @@
 defmodule Fact.RecordFileWriter do
   use Fact.Seam.Adapter,
     registry: Fact.Seam.FileWriter.Registry
-    
+
   alias Fact.Context
 
   def open(%Context{record_file_writer: instance}, path) do

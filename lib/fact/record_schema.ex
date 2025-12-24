@@ -1,9 +1,9 @@
 defmodule Fact.RecordSchema do
   use Fact.Seam.Adapter,
     registry: Fact.Seam.RecordSchema.Registry
-  
+
   alias Fact.Context
-  
+
   def event_data(%Context{record_schema: schema}, record) do
     __seam_call__(schema, :event_data, [record])
   end

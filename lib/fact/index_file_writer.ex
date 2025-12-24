@@ -1,6 +1,6 @@
 defmodule Fact.IndexFileWriter do
   use Fact.Seam.Adapter,
-      registry: Fact.Seam.FileWriter.Registry
+    registry: Fact.Seam.FileWriter.Registry
 
   alias Fact.Context
 
