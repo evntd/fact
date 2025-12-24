@@ -51,7 +51,7 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
 
   @impl true
   def default_options(),
-      do: %{access: :write, binary: true, exclusive: true, sync: false, worm: false}
+    do: %{access: :write, binary: true, exclusive: true, sync: false, worm: false}
 
   @impl true
   @spec init(map()) :: t() | {:error, reason()}
@@ -60,22 +60,25 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
     |> Map.merge(options)
     |> validate_options(@option_specs)
     |> case do
-         {:ok, valid_options} -> 
-           modes = [
-             valid_options.access,
-             (if valid_options.binary, do: :binary, else: nil),
-             (if valid_options.exclusive, do: :exclusive, else: nil)             
-           ]
-           |> Enum.reject(&is_nil/1)
-           
-           data =
-            valid_options
-            |> Map.take([:sync, :worm])
-            |> Map.put(:modes, modes)
-           
-           struct(__MODULE__, data)
-         {:error, _} = error -> error
-       end
+      {:ok, valid_options} ->
+        modes =
+          [
+            valid_options.access,
+            if(valid_options.binary, do: :binary, else: nil),
+            if(valid_options.exclusive, do: :exclusive, else: nil)
+          ]
+          |> Enum.reject(&is_nil/1)
+
+        data =
+          valid_options
+          |> Map.take([:sync, :worm])
+          |> Map.put(:modes, modes)
+
+        struct(__MODULE__, data)
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   @impl true
@@ -84,12 +87,12 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
     |> Map.take(Map.keys(@option_specs))
     |> validate_options(@option_specs)
     |> case do
-         {:ok, valid} ->
-           valid
+      {:ok, valid} ->
+        valid
 
-         {:error, _} = error ->
-           error
-       end
+      {:error, _} = error ->
+        error
+    end
   end
 
   @impl true
@@ -102,6 +105,7 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
     case IO.binwrite(handle, content) do
       :ok ->
         if sync, do: :file.sync(handle), else: :ok
+
       {:error, _} = error ->
         error
     end
