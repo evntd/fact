@@ -1,22 +1,23 @@
-defmodule Fact.IndexFileWriter do
+defmodule Fact.LedgerFileWriter do
   use Fact.Seam.Adapter,
       registry: Fact.Seam.FileWriter.Registry
 
   alias Fact.Context
 
-  def open(%Context{index_file_writer: instance}, path) do
+  def open(%Context{ledger_file_writer: instance}, path) do
     __seam_call__(instance, :open, [path])
   end
 
-  def write(%Context{index_file_writer: instance}, handle, content) do
+  def write(%Context{ledger_file_writer: instance}, handle, content) do
     __seam_call__(instance, :write, [handle, content])
   end
 
-  def close(%Context{index_file_writer: instance}, handle) do
+  def close(%Context{ledger_file_writer: instance}, handle) do
     __seam_call__(instance, :close, [handle])
   end
 
-  def finalize(%Context{index_file_writer: instance}, handle) do
+  def finalize(%Context{ledger_file_writer: instance}, handle) do
     __seam_call__(instance, :finalize, [handle])
   end
+  
 end

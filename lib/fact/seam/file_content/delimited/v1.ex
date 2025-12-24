@@ -1,14 +1,10 @@
 defmodule Fact.Seam.FileContent.Delimited.V1 do
-  @behaviour Fact.Seam.FileContent
+  use Fact.Seam.FileContent,
+    family: :delimited,
+    version: 1
 
   @enforce_keys [:delimiter]
   defstruct [:delimiter]
-
-  @impl true
-  def family(), do: :delimited
-
-  @impl true
-  def version(), do: 1
 
   @impl true
   def default_options(), do: %{delimiter: "\n"}

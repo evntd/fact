@@ -1,13 +1,9 @@
 defmodule Fact.Seam.FileWriter.Standard.V1 do
-  @behaviour Fact.Seam.FileWriter
+  use Fact.Seam.FileWriter,
+    family: :standard,
+    version: 1
 
   defstruct [:modes, :sync, :worm]
-
-  @impl true
-  def family(), do: :standard
-
-  @impl true
-  def version(), do: 1
 
   @impl true
   def default_options(), do: %{modes: [:write, :binary], sync: false, worm: false}

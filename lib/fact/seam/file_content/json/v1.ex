@@ -1,22 +1,9 @@
 defmodule Fact.Seam.FileContent.Json.V1 do
-  @behaviour Fact.Seam.FileContent
+  use Fact.Seam.FileContent,
+    family: :json,
+    version: 1
 
   defstruct []
-
-  @impl true
-  def family(), do: :json
-
-  @impl true
-  def version(), do: 1
-
-  @impl true
-  def default_options(), do: %{}
-
-  @impl true
-  def init(%{} = _options), do: %__MODULE__{}
-
-  @impl true
-  def normalize_options(%{} = _options), do: {:ok, %{}}
 
   cond do
     Code.ensure_loaded?(Elixir.JSON) ->

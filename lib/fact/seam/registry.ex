@@ -15,10 +15,16 @@ defmodule Fact.Seam.Registry do
     quote do
       @impls unquote(impls)
       @latest_versions unquote(Macro.escape(latest_versions))
+      
+      def all(), do: Enum.map(@impls, & &1.id())
 
+      def resolve({family, version} = id) 
+          when is_tuple(id) and tuple_size(id) == 2, 
+          do: resolve(family, version)
+      
       def resolve(family, version) do
         Enum.find(@impls, fn impl ->
-          impl.id() == family and impl.version() == version
+          impl.family() == family and impl.version() == version
         end) || {:error, {:unsupported_impl, family, version}}
       end
 

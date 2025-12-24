@@ -1,18 +1,16 @@
 defmodule Fact.RecordFileName do
-  @allowed_formats [
-    {:content_addressable, 1},
-    {:event_id, 1}
-  ]
-  @default_format {:event_id, 1}
+  use Fact.Seam.Adapter,
+    registry: Fact.Seam.FileName.Registry,
+    allowed_impls: [
+      {:content_addressable, 1},
+      {:event_id, 1}
+    ],
+    default_impl: {:event_id, 1}
+    
+  alias Fact.Context
+  alias Fact.Seam.Instance
 
-  def allowed(), do: @allowed_formats
-  def default(), do: @default_format
-
-  def for(
-        %Fact.Context{record_file_name: %Fact.Seam.Instance{module: mod, struct: s}},
-        event_record,
-        encoded_record
-      ) do
-    mod.for(s, if(mod.id() === :content_addressable, do: encoded_record, else: event_record))
+  def for(%Context{record_file_name: %Instance{module: mod} = instance}, event_record, encoded_record) do
+    __seam_call__(instance, :for, [if(mod.id() == :content_addressable, do: encoded_record, else: event_record)])
   end
 end

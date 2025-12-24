@@ -1,5 +1,7 @@
 defmodule Fact.Seam.FileName.Hash.V1 do
-  @behaviour Fact.Seam.FileName
+  use Fact.Seam.FileName,
+    family: :hash,
+    version: 1
 
   @type t :: %{
           required(:algorithm) => algorithm(),
@@ -44,12 +46,6 @@ defmodule Fact.Seam.FileName.Hash.V1 do
       error: :invalid_encoding
     }
   }
-
-  @impl true
-  def family(), do: :hash
-
-  @impl true
-  def version(), do: 1
 
   @impl true
   def default_options(), do: %{algorithm: :sha, encoding: :base16}

@@ -1,22 +1,9 @@
 defmodule Fact.Seam.StorageLayout.Standard.V1 do
-  @behaviour Fact.Seam.StorageLayout
-
+  use Fact.Seam.StorageLayout,
+    family: :standard,
+    version: 1
+  
   defstruct []
-
-  @impl true
-  def family(), do: :default
-
-  @impl true
-  def version(), do: 1
-
-  @impl true
-  def default_options(), do: %{}
-
-  @impl true
-  def init(%{} = _options), do: struct(__MODULE__, %{})
-
-  @impl true
-  def normalize_options(%{} = _options), do: {:ok, %{}}
 
   @impl true
   def init_storage(%__MODULE__{} = format, path) do

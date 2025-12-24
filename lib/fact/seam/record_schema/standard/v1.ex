@@ -1,22 +1,9 @@
 defmodule Fact.Seam.RecordSchema.Standard.V1 do
-  @behaviour Fact.Seam.RecordSchema
+  use Fact.Seam.RecordSchema,
+    family: :standard,
+    version: 1
 
   defstruct []
-
-  @impl true
-  def family(), do: :default
-
-  @impl true
-  def version(), do: 1
-
-  @impl true
-  def default_options(), do: %{}
-
-  @impl true
-  def init(%{} = _options), do: struct(__MODULE__, %{})
-
-  @impl true
-  def normalize_options(%{} = _options), do: %{}
 
   @impl true
   def event_data(%__MODULE__{}, record), do: record["event_data"]

@@ -1,5 +1,7 @@
 defmodule Fact.Seam.FileName.ContentAddressable.V1 do
-  @behaviour Fact.Seam.FileName
+  use Fact.Seam.FileName,
+    family: :content_addressable,
+    version: 1
 
   defstruct [:algorithm, :encoding]
 
@@ -7,12 +9,6 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
     algorithm: :parse_algorithm,
     encoding: :parse_encoding
   }
-
-  @impl true
-  def family(), do: :content_addressable
-
-  @impl true
-  def version(), do: 1
 
   @impl true
   def default_options(), do: %{algorithm: :sha256, encoding: :base64}

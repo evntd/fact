@@ -1,23 +1,13 @@
 defmodule Fact.Seam.FileName.Raw.V1 do
-  @behaviour Fact.Seam.FileName
+  use Fact.Seam.FileName,
+    family: :raw,
+    version: 1
 
   @type t :: %__MODULE__{}
 
   @type reason() :: {:unknown_option, term()}
 
   defstruct []
-
-  @impl true
-  @spec family() :: :raw
-  def family(), do: :raw
-
-  @impl true
-  @spec version() :: 1
-  def version(), do: 1
-
-  @impl true
-  @spec default_options() :: %{}
-  def default_options(), do: %{}
 
   @impl true
   @spec init(map) :: t() | {:error, reason()}

@@ -1,7 +1,7 @@
-defmodule Fact.FileNameFormat.Hash.V1Test do
+defmodule Fact.Seam.FileName.Hash.V1Test do
   use ExUnit.Case
 
-  alias Fact.FileNameFormat.Hash.V1
+  alias Fact.Seam.FileName.Hash.V1
 
   @moduletag :capture_log
 
@@ -12,8 +12,14 @@ defmodule Fact.FileNameFormat.Hash.V1Test do
   end
 
   describe "id/0" do
+    test "should be {:hash, 1}" do
+      assert {:hash, 1} === V1.id()
+    end
+  end
+  
+  describe "family/0" do
     test "should be :hash" do
-      assert :hash === V1.id()
+      assert :hash === V1.family()
     end
   end
 
@@ -23,9 +29,9 @@ defmodule Fact.FileNameFormat.Hash.V1Test do
     end
   end
 
-  describe "metadata/0" do
+  describe "default_options/0" do
     test "should default algorithm to :sha and encoding to :base16" do
-      %{algorithm: algo, encoding: enc} = V1.metadata()
+      %{algorithm: algo, encoding: enc} = V1.default_options()
       assert :sha == algo
       assert :base16 == enc
     end
@@ -33,17 +39,17 @@ defmodule Fact.FileNameFormat.Hash.V1Test do
 
   describe "init/1" do
     test "given empty map should return defaults" do
-      %{algorithm: algo, encoding: enc} = V1.metadata()
+      %{algorithm: algo, encoding: enc} = V1.default_options()
       assert %V1{algorithm: algo, encoding: enc} == V1.init(%{})
     end
 
     test "can override algorithm, encoding will default" do
-      %{encoding: encoding} = V1.metadata()
+      %{encoding: encoding} = V1.default_options()
       assert %V1{algorithm: :blake2b, encoding: encoding} == V1.init(%{algorithm: :blake2b})
     end
 
     test "can override encoding, algoritm will default" do
-      %{algorithm: algo} = V1.metadata()
+      %{algorithm: algo} = V1.default_options()
       assert %V1{encoding: :base32, algorithm: algo} == V1.init(%{encoding: :base32})
     end
 

@@ -1,7 +1,7 @@
-defmodule Fact.FileNameFormat.RegistryTest do
+defmodule Fact.Seam.FileName.RegistryTest do
   use ExUnit.Case
 
-  alias Fact.FileNameFormat.Registry
+  alias Fact.Seam.FileName.Registry
 
   @moduletag :capture_log
 
@@ -13,38 +13,38 @@ defmodule Fact.FileNameFormat.RegistryTest do
 
   describe "resolve/2" do
     test "given :raw, 1 should resolve" do
-      assert Fact.FileNameFormat.Raw.V1 == Registry.resolve(:raw, 1)
+      assert Fact.Seam.FileName.Raw.V1 == Registry.resolve(:raw, 1)
     end
 
     test "given :hash, 1 should resolve" do
-      assert Fact.FileNameFormat.Hash.V1 == Registry.resolve(:hash, 1)
+      assert Fact.Seam.FileName.Hash.V1 == Registry.resolve(:hash, 1)
     end
 
     test "given :event_id, 1 should resolve" do
-      assert Fact.FileNameFormat.EventId.V1 == Registry.resolve(:event_id, 1)
+      assert Fact.Seam.FileName.EventId.V1 == Registry.resolve(:event_id, 1)
     end
 
     test "given :content_addressable, 1 should resolve" do
-      assert Fact.FileNameFormat.ContentAddressable.V1 ==
+      assert Fact.Seam.FileName.ContentAddressable.V1 ==
                Registry.resolve(:content_addressable, 1)
     end
 
     test "given :other, 1 should fail" do
-      assert {:error, {:unsupported_format, :other, 1}} == Registry.resolve(:other, 1)
+      assert {:error, {:unsupported_impl, :other, 1}} == Registry.resolve(:other, 1)
     end
   end
 
-  describe "latest/1" do
+  describe "latest_impl/1" do
     test "given :raw" do
-      assert Fact.FileNameFormat.Raw.V1 == Registry.latest(:raw)
+      assert Fact.Seam.FileName.Raw.V1 == Registry.latest_impl(:raw)
     end
 
     test "given :hash should be 1" do
-      assert Fact.FileNameFormat.Hash.V1 == Registry.latest(:hash)
+      assert Fact.Seam.FileName.Hash.V1 == Registry.latest_impl(:hash)
     end
 
     test "given :other should fail" do
-      assert {:error, :unsupported_format} == Registry.latest(:other)
+      assert {:error, :unsupported_impl} == Registry.latest_impl(:other)
     end
   end
 
@@ -58,7 +58,7 @@ defmodule Fact.FileNameFormat.RegistryTest do
     end
 
     test "given :other should fail" do
-      assert {:error, :unsupported_format} == Registry.latest_version(:other)
+      assert {:error, :unsupported_impl} == Registry.latest_version(:other)
     end
   end
 end

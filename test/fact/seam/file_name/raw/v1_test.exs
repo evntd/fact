@@ -1,7 +1,7 @@
-defmodule Fact.FileNameFormat.Raw.V1Test do
+defmodule Fact.Seam.FileName.Raw.V1Test do
   use ExUnit.Case
 
-  alias Fact.FileNameFormat.Raw.V1
+  alias Fact.Seam.FileName.Raw.V1
 
   @moduletag :capture_log
 
@@ -10,10 +10,16 @@ defmodule Fact.FileNameFormat.Raw.V1Test do
   test "module exists" do
     assert is_list(V1.module_info())
   end
-
+  
   describe "id/0" do
+    test "should be {:raw, 1}" do
+      assert {:raw, 1} === V1.id()
+    end
+  end
+
+  describe "family/0" do
     test "should be :raw" do
-      assert :raw === V1.id()
+      assert :raw === V1.family()
     end
   end
 
@@ -25,13 +31,13 @@ defmodule Fact.FileNameFormat.Raw.V1Test do
 
   describe "metadata/0" do
     test "should be empty" do
-      assert %{} === V1.metadata()
+      assert %{} === V1.default_options()
     end
   end
 
   describe "init/1" do
     test "given empty map should return default" do
-      %{} = V1.metadata()
+      %{} = V1.default_options()
       assert %V1{} == V1.init(%{})
     end
 

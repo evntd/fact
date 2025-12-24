@@ -1,30 +1,22 @@
 defmodule Fact.IndexCheckpointFileWriter do
+  use Fact.Seam.Adapter,
+      registry: Fact.Seam.FileWriter.Registry
+
   alias Fact.Context
-  alias Fact.Seam.Instance
-  alias Fact.Seam.FileWriter.Registry
 
-  def allowed_impls(), do: [{:standard, 1}]
-  def default_impl(), do: {:standard, 1}
-  def default_impl_options(), do: %{}
-  def impl_registry(), do: Registry
-
-  def open(%Context{index_checkpoint_file_writer: %Instance{module: mod, struct: s}}, path) do
-    mod.open(s, path)
+  def open(%Context{index_checkpoint_file_writer: instance}, path) do
+    __seam_call__(instance, :open, [path])
   end
 
-  def write(
-        %Context{index_checkpoint_file_writer: %Instance{module: mod, struct: s}},
-        handle,
-        content
-      ) do
-    mod.write(s, handle, content)
+  def write(%Context{index_checkpoint_file_writer: instance}, handle, content) do
+    __seam_call__(instance, :write, [handle, content])
   end
 
-  def close(%Context{index_checkpoint_file_writer: %Instance{module: mod, struct: s}}, handle) do
-    mod.close(s, handle)
+  def close(%Context{index_checkpoint_file_writer: instance}, handle) do
+    __seam_call__(instance, :close, [handle])
   end
 
-  def finalize(%Context{index_checkpoint_file_writer: %Instance{module: mod, struct: s}}, handle) do
-    mod.finalize(s, handle)
+  def finalize(%Context{index_checkpoint_file_writer: instance}, handle) do
+    __seam_call__(instance, :finalize, [handle])
   end
 end

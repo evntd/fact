@@ -1,10 +1,15 @@
 defmodule Fact.IndexFileName do
-  @allowed_formats [
-    {:raw, 1},
-    {:hash, 1}
-  ]
-  @default_format {:raw, 1}
+  use Fact.Seam.Adapter,
+      registry: Fact.Seam.FileName.Registry,
+      allowed_impls: [
+        {:raw, 1},
+        {:hash, 1}
+      ],
+      default_impl: {:raw, 1}
 
-  def allowed(), do: @allowed_formats
-  def default(), do: @default_format
+  alias Fact.Context
+
+  def for(%Context{index_file_name: instance}, record_id) do
+    __seam_call__(instance, :for, [record_id])
+  end
 end

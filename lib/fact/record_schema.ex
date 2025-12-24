@@ -1,46 +1,42 @@
 defmodule Fact.RecordSchema do
+  use Fact.Seam.Adapter,
+    registry: Fact.Seam.RecordSchema.Registry
+  
   alias Fact.Context
-  alias Fact.Seam.Instance
-  alias Fact.Seam.RecordSchema.Registry
-
-  def allowed_impls(), do: [{:standard, 1}]
-  def default_impl(), do: {:standard, 1}
-  def default_impl_options(), do: %{}
-  def impl_registry(), do: Registry
-
-  def event_data(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_data(s, record)
+  
+  def event_data(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_data, [record])
   end
 
-  def event_id(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_id(s, record)
+  def event_id(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_id, [record])
   end
 
-  def event_metadata(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_metadata(s, record)
+  def event_metadata(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_metadata, [record])
   end
 
-  def event_tags(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_tags(s, record)
+  def event_tags(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_tags, [record])
   end
 
-  def event_type(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_type(s, record)
+  def event_type(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_type, [record])
   end
 
-  def event_store_position(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_store_position(s, record)
+  def event_store_position(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_store_position, [record])
   end
 
-  def event_store_timestamp(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_store_timestamp(s, record)
+  def event_store_timestamp(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_store_timestamp, [record])
   end
 
-  def event_stream_id(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_stream_id(s, record)
+  def event_stream_id(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_stream_id, [record])
   end
 
-  def event_stream_position(%Context{record_schema: %Instance{module: mod, struct: s}}, record) do
-    mod.event_stream_position(s, record)
+  def event_stream_position(%Context{record_schema: schema}, record) do
+    __seam_call__(schema, :event_stream_position, [record])
   end
 end
