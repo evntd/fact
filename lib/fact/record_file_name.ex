@@ -9,7 +9,7 @@ defmodule Fact.RecordFileName do
   def default(), do: @default_format
 
   def for(
-        %Fact.Context{record_file_name_format: %Fact.Seam.Instance{module: mod, struct: s}},
+        %Fact.Context{record_file_name: %Fact.Seam.Instance{module: mod, struct: s}},
         event_record,
         encoded_record
       ) do

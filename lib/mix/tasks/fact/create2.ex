@@ -112,22 +112,21 @@ defmodule Mix.Tasks.Fact.Create2 do
   end
 
   defp resolve_format(abstraction, selector, options) do
-    
-    registry = abstraction.registry()
-    
-    {id, version} =
+    registry = abstraction.impl_registry()
+
+    {family, version} =
       case selector do
-        :default -> abstraction.default_options() 
-        {id, :default} -> {id, registry.latest_version(id)}
-        {id, version} -> {id, version}
+        :default -> abstraction.default_impl()
+        {family, :default} -> {family, registry.latest_version(family)}
+        {family, version} -> {family, version}
       end
 
-    module = registry.resolve(id, version)
+    module = registry.resolve(family, version)
 
     with {:ok, normalized_options} <- normalize_options(module, options),
          final_options <- module.metadata() |> Map.merge(normalized_options) do
       %{
-        id: id,
+        family: family,
         version: version,
         options: final_options,
         module: module

@@ -1,21 +1,26 @@
 defmodule Fact.IndexFileContent do
-  @allowed_formats [
+  alias Fact.Context
+  alias Fact.Seam.Instance
+  alias Fact.Seam.FileContent.Registry
+
+  @allowed_impls [
     {:delimited, 1}
   ]
-  @default_format {:delimited, 1}
+  @default_impl {:delimited, 1}
 
-  def allowed(), do: @allowed_formats
-  def default(), do: @default_format
+  def allowed_impls(), do: @allowed_impls
+  def default_impl(), do: @default_impl
+  def impl_registry(), do: Registry
 
   def encode(
-        %Fact.Context{index_file_content_format: %Fact.Seam.Instance{module: mod, struct: s}},
+        %Context{index_file_content: %Instance{module: mod, struct: s}},
         event_record
       ) do
     mod.encode(s, event_record)
   end
 
   def decode(
-        %Fact.Context{index_file_content_format: %Fact.Seam.Instance{module: mod, struct: s}},
+        %Context{index_file_content: %Instance{module: mod, struct: s}},
         event_record
       ) do
     mod.decode(s, event_record)
