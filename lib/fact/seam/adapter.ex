@@ -29,6 +29,8 @@ defmodule Fact.Seam.Adapter do
       @fixed_options unquote(fixed_options)
       @allowed_impls unquote(allowed_impls || registry.all())
       
+      # when default_impl is undefined, and there is only 1 allowed_impls, 
+      # just default to the one, otherwise raise an exception.
       cond do
         unquote(default_impl) ->
           @default_impl unquote(default_impl)
