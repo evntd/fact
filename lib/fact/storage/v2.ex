@@ -6,7 +6,7 @@ defmodule Fact.Storage.V2 do
   def write_event(%Fact.Context{} = context, event_record) do
     case Fact.RecordFileContent.encode(context, event_record) do
       {:ok, encoded_record} ->
-        with record_id <- Fact.RecordFileName.for(context, event_record, encoded_record),
+        with record_id <- Fact.RecordFileName.get(context, event_record, encoded_record),
              record_path <- Fact.StorageLayout.record_path(context, record_id) do
           case write_sync(record_path, encoded_record, [:write, :binary, :exclusive]) do
             :ok ->

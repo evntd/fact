@@ -9,7 +9,7 @@ defmodule Fact.Seam.FileName.EventId.V1 do
 
   # TODO: This depends on the RecordSchema!
   @impl true
-  def for(%__MODULE__{}, event_record) do
+  def get(%__MODULE__{}, event_record) do
     event_record[@event_id]
   end
 end

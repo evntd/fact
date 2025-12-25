@@ -30,6 +30,5 @@ defmodule Fact.Seam.FileName.Raw.V1 do
   end
 
   @impl true
-  @spec for(t(), Fact.EventIndexer.index_value()) :: Path.t() | {:error, reason()}
-  def for(%__MODULE{}, index_value), do: index_value
+  def get(%__MODULE{}, value), do: value
 end

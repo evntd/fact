@@ -27,7 +27,7 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
   end
 
   @impl true
-  def for(%__MODULE__{algorithm: algorithm, encoding: encoding}, encoded_record) do
+  def get(%__MODULE__{algorithm: algorithm, encoding: encoding}, encoded_record) do
     hash = :crypto.hash(algorithm, encoded_record)
 
     case encoding do

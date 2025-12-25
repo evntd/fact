@@ -1,6 +1,6 @@
 defmodule Fact.RecordFileName do
-  use Fact.Seam.Adapter,
-    registry: Fact.Seam.FileName.Registry,
+  use Fact.Seam.FileName.Adapter,
+    context: :record_file_name,
     allowed_impls: [
       {:content_addressable, 1},
       {:event_id, 1}
@@ -10,13 +10,11 @@ defmodule Fact.RecordFileName do
   alias Fact.Context
   alias Fact.Seam.Instance
 
-  def for(
-        %Context{record_file_name: %Instance{module: mod} = instance},
-        event_record,
-        encoded_record
-      ) do
-    __seam_call__(instance, :for, [
-      if(mod.id() == :content_addressable, do: encoded_record, else: event_record)
-    ])
+  def get(%Context{record_file_name: %Instance{module: mod}} = context, event_record, encoded_record) do
+    if :content_addressable == mod.id() do
+      get(context, encoded_record)
+    else
+      get(context, event_record)
+    end 
   end
 end

@@ -81,8 +81,8 @@ defmodule Fact.Seam.FileName.Hash.V1 do
   end
 
   @impl true
-  @spec for(t(), term()) :: Path.t() | {:error, reason()}
-  def for(%__MODULE__{algorithm: algorithm, encoding: encoding} = impl_struct, index_value) do
+  @spec get(t(), term()) :: Path.t() | {:error, reason()}
+  def get(%__MODULE__{algorithm: algorithm, encoding: encoding} = impl_struct, index_value) do
     with {:ok, _} <- validate_options(Map.from_struct(impl_struct), @option_specs) do
       hash = :crypto.hash(algorithm, to_string(index_value))
 
