@@ -6,10 +6,10 @@ defmodule Fact.Seam.StorageLayout.Adapter do
 
     quote do
       use Fact.Seam.Adapter,
-          registry: Fact.Seam.StorageLayout.Registry,
-          allowed_impls: unquote(allowed_impls),
-          default_impl: unquote(default_impl),
-          fixed_options: unquote(fixed_options)
+        registry: Fact.Seam.StorageLayout.Registry,
+        allowed_impls: unquote(allowed_impls),
+        default_impl: unquote(default_impl),
+        fixed_options: unquote(fixed_options)
 
       alias Fact.Context
 
