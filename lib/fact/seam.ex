@@ -10,8 +10,8 @@ defmodule Fact.Seam do
       @callback init(map()) :: struct() | {:error, term()}
       @callback normalize_options(map()) :: {:ok, map()} | {:error, term()}
 
-      # A macro that injects a macro into the calling module. NEAT-O!
-      # NEAT! Meta-programming is so much fun.
+      # A macro that injects a macro into the calling module. 
+      # NEAT-O! Meta-programming is so much fun.
       defmacro __using__(opts) do
         family = Keyword.fetch!(opts, :family)
         version = Keyword.fetch!(opts, :version)
@@ -35,7 +35,7 @@ defmodule Fact.Seam do
           def default_options(), do: %{}
 
           @impl true
-          def init(%{} = _opts), do: struct(unquote(__MODULE__), %{})
+          def init(opts \\ %{}) when is_map(opts), do: struct(__MODULE__, opts)
 
           @impl true
           def normalize_options(%{} = _opts), do: %{}
