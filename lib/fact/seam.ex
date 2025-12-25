@@ -43,18 +43,6 @@ defmodule Fact.Seam do
           defoverridable default_options: 0, init: 1, normalize_options: 1
         end
       end
-
-      #      defmacro __before_compile__(_env) do
-      #        quote do
-      #          unless Module.has_attribute?(__MODULE__, :__struct__) do
-      #            raise ArgumentError, """
-      #            #{inspect(__MODULE__)} must define a struct:
-      #            
-      #              defstruct []
-      #            """
-      #          end
-      #        end
-      #      end
     end
   end
 end

@@ -37,6 +37,11 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
       parse: &__MODULE__.parse_existing_atom/1,
       error: :invalid_exclusive_option
     },
+    raw: %{
+      allowed: [true, false],
+      parse: &__MODULE__.parse_existing_atom/1,
+      error: :invalid_raw_option
+    },
     sync: %{
       allowed: [true, false],
       parse: &__MODULE__.parse_existing_atom/1,
@@ -51,7 +56,7 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
 
   @impl true
   def default_options(),
-    do: %{access: :write, binary: true, exclusive: true, sync: false, worm: false}
+    do: %{access: :write, binary: true, exclusive: true, raw: false, sync: false, worm: false}
 
   @impl true
   @spec init(map()) :: t() | {:error, reason()}
@@ -65,7 +70,8 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
           [
             valid_options.access,
             if(valid_options.binary, do: :binary, else: nil),
-            if(valid_options.exclusive, do: :exclusive, else: nil)
+            if(valid_options.exclusive, do: :exclusive, else: nil),
+            if(valid_options.raw, do: :raw, else: nil)
           ]
           |> Enum.reject(&is_nil/1)
 

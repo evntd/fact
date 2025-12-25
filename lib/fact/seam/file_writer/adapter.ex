@@ -1,0 +1,36 @@
+defmodule Fact.Seam.FileWriter.Adapter do
+  defmacro __using__(opts) do
+    context_key = Keyword.fetch!(opts, :context)
+    allowed_impls = Keyword.get(opts, :allowed_impls, nil)
+    default_impl = Keyword.get(opts, :default_impl, nil)
+    fixed_options = Keyword.get(opts, :fixed_options, Macro.escape(%{}))
+
+    quote do
+      use Fact.Seam.Adapter,
+        registry: Fact.Seam.FileWriter.Registry,
+        allowed_impls: unquote(allowed_impls),
+        default_impl: unquote(default_impl),
+        fixed_options: unquote(fixed_options)
+
+      alias Fact.Context
+
+      @key unquote(context_key)
+
+      def open(%Context{@key => instance}, path) do
+        __seam_call__(instance, :open, [path])
+      end
+
+      def write(%Context{@key => instance}, handle, content) do
+        __seam_call__(instance, :write, [handle, content])
+      end
+
+      def close(%Context{@key => instance}, handle) do
+        __seam_call__(instance, :close, [handle])
+      end
+
+      def finalize(%Context{@key => instance}, handle) do
+        __seam_call__(instance, :finalize, [handle])
+      end
+    end
+  end
+end

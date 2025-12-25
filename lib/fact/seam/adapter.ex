@@ -17,7 +17,7 @@ defmodule Fact.Seam.Adapter do
     registry = Macro.expand(Keyword.fetch!(opts, :registry), __CALLER__)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)
     default_impl = Keyword.get(opts, :default_impl, nil)
-    fixed_options = Keyword.get(opts, :fixed_options, %{}) |> Macro.escape()
+    fixed_options = Keyword.get(opts, :fixed_options, Macro.escape(%{}))
 
     quote do
       @behaviour Fact.Seam.Adapter
@@ -25,8 +25,8 @@ defmodule Fact.Seam.Adapter do
       import Fact.Seam.Adapter, only: [__seam_call__: 3]
 
       @registry unquote(registry)
-      @fixed_options unquote(fixed_options)
       @allowed_impls unquote(allowed_impls || registry.all())
+      @fixed_options unquote(fixed_options)
 
       # when default_impl is undefined, and there is only 1 allowed_impls, 
       # just default to the one, otherwise raise an exception.
@@ -46,6 +46,30 @@ defmodule Fact.Seam.Adapter do
       def allowed_impls(), do: @allowed_impls
       def default_impl(), do: @default_impl
       def fixed_options(impl_id), do: Map.get(@fixed_options, impl_id, %{})
+
+      def init(options \\ %{}), do: init(@default_impl, options)
+
+      def init(impl_id, options) do
+        case registry().resolve(impl_id) do
+          {:error, _} = error ->
+            error
+
+          impl ->
+            opts =
+              impl.default_options()
+              |> Map.merge(options)
+              |> Map.merge(fixed_options(impl_id))
+              |> impl.normalize_options()
+
+            case impl.init(opts) do
+              s when is_struct(s) ->
+                %Fact.Seam.Instance{module: impl, struct: s}
+
+              {:error, _} = error ->
+                error
+            end
+        end
+      end
     end
   end
 end
