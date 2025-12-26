@@ -1,4 +1,4 @@
-defmodule Fact.Seam.FileName.Adapter do
+defmodule Fact.Seam.FileReader.Adapter do
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)
@@ -7,7 +7,7 @@ defmodule Fact.Seam.FileName.Adapter do
 
     quote do
       use Fact.Seam.Adapter,
-        registry: Fact.Seam.FileName.Registry,
+        registry: Fact.Seam.FileReader.Registry,
         allowed_impls: unquote(allowed_impls),
         default_impl: unquote(default_impl),
         fixed_options: unquote(fixed_options)
@@ -16,8 +16,8 @@ defmodule Fact.Seam.FileName.Adapter do
 
       @key unquote(context_key)
 
-      def get(%Context{@key => instance}, value) do
-        __seam_call__(instance, :get, [value])
+      def read(%Context{@key => instance}, path, options) do
+        __seam_call__(instance, :open, [path, options])
       end
     end
   end

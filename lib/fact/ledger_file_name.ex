@@ -5,7 +5,7 @@ defmodule Fact.LedgerFileName do
     fixed_options: %{
       {:fixed, 1} => %{name: ".ledger"}
     }
-    
+
   def get(%Context{} = context) do
     get(context, nil)
   end

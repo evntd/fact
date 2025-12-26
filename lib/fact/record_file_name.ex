@@ -10,11 +10,15 @@ defmodule Fact.RecordFileName do
   alias Fact.Context
   alias Fact.Seam.Instance
 
-  def get(%Context{record_file_name: %Instance{module: mod}} = context, event_record, encoded_record) do
+  def get(
+        %Context{record_file_name: %Instance{module: mod}} = context,
+        event_record,
+        encoded_record
+      ) do
     if :content_addressable == mod.id() do
       get(context, encoded_record)
     else
       get(context, event_record)
-    end 
+    end
   end
 end

@@ -1,0 +1,154 @@
+defmodule Fact.Seam.FileReader.FixedSize.V1 do
+  use Fact.Seam.FileReader,
+    family: :fixed_size,
+    version: 1
+
+  @type options ::
+          {:direction, :forward | :backward}
+          | {:position, :start | :end, non_neg_integer()}
+          | {:size, pos_integer()}
+          | {:padding, non_neg_integer()}
+
+  @type reason ::
+          :required_size_option
+
+  @type t :: %{}
+
+  defstruct []
+
+  @modes [:raw, :read, :binary]
+  @default_direction :forward
+  @default_position :start
+  @default_padding 0
+
+  @impl true
+  def read(%__MODULE__{}, path, options) do
+    with {:ok, record_size} <- Keyword.fetch(options, :size),
+         direction <- Keyword.get(options, :direction, @default_direction),
+         from_position <- Keyword.get(options, :position, @default_position),
+         padding <- Keyword.get(options, :padding, @default_padding) do
+      read(path, direction, from_position, record_size, padding)
+    else
+      :error ->
+        {:error, :required_size}
+    end
+  end
+
+  defp read(path, :forward, from_position, record_size, padding) do
+    line_size = record_size + padding
+
+    Stream.resource(
+      fn ->
+        with {:ok, stat} <- File.stat(path) do
+          start_position =
+            cond do
+              from_position === :start ->
+                0
+
+              from_position === :end ->
+                div(stat.size, line_size)
+
+              true ->
+                from_position
+            end
+
+          start_offset = line_size * start_position
+
+          case File.open(path, @modes) do
+            {:ok, fd} ->
+              case :file.position(fd, start_offset) do
+                {:ok, _p} ->
+                  fd
+
+                {:error, _} = error ->
+                  File.close(fd)
+                  error
+              end
+
+            {:error, _} = error ->
+              error
+          end
+        end
+      end,
+      fn
+        {:error, reason} ->
+          raise File.Error, reason: reason, action: "open", path: path
+
+        fd ->
+          case :file.read(fd, line_size) do
+            {:ok, data} ->
+              <<record::binary-size(record_size), _padding::binary-size(padding)>> = data
+              {[record], fd}
+
+            :eof ->
+              {:halt, fd}
+
+            {:error, reason} ->
+              raise File.Error, reason: reason, action: "read", path: path
+          end
+      end,
+      fn
+        {:error, _} -> :ok
+        fd -> File.close(fd)
+      end
+    )
+  end
+
+  defp read(path, :backward, from_position, record_size, padding) do
+    line_size = record_size + padding
+
+    Stream.resource(
+      fn ->
+        with {:ok, stat} <- File.stat(path) do
+          record_count = div(stat.size, line_size)
+
+          start_position =
+            cond do
+              from_position === :start or (is_integer(from_position) and from_position <= 0) ->
+                0
+
+              from_position === :end or
+                  (is_integer(from_position) and from_position > record_count) ->
+                record_count
+
+              true ->
+                from_position
+            end
+
+          start_offset = line_size * (start_position - 1)
+
+          case File.open(path, @modes) do
+            {:ok, fd} ->
+              {fd, start_offset}
+
+            {:error, _} = error ->
+              error
+          end
+        end
+      end,
+      fn
+        {:error, reason} ->
+          raise File.Error, reason: reason, action: "open", path: path
+
+        {fd, offset} when offset < 0 ->
+          {:halt, fd}
+
+        {fd, offset} ->
+          case :file.pread(fd, offset, record_size) do
+            {:ok, data} ->
+              next_offset = offset - line_size
+              {[data], {fd, next_offset}}
+              :eof
+              {:halt, fd}
+
+            {:error, reason} ->
+              raise File.Error, reason: reason, action: "read", path: path
+          end
+      end,
+      fn
+        {:error, _} -> :ok
+        fd -> File.close(fd)
+      end
+    )
+  end
+end
