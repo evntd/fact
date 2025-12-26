@@ -1,5 +1,5 @@
-defmodule Fact.Seam.FileContent.Delimited.V1 do
-  use Fact.Seam.FileContent,
+defmodule Fact.Seam.Encoder.Delimited.V1 do
+  use Fact.Seam.Encoder,
     family: :delimited,
     version: 1
 
@@ -14,9 +14,6 @@ defmodule Fact.Seam.FileContent.Delimited.V1 do
 
   @impl true
   def normalize_options(%{} = _options), do: %{}
-
-  @impl true
-  def decode(%__MODULE__{}, _binary), do: {:error, :unsupported_capability}
 
   @impl true
   def encode(%__MODULE__{delimiter: delimiter}, content) when is_list(content) do

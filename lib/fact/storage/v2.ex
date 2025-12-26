@@ -4,7 +4,7 @@ defmodule Fact.Storage.V2 do
   @spec write_event(%Fact.Context{}, Fact.Types.event_record()) ::
           {:ok, Fact.Types.record_id()} | {:error, term()}
   def write_event(%Fact.Context{} = context, event_record) do
-    case Fact.RecordFileContent.encode(context, event_record) do
+    case Fact.RecordFileEncoder.encode(context, event_record) do
       {:ok, encoded_record} ->
         with record_id <- Fact.RecordFileName.get(context, event_record, encoded_record),
              record_path <- Fact.StorageLayout.record_path(context, record_id) do
@@ -39,7 +39,7 @@ defmodule Fact.Storage.V2 do
   end
 
   def write_ledger(%Fact.Context{} = context, record_ids) do
-    case Fact.LedgerFileContent.encode(context, record_ids) do
+    case Fact.LedgerFileEncoder.encode(context, record_ids) do
       {:ok, content} ->
         with path <- Fact.StorageLayout.ledger_path(context) do
           case write_sync(path, content, [:append, :binary]) do

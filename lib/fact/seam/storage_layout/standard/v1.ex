@@ -26,7 +26,7 @@ defmodule Fact.Seam.StorageLayout.Standard.V1 do
   def indices_path(%__MODULE__{}, root), do: Path.join(root, "indices")
 
   @impl true
-  def ledger_path(%__MODULE__{}, root), do: Path.join(root, ".ledger")
+  def ledger_path(%__MODULE__{}, root), do: root
 
   defp ensure_is_dir_or_does_not_exist(path) do
     cond do

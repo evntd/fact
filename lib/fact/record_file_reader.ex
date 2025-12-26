@@ -4,6 +4,6 @@ defmodule Fact.RecordFileReader do
     allowed_impls: [{:full, 1}]
 
   def read(%Context{} = context, path) do
-    read(context, path, []) |> Enum.at(1)
+    read(context, path, []) |> Enum.at(0)
   end
 end
