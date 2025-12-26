@@ -7,10 +7,10 @@ defmodule Fact.Seam.FileContent.Adapter do
 
     quote do
       use Fact.Seam.Adapter,
-          registry: Fact.Seam.FileContent.Registry,
-          allowed_impls: unquote(allowed_impls),
-          default_impl: unquote(default_impl),
-          fixed_options: unquote(fixed_options)
+        registry: Fact.Seam.FileContent.Registry,
+        allowed_impls: unquote(allowed_impls),
+        default_impl: unquote(default_impl),
+        fixed_options: unquote(fixed_options)
 
       alias Fact.Context
 
@@ -24,5 +24,5 @@ defmodule Fact.Seam.FileContent.Adapter do
         __seam_call__(instance, :decode, [binary])
       end
     end
-  end  
+  end
 end
