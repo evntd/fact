@@ -16,7 +16,7 @@ defmodule Fact.Seam.FileReader.Adapter do
 
       @key unquote(context_key)
 
-      def read(%Context{@key => instance}, path, options) do
+      def read(%Context{@key => instance}, path, options \\ []) do
         __seam_call__(instance, :read, [path, options])
       end
     end

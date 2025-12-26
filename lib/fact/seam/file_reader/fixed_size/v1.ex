@@ -26,8 +26,9 @@ defmodule Fact.Seam.FileReader.FixedSize.V1 do
     with {:ok, record_size} <- Keyword.fetch(options, :size),
          direction <- Keyword.get(options, :direction, @default_direction),
          from_position <- Keyword.get(options, :position, @default_position),
-         padding <- Keyword.get(options, :padding, @default_padding) do
-      read(path, direction, from_position, record_size, padding)
+         padding <- Keyword.get(options, :padding, @default_padding),
+         stream <- read(path, direction, from_position, record_size, padding) do
+      {:ok, stream}
     else
       :error ->
         {:error, :required_size}

@@ -10,7 +10,8 @@ defmodule Fact.Seam.FileReader.Full.V1 do
   @impl true
   def read(%__MODULE__{}, path, _options) do
     case File.read(path) do
-      {:ok, binary} -> Stream.map([binary], & &1)
+      {:ok, binary} ->
+        {:ok, Stream.map([binary], & &1)}
     end
   end
 end

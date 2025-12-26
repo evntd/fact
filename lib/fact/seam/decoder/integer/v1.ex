@@ -9,6 +9,11 @@ defmodule Fact.Seam.Decoder.Integer.V1 do
 
   @impl true
   def decode(%__MODULE__{}, binary) when is_binary(binary) do
-    String.to_integer(binary)
+    {:ok, String.to_integer(binary)}
+  rescue
+    ArgumentError ->
+      {:error, {:decode, binary}}
   end
+
+  def decode(%__MODULE__{}, value), do: {:error, {:decode, value}}
 end

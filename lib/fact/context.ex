@@ -41,8 +41,9 @@ defmodule Fact.Context do
     :storage_layout
   ]
 
-  def init() do
+  def init(path) do
     %__MODULE__{
+      database_path: Path.absname(path),
       index_checkpoint_file_decoder: Fact.IndexCheckpointFile.Decoder.init(),
       index_checkpoint_file_encoder: Fact.IndexCheckpointFile.Encoder.init(),
       index_checkpoint_file_name: Fact.IndexCheckpointFile.Name.init(),

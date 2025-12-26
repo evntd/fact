@@ -16,7 +16,9 @@ defmodule Fact.Seam.Decoder.Delimited.V1 do
   def normalize_options(%{} = _options), do: %{}
 
   @impl true
-  def decode(%__MODULE__{delimiter: delimiter}, binary) when is_binary(binary) do
-    String.split(binary, delimiter)
+  def decode(%__MODULE__{delimiter: delimiter}, value) when is_binary(value) do
+    {:ok, String.split(value, delimiter)}
   end
+
+  def decode(%__MODULE__{}, value), do: {:error, {:decode, value}}
 end

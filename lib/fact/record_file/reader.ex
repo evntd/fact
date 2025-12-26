@@ -3,7 +3,9 @@ defmodule Fact.RecordFile.Reader do
     context: :record_file_reader,
     allowed_impls: [{:full, 1}]
 
-  def read(%Context{} = context, path) do
-    read(context, path, []) |> Enum.at(0)
+  def read_one(%Context{} = context, path) do
+    with {:ok, stream} <- read(context, path) do
+      stream |> Enum.at(0)
+    end
   end
 end
