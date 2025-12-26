@@ -35,7 +35,7 @@ defmodule Fact.Context do
     :record_file_name,
     :record_file_reader,
     :record_file_writer,
-    :record_schema,
+    :record_file_schema,
 
     ## Storage Layout
     :storage_layout
@@ -43,27 +43,27 @@ defmodule Fact.Context do
 
   def init() do
     %__MODULE__{
-      index_checkpoint_file_decoder: Fact.IndexCheckpointFileDecoder.init(),
-      index_checkpoint_file_encoder: Fact.IndexCheckpointFileEncoder.init(),
-      index_checkpoint_file_name: Fact.IndexCheckpointFileName.init(),
-      index_checkpoint_file_reader: Fact.IndexCheckpointFileReader.init(),
-      index_checkpoint_file_writer: Fact.IndexCheckpointFileWriter.init(),
-      index_file_decoder: Fact.IndexFileDecoder.init(),
-      index_file_encoder: Fact.IndexFileEncoder.init(),
-      index_file_name: Fact.IndexFileName.init(),
-      index_file_reader: Fact.IndexFileReader.init(),
-      index_file_writer: Fact.IndexFileWriter.init(),
-      ledger_file_decoder: Fact.LedgerFileDecoder.init(),
-      ledger_file_encoder: Fact.LedgerFileEncoder.init(),
-      ledger_file_name: Fact.LedgerFileName.init(),
-      ledger_file_reader: Fact.LedgerFileReader.init(),
-      ledger_file_writer: Fact.LedgerFileWriter.init(),
-      record_file_decoder: Fact.RecordFileDecoder.init(),
-      record_file_encoder: Fact.RecordFileEncoder.init(),
-      record_file_name: Fact.RecordFileName.init(),
-      record_file_reader: Fact.RecordFileReader.init(),
-      record_file_writer: Fact.RecordFileWriter.init(),
-      record_schema: Fact.RecordSchema.init(),
+      index_checkpoint_file_decoder: Fact.IndexCheckpointFile.Decoder.init(),
+      index_checkpoint_file_encoder: Fact.IndexCheckpointFile.Encoder.init(),
+      index_checkpoint_file_name: Fact.IndexCheckpointFile.Name.init(),
+      index_checkpoint_file_reader: Fact.IndexCheckpointFile.Reader.init(),
+      index_checkpoint_file_writer: Fact.IndexCheckpointFile.Writer.init(),
+      index_file_decoder: Fact.IndexFile.Decoder.init(),
+      index_file_encoder: Fact.IndexFile.Encoder.init(),
+      index_file_name: Fact.IndexFile.Name.init(),
+      index_file_reader: Fact.IndexFile.Reader.init(),
+      index_file_writer: Fact.IndexFile.Writer.init(),
+      ledger_file_decoder: Fact.LedgerFile.Decoder.init(),
+      ledger_file_encoder: Fact.LedgerFile.Encoder.init(),
+      ledger_file_name: Fact.LedgerFile.Name.init(),
+      ledger_file_reader: Fact.LedgerFile.Reader.init(),
+      ledger_file_writer: Fact.LedgerFile.Writer.init(),
+      record_file_decoder: Fact.RecordFile.Decoder.init(),
+      record_file_encoder: Fact.RecordFile.Encoder.init(),
+      record_file_name: Fact.RecordFile.Name.init(),
+      record_file_reader: Fact.RecordFile.Reader.init(),
+      record_file_writer: Fact.RecordFile.Writer.init(),
+      record_file_schema: Fact.RecordFile.Schema.init(),
       storage_layout: Fact.StorageLayout.init()
     }
   end

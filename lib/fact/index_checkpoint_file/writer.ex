@@ -1,12 +1,11 @@
-defmodule Fact.LedgerFileWriter do
+defmodule Fact.IndexCheckpointFile.Writer do
   use Fact.Seam.FileWriter.Adapter,
-    context: :ledger_file_writer,
+    context: :index_checkpoint_file_writer,
     fixed_options: %{
       {:standard, 1} => %{
-        access: :append,
+        access: :write,
         binary: true,
         exclusive: false,
-        raw: true,
         sync: true,
         worm: false
       }

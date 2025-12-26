@@ -1,5 +1,6 @@
 defmodule Fact.Seam.RecordSchema.Adapter do
   defmacro __using__(opts) do
+    context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)
     default_impl = Keyword.get(opts, :default_impl, nil)
     fixed_options = Keyword.get(opts, :fixed_options, Macro.escape(%{}))
@@ -13,7 +14,7 @@ defmodule Fact.Seam.RecordSchema.Adapter do
 
       alias Fact.Context
 
-      @key :record_schema
+      @key unquote(context_key)
 
       def event_data(%Context{@key => instance}, record) do
         __seam_call__(instance, :event_data, [record])

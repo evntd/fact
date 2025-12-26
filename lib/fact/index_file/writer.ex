@@ -1,12 +1,12 @@
-defmodule Fact.IndexCheckpointFileWriter do
+defmodule Fact.IndexFile.Writer do
   use Fact.Seam.FileWriter.Adapter,
-    context: :index_checkpoint_file_writer,
+    context: :index_file_writer,
     fixed_options: %{
       {:standard, 1} => %{
-        access: :write,
+        access: :append,
         binary: true,
         exclusive: false,
-        sync: true,
+        sync: false,
         worm: false
       }
     }

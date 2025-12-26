@@ -1,4 +1,4 @@
-defmodule Fact.RecordFileReader do
+defmodule Fact.RecordFile.Reader do
   use Fact.Seam.FileReader.Adapter,
     context: :record_file_reader,
     allowed_impls: [{:full, 1}]

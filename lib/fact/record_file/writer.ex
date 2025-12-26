@@ -1,4 +1,4 @@
-defmodule Fact.RecordFileWriter do
+defmodule Fact.RecordFile.Writer do
   use Fact.Seam.FileWriter.Adapter,
     context: :record_file_writer,
     fixed_options: %{

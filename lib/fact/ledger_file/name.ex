@@ -1,4 +1,4 @@
-defmodule Fact.LedgerFileName do
+defmodule Fact.LedgerFile.Name do
   use Fact.Seam.FileName.Adapter,
     context: :ledger_file_name,
     allowed_impls: [{:fixed, 1}],

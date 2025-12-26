@@ -1,4 +1,4 @@
-defmodule Fact.IndexFileName do
+defmodule Fact.IndexFile.Name do
   use Fact.Seam.FileName.Adapter,
     context: :index_file_name,
     allowed_impls: [

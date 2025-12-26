@@ -1,4 +1,4 @@
-defmodule Fact.RecordFileName do
+defmodule Fact.RecordFile.Name do
   use Fact.Seam.FileName.Adapter,
     context: :record_file_name,
     allowed_impls: [
