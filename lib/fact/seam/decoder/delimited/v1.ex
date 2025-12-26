@@ -1,4 +1,6 @@
 defmodule Fact.Seam.Decoder.Delimited.V1 do
+  @before_compile Fact.Seam.Capabilities
+
   use Fact.Seam.Decoder,
     family: :delimited,
     version: 1

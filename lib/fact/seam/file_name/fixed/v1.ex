@@ -1,4 +1,5 @@
 defmodule Fact.Seam.FileName.Fixed.V1 do
+  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileName,
     family: :fixed,
     version: 1

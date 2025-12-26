@@ -1,9 +1,13 @@
 defmodule Fact.Seam.FileName.ContentAddressable.V1 do
+  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileName,
     family: :content_addressable,
     version: 1
+    
+  #@behaviour Fact.Seam.Capability.FixedSize
 
-  defstruct [:algorithm, :encoding]
+  @enforce_keys [:algorithm, :encoding]
+  defstruct [:algorithm, :encoding, :size]
 
   @parser_funs %{
     algorithm: :parse_algorithm,
@@ -14,7 +18,10 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
   def default_options(), do: %{algorithm: :sha256, encoding: :base64}
 
   @impl true
-  def init(options), do: struct(__MODULE__, Map.merge(default_options(), options))
+  def init(options) do
+    impl = struct(__MODULE__, Map.merge(default_options(), options))
+    %{impl | size: get(impl, "") |> String.length() }
+  end
 
   @impl true
   def normalize_options(%{} = options) do
@@ -41,6 +48,9 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
         Base.encode16(hash, case: :lower)
     end
   end
+  
+  @impl true
+  def size(%__MODULE__{size: size}), do: size
 
   def parse_algorithm(value) do
     if value, do: String.to_atom(value), else: nil

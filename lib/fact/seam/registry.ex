@@ -1,4 +1,11 @@
 defmodule Fact.Seam.Registry do
+  
+  @callback all() :: list()
+  @callback resolve({atom(), non_neg_integer()}) :: module()
+  @callback latest_impl(atom()) :: module()
+  @callback latest_version(atom()) :: non_neg_integer()
+  @callback impls_with_capabilities(list(atom())) :: list({atom, non_neg_integer()})
+  
   defmacro __using__(opts) do
     impls =
       Keyword.fetch!(opts, :impls)
@@ -16,8 +23,12 @@ defmodule Fact.Seam.Registry do
       @impls unquote(impls)
       @latest_versions unquote(Macro.escape(latest_versions))
 
+      @behaviour Fact.Seam.Registry
+      
+      @impl true
       def all(), do: Enum.map(@impls, & &1.id())
 
+      @impl true
       def resolve({family, version} = id)
           when is_tuple(id) and tuple_size(id) == 2,
           do: resolve(family, version)
@@ -28,6 +39,7 @@ defmodule Fact.Seam.Registry do
         end) || {:error, {:unsupported_impl, family, version}}
       end
 
+      @impl true
       def latest_impl(family) do
         case Map.get(@latest_versions, family) do
           nil -> {:error, :unsupported_impl}
@@ -35,11 +47,19 @@ defmodule Fact.Seam.Registry do
         end
       end
 
+      @impl true
       def latest_version(family) do
         case Map.get(@latest_versions, family) do
           nil -> {:error, :unsupported_impl}
           impl -> impl.version()
         end
+      end
+
+      @impl true
+      def impls_with_capabilities(capabilities) when is_list(capabilities) do
+        for impl <- @impls,
+            Enum.all?(capabilities, &impl.capability?/1),
+            do: impl.id()
       end
     end
   end

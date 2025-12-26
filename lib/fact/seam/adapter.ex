@@ -15,9 +15,32 @@ defmodule Fact.Seam.Adapter do
 
   defmacro __using__(opts) do
     registry = Macro.expand(Keyword.fetch!(opts, :registry), __CALLER__)
-    allowed_impls = Keyword.get(opts, :allowed_impls, nil)
+    allowed_impls_opt = Keyword.get(opts, :allowed_impls, nil)
+    required_caps_opt = Keyword.get(opts, :required_capabilities, nil)
     default_impl = Keyword.get(opts, :default_impl, nil)
     fixed_options = Keyword.get(opts, :fixed_options, Macro.escape(%{}))
+    
+    if allowed_impls_opt && required_caps_opt do
+      raise ArgumentError, """
+      #{__MODULE__}: you must specify either :allowed_impls or :required_capabilities, not both.
+      """
+    end
+    
+    allowed_impls =
+      cond do
+        is_list(required_caps_opt) ->
+          impls = registry.impls_with_capabilities(required_caps_opt)
+          if impls == [] do
+            raise ArgumentError, """
+            #{__MODULE__}: no implementations satisfy the required capabilities #{inspect(required_caps_opt)}
+            """
+          end
+          impls
+        is_list(allowed_impls_opt) ->
+          allowed_impls_opt
+        true ->
+          registry.all()
+      end
 
     quote do
       @behaviour Fact.Seam.Adapter
@@ -25,21 +48,29 @@ defmodule Fact.Seam.Adapter do
       import Fact.Seam.Adapter, only: [__seam_call__: 3]
 
       @registry unquote(registry)
-      @allowed_impls unquote(allowed_impls || registry.all())
+      @allowed_impls unquote(allowed_impls)
       @fixed_options unquote(fixed_options)
 
       # when default_impl is undefined, and there is only 1 allowed_impls, 
       # just default to the one, otherwise raise an exception.
       cond do
         unquote(default_impl) ->
+          if unquote(default_impl) not in @allowed_impls do
+            raise ArgumentError, """
+            #{__MODULE__}: default_impl #{inspect(unquote(default_impl))} is not an allowed impl.
+            Use one of the following: #{Enum.map(@allowed_impls, &inspect/1) |> Enum.intersperse(", ")}
+            """
+          end
           @default_impl unquote(default_impl)
 
         length(@allowed_impls) == 1 ->
           @default_impl hd(@allowed_impls)
 
         true ->
-          raise ArgumentError,
-                "#{__MODULE__} must define a default_impl when multiple allowed_impls exist"
+          raise ArgumentError, """
+          #{__MODULE__}: must define :default_impl when multiple allowed_impls exist.
+          Use one of the following: #{Enum.map(@allowed_impls, &inspect/1) |> Enum.intersperse(", ")}
+          """
       end
 
       def registry(), do: @registry

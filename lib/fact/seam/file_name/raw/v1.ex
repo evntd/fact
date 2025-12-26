@@ -1,4 +1,5 @@
 defmodule Fact.Seam.FileName.Raw.V1 do
+  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileName,
     family: :raw,
     version: 1

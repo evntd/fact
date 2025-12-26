@@ -1,4 +1,5 @@
 defmodule Fact.Seam.RecordSchema.Standard.V1 do
+  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.RecordSchema,
     family: :standard,
     version: 1

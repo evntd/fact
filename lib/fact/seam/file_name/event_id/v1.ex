@@ -1,4 +1,5 @@
 defmodule Fact.Seam.FileName.EventId.V1 do
+  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileName,
     family: :event_id,
     version: 1
