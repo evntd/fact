@@ -102,31 +102,12 @@ defmodule Fact.Seam.FileWriter.Standard.V1 do
   end
 
   @impl true
-  def open(%__MODULE__{modes: modes}, path) do
-    File.open(path, modes)
-  end
-
-  @impl true
-  def write(%__MODULE__{sync: sync}, handle, content) do
-    case IO.binwrite(handle, content) do
-      :ok ->
-        if sync, do: :file.sync(handle), else: :ok
-
-      {:error, _} = error ->
-        error
-    end
-  end
-
-  @impl true
-  def close(%__MODULE__{}, handle) do
-    File.close(handle)
-  end
-
-  @impl true
-  def finalize(%__MODULE__{worm: worm}, path) do
-    if worm do
-      File.chmod(path, 0o444)
-    else
+  def write(%__MODULE__{modes: modes, sync: sync, worm: worm}, path, value, _options) do
+    with {:ok, fd} <- File.open(path, modes),
+         :ok <- IO.binwrite(fd, value),
+         :ok <- if(sync, do: :file.sync(fd), else: :ok),
+         :ok <- File.close(fd),
+         :ok <- if(worm, do: File.chmod(path, 0o444), else: :ok) do
       :ok
     end
   end

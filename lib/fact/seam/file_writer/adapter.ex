@@ -16,20 +16,8 @@ defmodule Fact.Seam.FileWriter.Adapter do
 
       @key unquote(context_key)
 
-      def open(%Context{@key => instance}, path) do
-        __seam_call__(instance, :open, [path])
-      end
-
-      def write(%Context{@key => instance}, handle, content) do
-        __seam_call__(instance, :write, [handle, content])
-      end
-
-      def close(%Context{@key => instance}, handle) do
-        __seam_call__(instance, :close, [handle])
-      end
-
-      def finalize(%Context{@key => instance}, handle) do
-        __seam_call__(instance, :finalize, [handle])
+      def write(%Context{@key => instance}, path, value, options \\ []) do
+        __seam_call__(instance, :write, [path, value, options])
       end
     end
   end
