@@ -16,23 +16,33 @@ defmodule Fact.Seam.Adapter do
   defmacro __using__(opts) do
     registry = Macro.expand(Keyword.fetch!(opts, :registry), __CALLER__)
     allowed_impls_opt = Keyword.get(opts, :allowed_impls, nil)
-    required_caps_opt = Keyword.get(opts, :required_capabilities, nil)
     default_impl = Keyword.get(opts, :default_impl, nil)
     fixed_options = Keyword.get(opts, :fixed_options, Macro.escape(%{}))
-    
-    if allowed_impls_opt && required_caps_opt do
+
+    required_behaviours = 
+      Keyword.get(opts, :required_behaviours, nil)
+      |> case do
+        nil -> nil
+        behaviours when is_list(behaviours) ->
+          Enum.map(behaviours, &Macro.expand(&1, __CALLER__))
+      end
+      
+    IO.puts(inspect(required_behaviours))
+      
+    if allowed_impls_opt && required_behaviours do
       raise ArgumentError, """
-      #{__MODULE__}: you must specify either :allowed_impls or :required_capabilities, not both.
+      #{__MODULE__}: you must specify either :allowed_impls or define requirements via
+      :required_behaviours and/or :required_capabilities, not both.
       """
     end
     
     allowed_impls =
       cond do
-        is_list(required_caps_opt) ->
-          impls = registry.impls_with_capabilities(required_caps_opt)
+        is_list(required_behaviours) ->
+          impls = registry.implements_behaviours(required_behaviours)
           if impls == [] do
             raise ArgumentError, """
-            #{__MODULE__}: no implementations satisfy the required capabilities #{inspect(required_caps_opt)}
+            #{__MODULE__}: no implementations satisfy the required behaviours #{inspect(required_behaviours)}
             """
           end
           impls

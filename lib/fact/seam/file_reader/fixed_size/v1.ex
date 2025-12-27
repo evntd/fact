@@ -1,5 +1,4 @@
 defmodule Fact.Seam.FileReader.FixedSize.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileReader,
     family: :fixed_size,
     version: 1

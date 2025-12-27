@@ -6,8 +6,6 @@ defmodule Fact.Seam do
       @callback id() :: {atom(), non_neg_integer()}
       @callback family() :: atom()
       @callback version() :: non_neg_integer()
-      @callback capabilities() :: list(atom())
-      @callback capability?(atom()) :: boolean()
       @callback default_options() :: map()      
       @callback init(map()) :: struct() | {:error, term()}
       @callback normalize_options(map()) :: {:ok, map()} | {:error, term()}

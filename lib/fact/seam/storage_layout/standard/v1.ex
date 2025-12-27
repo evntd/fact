@@ -1,5 +1,4 @@
 defmodule Fact.Seam.StorageLayout.Standard.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.StorageLayout,
     family: :standard,
     version: 1

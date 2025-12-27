@@ -1,5 +1,4 @@
 defmodule Fact.Seam.FileName.Hash.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileName,
     family: :hash,
     version: 1

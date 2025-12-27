@@ -4,7 +4,8 @@ defmodule Fact.Seam.Registry do
   @callback resolve({atom(), non_neg_integer()}) :: module()
   @callback latest_impl(atom()) :: module()
   @callback latest_version(atom()) :: non_neg_integer()
-  @callback impls_with_capabilities(list(atom())) :: list({atom, non_neg_integer()})
+  @callback implements_behaviours([module()]) :: boolean()
+  
   
   defmacro __using__(opts) do
     impls =
@@ -20,9 +21,12 @@ defmodule Fact.Seam.Registry do
       |> Map.new()
 
     quote do
+      require Logger
+      
       @impls unquote(impls)
       @latest_versions unquote(Macro.escape(latest_versions))
-
+      
+      
       @behaviour Fact.Seam.Registry
       
       @impl true
@@ -54,12 +58,23 @@ defmodule Fact.Seam.Registry do
           impl -> impl.version()
         end
       end
-
+      
       @impl true
-      def impls_with_capabilities(capabilities) when is_list(capabilities) do
+      def implements_behaviours(behaviours) do
         for impl <- @impls,
-            Enum.all?(capabilities, &impl.capability?/1),
+            Enum.all?(behaviours, &implements_behaviour?(impl, &1)),
             do: impl.id()
+      end
+      
+      def implements_behaviour?(impl_module, behaviour_module) do
+        case Code.ensure_loaded(impl_module) do
+          {:module, _} ->
+            behaviour_module.behaviour_info(:callbacks)
+            |> Enum.all?(fn {name, arity} -> function_exported?(impl_module, name, arity) end)
+          {:error, reason} ->
+            Logger.error("#{__MODULE__}.implements_behaviour?(#{impl_module}, #{behaviour_module}): unable to load #{reason}")
+            false
+        end        
       end
     end
   end

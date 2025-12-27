@@ -1,5 +1,4 @@
 defmodule Fact.Seam.FileWriter.Standard.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileWriter,
     family: :standard,
     version: 1

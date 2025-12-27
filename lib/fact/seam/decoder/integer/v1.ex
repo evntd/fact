@@ -1,5 +1,4 @@
 defmodule Fact.Seam.Decoder.Integer.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.Decoder,
     family: :integer,
     version: 1

@@ -1,7 +1,7 @@
 defmodule Fact.RecordFile.Name do
   use Fact.Seam.FileName.Adapter,
     context: :record_file_name,
-    required_capabilities: [:fixed_size],
+    required_behaviours: [Fact.Seam.Behaviour.FixedSize],
     default_impl: {:event_id, 1}
 
   alias Fact.Context

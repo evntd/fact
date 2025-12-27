@@ -1,10 +1,9 @@
 defmodule Fact.Seam.FileName.ContentAddressable.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileName,
     family: :content_addressable,
     version: 1
     
-  #@behaviour Fact.Seam.Capability.FixedSize
+  @behaviour Fact.Seam.Capability.FixedSize
 
   @enforce_keys [:algorithm, :encoding]
   defstruct [:algorithm, :encoding, :size]

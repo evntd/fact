@@ -1,5 +1,4 @@
 defmodule Fact.Seam.FileReader.Full.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.FileReader,
     family: :full,
     version: 1

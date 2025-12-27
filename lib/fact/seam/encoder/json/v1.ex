@@ -1,5 +1,4 @@
 defmodule Fact.Seam.Encoder.Json.V1 do
-  @before_compile Fact.Seam.Capabilities
   use Fact.Seam.Encoder,
     family: :json,
     version: 1
