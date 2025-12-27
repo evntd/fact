@@ -2,11 +2,9 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
   use Fact.Seam.FileName,
     family: :content_addressable,
     version: 1
-    
-  @behaviour Fact.Seam.Capability.FixedSize
 
   @enforce_keys [:algorithm, :encoding]
-  defstruct [:algorithm, :encoding, :size]
+  defstruct [:algorithm, :encoding, :length]
 
   @parser_funs %{
     algorithm: :parse_algorithm,
@@ -19,7 +17,7 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
   @impl true
   def init(options) do
     impl = struct(__MODULE__, Map.merge(default_options(), options))
-    %{impl | size: get(impl, "") |> String.length() }
+    %{impl | length: get(impl, "") |> String.length()}
   end
 
   @impl true
@@ -33,7 +31,7 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
   end
 
   @impl true
-  def get(%__MODULE__{algorithm: algorithm, encoding: encoding}, encoded_record) do
+  def get(%__MODULE__{algorithm: algorithm, encoding: encoding}, encoded_record, _options \\ []) do
     hash = :crypto.hash(algorithm, encoded_record)
 
     case encoding do
@@ -47,9 +45,6 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
         Base.encode16(hash, case: :lower)
     end
   end
-  
-  @impl true
-  def size(%__MODULE__{size: size}), do: size
 
   def parse_algorithm(value) do
     if value, do: String.to_atom(value), else: nil

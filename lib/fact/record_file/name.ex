@@ -1,7 +1,7 @@
 defmodule Fact.RecordFile.Name do
   use Fact.Seam.FileName.Adapter,
     context: :record_file_name,
-    required_behaviours: [Fact.Seam.Behaviour.FixedSize],
+    allowed_impls: [{:content_addressable, 1}, {:event_id, 1}],
     default_impl: {:event_id, 1}
 
   alias Fact.Context
@@ -17,9 +17,5 @@ defmodule Fact.RecordFile.Name do
     else
       get(context, event_record)
     end
-  end
-
-  def size(%Context{record_file_name: instance}) do
-    __seam_call__(instance, :size, [])
   end
 end

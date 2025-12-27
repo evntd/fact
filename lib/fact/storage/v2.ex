@@ -16,7 +16,7 @@ defmodule Fact.Storage.V2 do
   def read_ledger(%Context{} = context) do
     ledger = Path.join(StorageLayout.ledger_path(context), LedgerFile.Name.get(context))
 
-    {:ok, stream} = LedgerFile.Reader.read(context, ledger, size: 32, padding: 1)
+    {:ok, stream} = LedgerFile.Reader.read(context, ledger)
 
     stream
     |> Stream.map(fn encoded ->

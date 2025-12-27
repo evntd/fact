@@ -30,5 +30,5 @@ defmodule Fact.Seam.FileName.Raw.V1 do
   end
 
   @impl true
-  def get(%__MODULE{}, value), do: value
+  def get(%__MODULE{}, value, _opts), do: value
 end

@@ -6,7 +6,9 @@ defmodule Fact.Context do
     # Addressing
     :database_path,
 
-    # Seams 
+    # Seams
+
+    :event_id,
 
     ## Index Checkpoints
     :index_checkpoint_file_decoder,
@@ -42,22 +44,41 @@ defmodule Fact.Context do
   ]
 
   def init(path) do
+    event_id = Fact.EventId.init()
+
+    index_file_encoder = Fact.IndexFile.Encoder.init()
+
+    index_file_reader =
+      Fact.IndexFile.Reader.init(%{
+        length: event_id.struct.length,
+        padding: String.length(index_file_encoder.struct.delimiter)
+      })
+
+    ledger_file_encoder = Fact.LedgerFile.Encoder.init()
+
+    ledger_file_reader =
+      Fact.LedgerFile.Reader.init(%{
+        length: event_id.struct.length,
+        padding: String.length(ledger_file_encoder.struct.delimiter)
+      })
+
     %__MODULE__{
       database_path: Path.absname(path),
+      event_id: event_id,
       index_checkpoint_file_decoder: Fact.IndexCheckpointFile.Decoder.init(),
       index_checkpoint_file_encoder: Fact.IndexCheckpointFile.Encoder.init(),
       index_checkpoint_file_name: Fact.IndexCheckpointFile.Name.init(),
       index_checkpoint_file_reader: Fact.IndexCheckpointFile.Reader.init(),
       index_checkpoint_file_writer: Fact.IndexCheckpointFile.Writer.init(),
       index_file_decoder: Fact.IndexFile.Decoder.init(),
-      index_file_encoder: Fact.IndexFile.Encoder.init(),
+      index_file_encoder: index_file_encoder,
       index_file_name: Fact.IndexFile.Name.init(),
-      index_file_reader: Fact.IndexFile.Reader.init(),
+      index_file_reader: index_file_reader,
       index_file_writer: Fact.IndexFile.Writer.init(),
       ledger_file_decoder: Fact.LedgerFile.Decoder.init(),
-      ledger_file_encoder: Fact.LedgerFile.Encoder.init(),
+      ledger_file_encoder: ledger_file_encoder,
       ledger_file_name: Fact.LedgerFile.Name.init(),
-      ledger_file_reader: Fact.LedgerFile.Reader.init(),
+      ledger_file_reader: ledger_file_reader,
       ledger_file_writer: Fact.LedgerFile.Writer.init(),
       record_file_decoder: Fact.RecordFile.Decoder.init(),
       record_file_encoder: Fact.RecordFile.Encoder.init(),

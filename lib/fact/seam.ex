@@ -6,10 +6,9 @@ defmodule Fact.Seam do
       @callback id() :: {atom(), non_neg_integer()}
       @callback family() :: atom()
       @callback version() :: non_neg_integer()
-      @callback default_options() :: map()      
+      @callback default_options() :: map()
       @callback init(map()) :: struct() | {:error, term()}
       @callback normalize_options(map()) :: {:ok, map()} | {:error, term()}
-      
 
       # A macro that injects a macro into the calling module. 
       # NEAT-O! Meta-programming is so much fun.

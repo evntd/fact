@@ -13,7 +13,7 @@ defmodule Fact.Seam.Encoder.Delimited.V1 do
   def init(%{} = options), do: struct(__MODULE__, options)
 
   @impl true
-  def normalize_options(%{} = _options), do: %{}
+  def normalize_options(%{} = options), do: options
 
   @impl true
   def encode(%__MODULE__{delimiter: delimiter}, content) when is_list(content) do

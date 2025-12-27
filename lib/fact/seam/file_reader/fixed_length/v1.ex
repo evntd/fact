@@ -1,6 +1,6 @@
-defmodule Fact.Seam.FileReader.FixedSize.V1 do
+defmodule Fact.Seam.FileReader.FixedLength.V1 do
   use Fact.Seam.FileReader,
-    family: :fixed_size,
+    family: :fixed_length,
     version: 1
 
   @type options ::
@@ -12,27 +12,122 @@ defmodule Fact.Seam.FileReader.FixedSize.V1 do
   @type reason ::
           :required_size_option
 
-  @type t :: %{}
+  @type t :: %{
+          required(:length) => pos_integer(),
+          required(:padding) => non_neg_integer()
+        }
 
-  defstruct []
+  @enforce_keys [:length, :padding]
+  defstruct [:length, :padding]
+
+  @option_specs %{
+    length: %{
+      allowed: :any,
+      parse: &__MODULE__.parse_pos_integer/1,
+      error: :invalid_length
+    },
+    padding: %{
+      allowed: :any,
+      parse: &__MODULE__.parse_non_neg_integer/1,
+      error: :invalid_padding
+    }
+  }
 
   @modes [:raw, :read, :binary]
   @default_direction :forward
   @default_position :start
-  @default_padding 0
 
   @impl true
-  def read(%__MODULE__{}, path, options) do
-    with {:ok, record_size} <- Keyword.fetch(options, :size),
-         direction <- Keyword.get(options, :direction, @default_direction),
-         from_position <- Keyword.get(options, :position, @default_position),
-         padding <- Keyword.get(options, :padding, @default_padding),
-         stream <- read(path, direction, from_position, record_size, padding) do
-      {:ok, stream}
-    else
-      :error ->
-        {:error, :required_size}
+  def default_options(), do: %{padding: 0}
+
+  @impl true
+  def init(options) when is_map(options) do
+    default_options()
+    |> Map.merge(options)
+    |> validate_options(@option_specs)
+    |> case do
+      {:ok, valid} ->
+        struct(__MODULE__, valid)
+
+      {:error, _} = error ->
+        error
     end
+  end
+
+  @impl true
+  def normalize_options(%{} = options) do
+    options
+    |> Map.take(Map.keys(@option_specs))
+    |> validate_options(@option_specs)
+    |> case do
+      {:ok, valid} -> valid
+      {:error, _} = error -> error
+    end
+  end
+
+  defp validate_options(options, specs) when is_map(options) do
+    Enum.reduce_while(options, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      case Map.fetch(specs, key) do
+        :error ->
+          {:halt, {:error, {:unknown_option, key}}}
+
+        {:ok, %{parse: parse, allowed: allowed, error: error}} ->
+          case parse.(value) do
+            {:ok, parsed} ->
+              cond do
+                allowed == :any ->
+                  {:cont, {:ok, Map.put(acc, key, parsed)}}
+
+                parsed in allowed ->
+                  {:cont, {:ok, Map.put(acc, key, parsed)}}
+
+                true ->
+                  {:halt, {:error, {error, value}}}
+              end
+
+            _ ->
+              {:halt, {:error, {error, value}}}
+          end
+      end
+    end)
+  end
+
+  def parse_pos_integer(value) when is_integer(value) do
+    if value > 0, do: {:ok, value}, else: :error
+  end
+
+  def parse_pos_integer(value) when is_binary(value) do
+    if value = String.to_integer(value) > 0,
+      do: {:ok, value},
+      else: :error
+  rescue
+    ArgumentError ->
+      :error
+  end
+
+  def parse_pos_integer(_value), do: :error
+
+  def parse_non_neg_integer(value) when is_integer(value) do
+    if value >= 0, do: {:ok, value}, else: :error
+  end
+
+  def parse_non_neg_integer(value) when is_binary(value) do
+    if value = String.to_integer(value) >= 0,
+      do: {:ok, value},
+      else: :error
+  rescue
+    ArgumentError ->
+      :error
+  end
+
+  def parse_non_neg_integer(_value), do: :error
+
+  @impl true
+  def read(%__MODULE__{length: length, padding: padding}, path, options) do
+    direction = Keyword.get(options, :direction, @default_direction)
+    from_position = Keyword.get(options, :position, @default_position)
+    stream = read(path, direction, from_position, length, padding)
+    {:ok, stream}
   end
 
   defp read(path, :forward, from_position, record_size, padding) do

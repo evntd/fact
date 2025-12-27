@@ -19,35 +19,11 @@ defmodule Fact.Seam.Adapter do
     default_impl = Keyword.get(opts, :default_impl, nil)
     fixed_options = Keyword.get(opts, :fixed_options, Macro.escape(%{}))
 
-    required_behaviours = 
-      Keyword.get(opts, :required_behaviours, nil)
-      |> case do
-        nil -> nil
-        behaviours when is_list(behaviours) ->
-          Enum.map(behaviours, &Macro.expand(&1, __CALLER__))
-      end
-      
-    IO.puts(inspect(required_behaviours))
-      
-    if allowed_impls_opt && required_behaviours do
-      raise ArgumentError, """
-      #{__MODULE__}: you must specify either :allowed_impls or define requirements via
-      :required_behaviours and/or :required_capabilities, not both.
-      """
-    end
-    
     allowed_impls =
       cond do
-        is_list(required_behaviours) ->
-          impls = registry.implements_behaviours(required_behaviours)
-          if impls == [] do
-            raise ArgumentError, """
-            #{__MODULE__}: no implementations satisfy the required behaviours #{inspect(required_behaviours)}
-            """
-          end
-          impls
         is_list(allowed_impls_opt) ->
           allowed_impls_opt
+
         true ->
           registry.all()
       end
@@ -71,6 +47,7 @@ defmodule Fact.Seam.Adapter do
             Use one of the following: #{Enum.map(@allowed_impls, &inspect/1) |> Enum.intersperse(", ")}
             """
           end
+
           @default_impl unquote(default_impl)
 
         length(@allowed_impls) == 1 ->

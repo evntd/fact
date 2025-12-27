@@ -23,7 +23,7 @@ defmodule Fact.Seam.FileName.Fixed.V1 do
   }
 
   @impl true
-  def get(%__MODULE{name: name}, _value), do: name
+  def get(%__MODULE{name: name}, _value, _opts), do: name
 
   @impl true
   @spec init(map()) :: t() | {:error, reason()}
