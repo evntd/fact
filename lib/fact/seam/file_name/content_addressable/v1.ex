@@ -3,31 +3,39 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
     family: :content_addressable,
     version: 1
 
-  @enforce_keys [:algorithm, :encoding]
-  defstruct [:algorithm, :encoding, :length]
+  import Fact.Seam.Parsers, only: [parse_existing_atom: 1]
 
-  @parser_funs %{
-    algorithm: :parse_algorithm,
-    encoding: :parse_encoding
-  }
+  @enforce_keys [:algorithm, :encoding]
+  defstruct [:algorithm, :encoding]
 
   @impl true
   def default_options(), do: %{algorithm: :sha256, encoding: :base64}
 
   @impl true
-  def init(options) do
-    impl = struct(__MODULE__, Map.merge(default_options(), options))
-    %{impl | length: get(impl, "") |> String.length()}
-  end
-
-  @impl true
-  def normalize_options(%{} = options) do
-    options
-    |> Map.take([:algorithm, :encoding])
-    |> Enum.reduce({:ok, %{}}, fn {key, value}, {:ok, acc} ->
-      parsed = apply(__MODULE__, @parser_funs[key], [value])
-      unless parsed, do: {:ok, acc}, else: {:ok, Map.put(acc, key, parsed)}
-    end)
+  def option_specs() do
+    %{
+      algorithm: %{
+        allowed: [
+          :sha256,
+          :sha512,
+          :sha3_256,
+          :sha3_512,
+          :blake2b,
+          :blake2s
+        ],
+        parse: &parse_existing_atom/1,
+        error: :invalid_algorithm_option
+      },
+      encoding: %{
+        allowed: [
+          :base16,
+          :base32,
+          :base64url
+        ],
+        parse: &parse_existing_atom/1,
+        error: :invalid_encoding_option
+      }
+    }
   end
 
   @impl true
@@ -44,13 +52,5 @@ defmodule Fact.Seam.FileName.ContentAddressable.V1 do
       :base16 ->
         Base.encode16(hash, case: :lower)
     end
-  end
-
-  def parse_algorithm(value) do
-    if value, do: String.to_atom(value), else: nil
-  end
-
-  def parse_encoding(value) do
-    if value, do: String.to_atom(value), else: nil
   end
 end

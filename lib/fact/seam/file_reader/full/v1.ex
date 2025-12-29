@@ -3,8 +3,6 @@ defmodule Fact.Seam.FileReader.Full.V1 do
     family: :full,
     version: 1
 
-  @type t :: %{}
-
   defstruct []
 
   @impl true

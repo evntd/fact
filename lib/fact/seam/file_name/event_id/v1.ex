@@ -2,12 +2,11 @@ defmodule Fact.Seam.FileName.EventId.V1 do
   use Fact.Seam.FileName,
     family: :event_id,
     version: 1
-    
+
   alias Fact.RecordFile.Schema
 
   defstruct []
 
-  # TODO: This depends on the RecordSchema!
   @impl true
   def get(%__MODULE__{}, event_record, opts) do
     context = Keyword.get(opts, :__context__)

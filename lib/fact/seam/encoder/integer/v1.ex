@@ -3,8 +3,6 @@ defmodule Fact.Seam.Encoder.Integer.V1 do
     family: :integer,
     version: 1
 
-  @type t :: %__MODULE__{}
-
   defstruct []
 
   @impl true

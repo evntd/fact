@@ -3,8 +3,6 @@ defmodule Fact.Seam.Decoder.Raw.V1 do
     family: :raw,
     version: 1
 
-  @type t :: %__MODULE__{}
-
   defstruct []
 
   @impl true
