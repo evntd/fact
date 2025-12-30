@@ -72,7 +72,7 @@ defmodule Fact.Seam.Adapter do
           {:error, _} = error ->
             error
 
-          impl ->
+          {:ok, impl} ->
             opts =
               impl.default_options()
               |> Map.merge(options)

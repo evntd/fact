@@ -67,6 +67,10 @@ defmodule Fact.Seam do
             end
           end
 
+          def normalize_options(nil) do
+            normalize_options(default_options())
+          end
+
           @impl true
           def prepare_options(%{} = options) when is_map(options), do: options
 

@@ -1,6 +1,6 @@
 defmodule Fact.Seam.Registry do
   @callback all() :: list()
-  @callback resolve({atom(), non_neg_integer()}) :: module()
+  @callback resolve({atom(), non_neg_integer()}) :: {:ok, module()} | {:error, term()}
   @callback latest_impl(atom()) :: module()
   @callback latest_version(atom()) :: non_neg_integer()
 
@@ -34,9 +34,14 @@ defmodule Fact.Seam.Registry do
           do: resolve(family, version)
 
       def resolve(family, version) do
-        Enum.find(@impls, fn impl ->
-          impl.family() == family and impl.version() == version
-        end) || {:error, {:unsupported_impl, family, version}}
+        resolved =
+          Enum.find(@impls, fn impl ->
+            impl.family() == family and impl.version() == version
+          end)
+
+        if is_nil(resolved),
+          do: {:error, {:unsupported_impl, family, version}},
+          else: {:ok, resolved}
       end
 
       @impl true
