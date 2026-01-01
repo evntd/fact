@@ -6,7 +6,5 @@ defmodule Fact.LedgerFile.Name do
       {:fixed, 1} => %{name: ".ledger"}
     }
 
-  def get(%Context{} = context) do
-    get(context, nil)
-  end
+  def get(%Context{} = context), do: get(context, nil, [])
 end

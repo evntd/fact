@@ -1,9 +1,9 @@
 defmodule Fact.Seam.Instance do
   @type t() :: %{
           required(:module) => atom(),
-          required(:struct) => struct()
+          required(:state) => struct()
         }
 
-  @enforce_keys [:module, :struct]
-  defstruct [:module, :struct]
+  @enforce_keys [:module, :state]
+  defstruct [:module, :state]
 end

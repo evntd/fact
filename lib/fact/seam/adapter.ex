@@ -4,12 +4,14 @@ defmodule Fact.Seam.Adapter do
   @callback registry() :: module()
   @callback allowed_impls() :: list({atom(), pos_integer()})
   @callback default_impl() :: {atom(), pos_integer()}
+  @callback default_options({atom(), pos_integer()}) :: map()
   @callback fixed_options({atom(), pos_integer()}) :: map()
+  @callback normalize_options({atom(), pos_integer()}, map()) :: map()
 
   @doc """
   Generic dispatch
   """
-  def __seam_call__(%Instance{module: mod, struct: s}, fun, args) do
+  def __seam_call__(%Instance{module: mod, state: s}, fun, args) do
     apply(mod, fun, [s | args])
   end
 
@@ -60,32 +62,66 @@ defmodule Fact.Seam.Adapter do
           """
       end
 
+      @impl true
       def registry(), do: @registry
+
+      @impl true
       def allowed_impls(), do: @allowed_impls
+
+      @impl true
       def default_impl(), do: @default_impl
+
+      @impl true
       def fixed_options(impl_id), do: Map.get(@fixed_options, impl_id, %{})
 
-      def init(options \\ %{}), do: init(@default_impl, options)
-
-      def init(impl_id, options) do
+      @impl true
+      def default_options(impl_id) do
         case registry().resolve(impl_id) do
           {:error, _} = error ->
             error
 
           {:ok, impl} ->
-            opts =
-              impl.default_options()
-              |> Map.merge(options)
-              |> Map.merge(fixed_options(impl_id))
-              |> impl.normalize_options()
+            fixed_opt_keys = Map.keys(fixed_options(impl_id))
 
-            case impl.init(opts) do
-              s when is_struct(s) ->
-                %Fact.Seam.Instance{module: impl, struct: s}
+            Map.reject(impl.default_options(), fn {k, v} -> k in fixed_opt_keys end)
+        end
+      end
 
-              {:error, _} = error ->
-                error
-            end
+      @impl true
+      def normalize_options(impl_id, options) do
+        case registry().resolve(impl_id) do
+          {:error, _} = error ->
+            error
+
+          {:ok, impl} ->
+            defaults = default_options(impl_id)
+            supplied = Map.take(options || %{}, Map.keys(defaults))
+
+            defaults
+            |> Map.merge(supplied)
+            |> impl.normalize_options()
+        end
+      end
+
+      def init(options \\ %{}), do: init(@default_impl, options)
+
+      def init(impl_id, options) do
+        with {:ok, impl} <- registry().resolve(impl_id) do
+          defaults = default_options(impl_id)
+          supplied = Map.take(options || %{}, Map.keys(defaults))
+
+          opts =
+            defaults
+            |> Map.merge(supplied)
+            |> Map.merge(fixed_options(impl_id))
+
+          case impl.init(opts) do
+            s when is_struct(s) ->
+              %Fact.Seam.Instance{module: impl, state: s}
+
+            {:error, _} = error ->
+              error
+          end
         end
       end
     end

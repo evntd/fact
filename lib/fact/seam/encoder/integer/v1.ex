@@ -6,7 +6,7 @@ defmodule Fact.Seam.Encoder.Integer.V1 do
   defstruct []
 
   @impl true
-  def encode(%__MODULE__{}, content) when is_integer(content) do
-    Integer.to_string(content)
+  def encode(%__MODULE__{}, content, _opts) when is_integer(content) do
+    {:ok, Integer.to_string(content)}
   end
 end

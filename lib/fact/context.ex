@@ -68,7 +68,7 @@ defmodule Fact.Context do
       record_file_reader: Fact.RecordFile.Reader.init(),
       record_file_writer: Fact.RecordFile.Writer.init(),
       record_file_schema: Fact.RecordFile.Schema.init(),
-      storage_layout: Fact.StorageLayout.init()
+      storage_layout: Fact.StorageLayout.init(%{path: Path.absname(path)})
     }
   end
 end

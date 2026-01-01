@@ -61,10 +61,6 @@ defmodule Fact.Seam do
             options
             |> Map.take(Map.keys(option_specs()))
             |> validate_options(option_specs())
-            |> case do
-              {:ok, valid_options} -> valid_options
-              {:error, _} = error -> error
-            end
           end
 
           def normalize_options(nil) do

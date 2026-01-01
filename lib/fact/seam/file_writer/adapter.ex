@@ -16,8 +16,8 @@ defmodule Fact.Seam.FileWriter.Adapter do
 
       @key unquote(context_key)
 
-      def write(%Context{@key => instance}, path, value, options \\ []) do
-        __seam_call__(instance, :write, [path, value, options])
+      def write(%Context{@key => instance} = context, path, value, options \\ []) do
+        __seam_call__(instance, :write, [path, value, [{:__context__, context} | options]])
       end
     end
   end

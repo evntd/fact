@@ -6,29 +6,37 @@ defmodule Fact.Seam.RecordSchema.Standard.V1 do
   defstruct []
 
   @impl true
-  def event_data(%__MODULE__{}, record), do: record["event_data"]
+  def event_data(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["event_data"]}
 
   @impl true
-  def event_id(%__MODULE__{}, record), do: record["event_id"]
+  def event_id(%__MODULE__{}, record, _opts) when is_map(record), do: {:ok, record["event_id"]}
 
   @impl true
-  def event_metadata(%__MODULE__{}, record), do: record["event_metadata"]
+  def event_metadata(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["event_metadata"]}
 
   @impl true
-  def event_tags(%__MODULE__{}, record), do: record["event_tags"]
+  def event_tags(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["event_tags"]}
 
   @impl true
-  def event_type(%__MODULE__{}, record), do: record["event_type"]
+  def event_type(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["event_type"]}
 
   @impl true
-  def event_store_position(%__MODULE__{}, record), do: record["store_position"]
+  def event_store_position(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["store_position"]}
 
   @impl true
-  def event_store_timestamp(%__MODULE__{}, record), do: record["store_timestamp"]
+  def event_store_timestamp(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["store_timestamp"]}
 
   @impl true
-  def event_stream_id(%__MODULE__{}, record), do: record["stream_id"]
+  def event_stream_id(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["stream_id"]}
 
   @impl true
-  def event_stream_position(%__MODULE__{}, record), do: record["stream_position"]
+  def event_stream_position(%__MODULE__{}, record, _opts) when is_map(record),
+    do: {:ok, record["stream_position"]}
 end

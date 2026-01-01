@@ -16,8 +16,8 @@ defmodule Fact.Seam.Decoder.Adapter do
 
       @key unquote(context_key)
 
-      def decode(%Context{@key => instance}, value) do
-        __seam_call__(instance, :decode, [value])
+      def decode(%Context{@key => instance} = context, value, opts \\ []) do
+        __seam_call__(instance, :decode, [value, [{:__context__, context} | opts]])
       end
     end
   end

@@ -39,9 +39,9 @@ defmodule Fact.Seam.Decoder.Delimited.V1 do
   end
 
   @impl true
-  def decode(%__MODULE__{delimiter: delimiter}, value) when is_binary(value) do
+  def decode(%__MODULE__{delimiter: delimiter}, value, _opts) when is_binary(value) do
     {:ok, String.split(value, delimiter)}
   end
 
-  def decode(%__MODULE__{}, value), do: {:error, {:decode, value}}
+  def decode(%__MODULE__{}, value, _opts), do: {:error, {:decode, value}}
 end

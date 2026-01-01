@@ -39,7 +39,7 @@ defmodule Fact.Seam.Encoder.Delimited.V1 do
   end
 
   @impl true
-  def encode(%__MODULE__{delimiter: delimiter}, content) when is_list(content) do
-    [Enum.intersperse(content, delimiter), delimiter]
+  def encode(%__MODULE__{delimiter: delimiter}, content, _opts) when is_list(content) do
+    {:ok, [Enum.intersperse(content, delimiter), delimiter]}
   end
 end

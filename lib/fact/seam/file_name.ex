@@ -1,5 +1,6 @@
 defmodule Fact.Seam.FileName do
   use Fact.Seam
 
-  @callback get(t(), term(), keyword()) :: Path.t() | {:error, term()}
+  @callback get(state :: t(), value :: term(), opts :: keyword()) ::
+              {:ok, Path.t()} | {:error, term()}
 end

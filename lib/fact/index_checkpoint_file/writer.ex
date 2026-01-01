@@ -6,6 +6,7 @@ defmodule Fact.IndexCheckpointFile.Writer do
         access: :write,
         binary: true,
         exclusive: false,
+        raw: false,
         sync: true,
         worm: false
       }

@@ -6,6 +6,7 @@ defmodule Fact.IndexFile.Writer do
         access: :append,
         binary: true,
         exclusive: false,
+        raw: false,
         sync: false,
         worm: false
       }

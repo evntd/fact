@@ -6,4 +6,6 @@ defmodule Fact.IndexFile.Name do
       {:hash, 1}
     ],
     default_impl: {:raw, 1}
+
+  def get(%Context{} = context, value), do: get(context, value, [])
 end

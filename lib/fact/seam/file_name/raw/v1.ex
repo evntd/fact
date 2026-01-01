@@ -6,5 +6,5 @@ defmodule Fact.Seam.FileName.Raw.V1 do
   defstruct []
 
   @impl true
-  def get(%__MODULE{}, value, _opts), do: value
+  def get(%__MODULE{}, value, _opts), do: {:ok, value}
 end

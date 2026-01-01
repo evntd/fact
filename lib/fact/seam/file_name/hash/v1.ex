@@ -44,15 +44,18 @@ defmodule Fact.Seam.FileName.Hash.V1 do
   def get(%__MODULE__{algorithm: algorithm, encoding: encoding}, index_value, _opts) do
     hash = :crypto.hash(algorithm, to_string(index_value))
 
-    case encoding do
-      :base64url ->
-        Base.url_encode64(hash, padding: false)
+    encoded =
+      case encoding do
+        :base64url ->
+          Base.url_encode64(hash, padding: false)
 
-      :base32 ->
-        Base.encode32(hash, case: :lower, padding: false)
+        :base32 ->
+          Base.encode32(hash, case: :lower, padding: false)
 
-      :base16 ->
-        Base.encode16(hash, case: :lower)
-    end
+        :base16 ->
+          Base.encode16(hash, case: :lower)
+      end
+
+    {:ok, encoded}
   end
 end

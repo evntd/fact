@@ -3,30 +3,46 @@ defmodule Fact.Seam.StorageLayout.Standard.V1 do
     family: :standard,
     version: 1
 
-  defstruct []
+  import Fact.Seam.Parsers, only: [parse_directory: 1]
+
+  @enforce_keys [:path]
+  defstruct [:path]
 
   @impl true
-  def init_storage(%__MODULE__{} = format, path) do
+  def default_options(), do: %{path: nil}
+
+  @impl true
+  def option_specs() do
+    %{
+      path: %{
+        allowed: :any,
+        parse: &parse_directory/1,
+        error: :invalid_path_option
+      }
+    }
+  end
+
+  @impl true
+  def records_path(%__MODULE__{path: root}, _opts), do: {:ok, Path.join(root, "events")}
+
+  @impl true
+  def indices_path(%__MODULE__{path: root}, _opts), do: {:ok, Path.join(root, "indices")}
+
+  @impl true
+  def ledger_path(%__MODULE__{path: root}, _opts), do: {:ok, root}
+
+  def init_storage(%__MODULE__{path: root} = format) do
     # INVARIANTS
     # - Path MUST be a directory
     # - Path SHOULD not exist
     # - IF path exists, it must be empty
 
-    with :ok <- ensure_is_dir_or_does_not_exist(path),
-         :ok <- ensure_empty_if_exists(path),
-         :ok <- create_filesystem_layout(format, path) do
+    with :ok <- ensure_is_dir_or_does_not_exist(root),
+         :ok <- ensure_empty_if_exists(root),
+         :ok <- create_filesystem_layout(format, root) do
       :ok
     end
   end
-
-  @impl true
-  def records_path(%__MODULE__{}, root), do: Path.join(root, "events")
-
-  @impl true
-  def indices_path(%__MODULE__{}, root), do: Path.join(root, "indices")
-
-  @impl true
-  def ledger_path(%__MODULE__{}, root), do: root
 
   defp ensure_is_dir_or_does_not_exist(path) do
     cond do

@@ -15,8 +15,8 @@ defmodule Fact.Seam.EventId.Adapter do
 
       @key :event_id
 
-      def generate(%Context{@key => instance}) do
-        __seam_call__(instance, :generate, [])
+      def generate(%Context{@key => instance} = context, opts \\ []) do
+        __seam_call__(instance, :generate, [[{:__context__, context} | opts]])
       end
     end
   end

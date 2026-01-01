@@ -9,6 +9,9 @@ defmodule Fact.Seam.FileName.Fixed.V1 do
   defstruct [:name]
 
   @impl true
+  def default_options(), do: %{name: nil}
+
+  @impl true
   def option_specs() do
     %{
       name: %{
@@ -20,5 +23,5 @@ defmodule Fact.Seam.FileName.Fixed.V1 do
   end
 
   @impl true
-  def get(%__MODULE{name: name}, _value, _opts), do: name
+  def get(%__MODULE{name: name}, _value, _opts), do: {:ok, name}
 end

@@ -8,7 +8,7 @@ defmodule Fact.Seam.Encoder.Json.V1 do
   cond do
     Code.ensure_loaded?(Elixir.JSON) ->
       @impl true
-      def encode(%__MODULE__{}, content) do
+      def encode(%__MODULE__{}, content, _opts) do
         try do
           {:ok, Elixir.JSON.encode!(content)}
         rescue
@@ -18,10 +18,10 @@ defmodule Fact.Seam.Encoder.Json.V1 do
 
     Code.ensure_loaded?(Jason) ->
       @impl true
-      def encode(%__MODULE__{}, event_record), do: Jason.encode(event_record)
+      def encode(%__MODULE__{}, event_record, _opts), do: Jason.encode(event_record)
 
     true ->
       @impl true
-      def encode(%__MODULE__{}, event_record), do: {:error, :no_json_impl}
+      def encode(%__MODULE__{}, event_record, _opts), do: {:error, :no_json_impl}
   end
 end

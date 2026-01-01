@@ -13,7 +13,7 @@ defmodule Fact.Seam.FileReader.FixedLength.V1 do
   @default_position :start
 
   @impl true
-  def default_options(), do: %{padding: 0}
+  def default_options(), do: %{length: nil, padding: 0}
 
   @impl true
   def option_specs() do
@@ -143,7 +143,8 @@ defmodule Fact.Seam.FileReader.FixedLength.V1 do
             {:ok, data} ->
               next_offset = offset - line_size
               {[data], {fd, next_offset}}
-              :eof
+
+            :eof ->
               {:halt, fd}
 
             {:error, reason} ->

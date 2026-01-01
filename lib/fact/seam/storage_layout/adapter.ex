@@ -15,16 +15,16 @@ defmodule Fact.Seam.StorageLayout.Adapter do
 
       @key :storage_layout
 
-      def records_path(%Context{:database_path => root, @key => instance}) do
-        __seam_call__(instance, :records_path, [root])
+      def records_path(%Context{@key => instance} = context, options \\ []) do
+        __seam_call__(instance, :records_path, [[{:__context__, context} | options]])
       end
 
-      def indices_path(%Context{:database_path => root, @key => instance}) do
-        __seam_call__(instance, :indices_path, [root])
+      def indices_path(%Context{@key => instance} = context, options \\ []) do
+        __seam_call__(instance, :indices_path, [[{:__context__, context} | options]])
       end
 
-      def ledger_path(%Context{:database_path => root, @key => instance}) do
-        __seam_call__(instance, :ledger_path, [root])
+      def ledger_path(%Context{@key => instance} = context, options \\ []) do
+        __seam_call__(instance, :ledger_path, [[{:__context__, context} | options]])
       end
     end
   end

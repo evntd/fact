@@ -5,4 +5,6 @@ defmodule Fact.IndexCheckpointFile.Name do
     fixed_options: %{
       {:fixed, 1} => %{name: ".checkpoint"}
     }
+
+  def get(%Context{} = context), do: get(context, nil, [])
 end

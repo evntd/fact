@@ -6,6 +6,6 @@ defmodule Fact.Seam.Decoder.Raw.V1 do
   defstruct []
 
   @impl true
-  def decode(%__MODULE__{}, value) when is_binary(value), do: {:ok, value}
-  def decode(%__MODULE__{}, value), do: {:error, {:decode, value}}
+  def decode(%__MODULE__{}, value, _opts) when is_binary(value), do: {:ok, value}
+  def decode(%__MODULE__{}, value, _opts), do: {:error, {:decode, value}}
 end

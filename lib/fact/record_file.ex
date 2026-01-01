@@ -8,15 +8,22 @@ defmodule Fact.RecordFile do
   alias Fact.StorageLayout
 
   def read(%Context{} = context, record_id) do
-    path = path(context, record_id)
-    encoded = read_single(context, path)
-    {:ok, record} = Decoder.decode(context, encoded)
-    {:ok, {record_id, record}}
+    with {:ok, record_path} <- path(context, record_id),
+         {:ok, encoded_record} <- read_single(context, record_path),
+         {:ok, record} <- Decoder.decode(context, encoded_record) do
+      {:ok, {record_id, record}}
+    end
+  end
+
+  def read_event(%Context{} = context, record_id) do
+    with {:ok, {^record_id, record}} <- read(context, record_id) do
+      {:ok, record}
+    end
   end
 
   defp read_single(%Context{} = context, path) do
     with {:ok, stream} <- Reader.read(context, path, []) do
-      stream |> Enum.at(0)
+      {:ok, stream |> Enum.at(0)}
     end
   end
 
@@ -37,15 +44,17 @@ defmodule Fact.RecordFile do
   end
 
   def write(%Context{} = context, record) do
-    encoded_record = Encoder.encode(context, record)
-    record_id = Name.get(context, record, encoded_record)
-    record_file = path(context, record_id)
-    :ok = Writer.write(context, record_file, encoded_record)
-    {:ok, record_id}
+    with {:ok, encoded_record} <- Encoder.encode(context, record),
+         {:ok, record_id} <- Name.get(context, {record, encoded_record}),
+         {:ok, record_path} <- path(context, record_id),
+         :ok <- Writer.write(context, record_path, encoded_record) do
+      {:ok, record_id}
+    end
   end
 
   defp path(context, record_id) do
-    Path.join(StorageLayout.records_path(context), record_id)
+    {:ok, path} = StorageLayout.records_path(context)
+    {:ok, Path.join(path, record_id)}
   end
 
   defp process_write_results(results) do

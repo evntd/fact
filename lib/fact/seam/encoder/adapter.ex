@@ -16,8 +16,8 @@ defmodule Fact.Seam.Encoder.Adapter do
 
       @key unquote(context_key)
 
-      def encode(%Context{@key => instance}, value) do
-        __seam_call__(instance, :encode, [value])
+      def encode(%Context{@key => instance} = context, value, opts \\ []) do
+        __seam_call__(instance, :encode, [value, [{:__context__, context} | opts]])
       end
     end
   end

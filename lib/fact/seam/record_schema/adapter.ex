@@ -16,40 +16,49 @@ defmodule Fact.Seam.RecordSchema.Adapter do
 
       @key unquote(context_key)
 
-      def event_data(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_data, [record])
+      def event_data(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_data, [record, [{:__context__, context} | options]])
       end
 
-      def event_id(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_id, [record])
+      def event_id(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_id, [record, [{:__context__, context} | options]])
       end
 
-      def event_metadata(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_metadata, [record])
+      def event_metadata(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_metadata, [record, [{:__context__, context} | options]])
       end
 
-      def event_tags(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_tags, [record])
+      def event_tags(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_tags, [record, [{:__context__, context} | options]])
       end
 
-      def event_type(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_type, [record])
+      def event_type(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_type, [record, [{:__context__, context} | options]])
       end
 
-      def event_store_position(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_store_position, [record])
+      def event_store_position(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_store_position, [
+          record,
+          [{:__context__, context} | options]
+        ])
       end
 
-      def event_store_timestamp(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_store_timestamp, [record])
+      def event_store_timestamp(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_store_timestamp, [
+          record,
+          [{:__context__, context} | options]
+        ])
       end
 
-      def event_stream_id(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_stream_id, [record])
+      def event_stream_id(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_stream_id, [record, [{:__context__, context} | options]])
       end
 
-      def event_stream_position(%Context{@key => instance}, record) do
-        __seam_call__(instance, :event_stream_position, [record])
+      def event_stream_position(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :event_stream_position, [
+          record,
+          [{:__context__, context} | options]
+        ])
       end
     end
   end

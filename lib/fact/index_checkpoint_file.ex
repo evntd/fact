@@ -8,24 +8,27 @@ defmodule Fact.IndexCheckpointFile do
   alias Fact.StorageLayout
 
   def read(%Context{} = context, indexer) do
-    path = path(context, indexer)
-    encoded = read_single(context, path)
-    Decoder.decode(context, encoded)
+    with {:ok, path} <- path(context, indexer),
+         encoded <- read_single(context, path),
+         {:ok, decoded} <- Decoder.decode(context, encoded) do
+      decoded
+    end
   end
 
   def write(%Context{} = context, indexer, position) do
-    encoded = Encoder.encode(context, position)
-    path = path(context, indexer)
-    Writer.write(context, path, encoded)
+    with {:ok, path} <- path(context, indexer),
+         {:ok, encoded} = Encoder.encode(context, position),
+         :ok <- Writer.write(context, path, encoded) do
+      :ok
+    end
   end
 
   defp path(%Context{} = context, {indexer_mod, indexer_key}) do
-    Path.join([
-      StorageLayout.indices_path(context),
-      to_string(indexer_mod),
-      to_string(indexer_key),
-      Name.get(context, nil)
-    ])
+    with {:ok, indices_path} <- StorageLayout.indices_path(context),
+         {:ok, checkpoint_file} <- Name.get(context) do
+      {:ok,
+       Path.join([indices_path, to_string(indexer_mod), to_string(indexer_key), checkpoint_file])}
+    end
   end
 
   defp read_single(%Context{} = context, path) do

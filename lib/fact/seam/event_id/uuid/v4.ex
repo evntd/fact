@@ -6,9 +6,7 @@ defmodule Fact.Seam.EventId.Uuid.V4 do
   defstruct []
 
   @impl true
-  def generate(%__MODULE__{}) do
-    {:ok, get_v4()}
-  end
+  def generate(%__MODULE__{}, _opts), do: {:ok, get_v4()}
 
   defp get_v4() do
     :uuid.get_v4()

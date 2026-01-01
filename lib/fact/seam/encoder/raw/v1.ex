@@ -6,5 +6,7 @@ defmodule Fact.Seam.Encoder.Raw.V1 do
   defstruct []
 
   @impl true
-  def encode(%__MODULE__{}, content) when is_binary(content), do: content
+  def encode(%__MODULE__{}, content, _opts) when is_binary(content), do: {:ok, content}
+
+  def encode(%__MODULE__{}, content, _opts), do: {:error, {:encode_error, content}}
 end
