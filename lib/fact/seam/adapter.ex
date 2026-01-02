@@ -95,7 +95,11 @@ defmodule Fact.Seam.Adapter do
 
           {:ok, impl} ->
             defaults = default_options(impl_id)
-            supplied = Map.take(options || %{}, Map.keys(defaults))
+
+            supplied =
+              (options || %{})
+              |> Map.new(&to_atom_keys/1)
+              |> Map.take(Map.keys(defaults))
 
             defaults
             |> Map.merge(supplied)
@@ -108,7 +112,11 @@ defmodule Fact.Seam.Adapter do
       def init(impl_id, options) do
         with {:ok, impl} <- registry().resolve(impl_id) do
           defaults = default_options(impl_id)
-          supplied = Map.take(options || %{}, Map.keys(defaults))
+
+          supplied =
+            (options || %{})
+            |> Map.new(&to_atom_keys/1)
+            |> Map.take(Map.keys(defaults))
 
           opts =
             defaults
@@ -128,6 +136,25 @@ defmodule Fact.Seam.Adapter do
       def from_config(%{family: family, version: version, options: options} = config)
           when is_map(config) do
         init({family, version}, options)
+      end
+
+      def from_config(%{"family" => fam, "version" => version, "options" => opts} = config)
+          when is_map(config) and is_binary(fam) and is_integer(version) and is_map(opts) do
+        impl_id = {String.to_existing_atom(fam), version}
+        {:ok, options} = normalize_options(impl_id, opts)
+        init(impl_id, options)
+      end
+
+      defp to_atom_keys({key, value}) do
+        if is_binary(key) do
+          try do
+            {String.to_existing_atom(key), value}
+          rescue
+            ArgumentError -> {key, value}
+          end
+        else
+          {key, value}
+        end
       end
     end
   end
