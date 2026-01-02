@@ -15,6 +15,10 @@ defmodule Fact.Seam.StorageLayout.Adapter do
 
       @key :storage_layout
 
+      def path(%Context{@key => instance} = context, options \\ []) do
+        __seam_call__(instance, :path, [[{:__context__, context} | options]])
+      end
+
       def records_path(%Context{@key => instance} = context, options \\ []) do
         __seam_call__(instance, :records_path, [[{:__context__, context} | options]])
       end

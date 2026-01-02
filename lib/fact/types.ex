@@ -11,6 +11,11 @@ defmodule Fact.Types do
   """
 
   @typedoc """
+  A unique identifier for a Fact database.
+  """
+  @type database_id :: uppercase_base32_uuid_v4_sans_padding()
+
+  @typedoc """
   The unique identifier for an event.
   """
   @type event_id :: lowercase_base16_uuid_v4_no_hyphens()
@@ -180,6 +185,11 @@ defmodule Fact.Types do
   (e.g. `9ff5f0c761ac49bb9a02f10f6f79e674`)
   """
   @type lowercase_base16_uuid_v4_no_hyphens :: String.t()
+
+  @typedoc """
+  A UUID v4 base32 encoded, uppercase, without padding characters.
+  """
+  @type uppercase_base32_uuid_v4_sans_padding :: String.t()
 
   @typedoc """
   A string that is not empty or solely consists of whitespace characters.

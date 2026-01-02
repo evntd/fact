@@ -16,47 +16,137 @@ defmodule Fact.Seam.RecordSchema.Adapter do
 
       @key unquote(context_key)
 
-      def event_data(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_data, [record, [{:__context__, context} | options]])
+      def get_event_data(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_data, [record, [{:__context__, context} | options]])
       end
 
-      def event_id(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_id, [record, [{:__context__, context} | options]])
+      def set_event_data(%Context{@key => instance} = context, record, value, options \\ []) do
+        __seam_call__(instance, :set_event_data, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
       end
 
-      def event_metadata(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_metadata, [record, [{:__context__, context} | options]])
+      def get_event_id(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_id, [record, [{:__context__, context} | options]])
       end
 
-      def event_tags(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_tags, [record, [{:__context__, context} | options]])
+      def set_event_id(%Context{@key => instance} = context, record, value, options \\ []) do
+        __seam_call__(instance, :set_event_id, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
       end
 
-      def event_type(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_type, [record, [{:__context__, context} | options]])
+      def get_event_metadata(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_metadata, [record, [{:__context__, context} | options]])
       end
 
-      def event_store_position(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_store_position, [
+      def set_event_metadata(%Context{@key => instance} = context, record, value, options \\ []) do
+        __seam_call__(instance, :set_event_metadata, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def get_event_tags(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_tags, [record, [{:__context__, context} | options]])
+      end
+
+      def set_event_tags(%Context{@key => instance} = context, record, value, options \\ []) do
+        __seam_call__(instance, :set_event_tags, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def get_event_type(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_type, [record, [{:__context__, context} | options]])
+      end
+
+      def set_event_type(%Context{@key => instance} = context, record, value, options \\ []) do
+        __seam_call__(instance, :set_event_type, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def get_event_store_position(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_store_position, [
           record,
           [{:__context__, context} | options]
         ])
       end
 
-      def event_store_timestamp(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_store_timestamp, [
+      def set_event_store_position(
+            %Context{@key => instance} = context,
+            record,
+            value,
+            options \\ []
+          ) do
+        __seam_call__(instance, :set_event_store_position, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def get_event_store_timestamp(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_store_timestamp, [
           record,
           [{:__context__, context} | options]
         ])
       end
 
-      def event_stream_id(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_stream_id, [record, [{:__context__, context} | options]])
+      def set_event_store_timestamp(
+            %Context{@key => instance} = context,
+            record,
+            value,
+            options \\ []
+          ) do
+        __seam_call__(instance, :set_event_store_timestamp, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
       end
 
-      def event_stream_position(%Context{@key => instance} = context, record, options \\ []) do
-        __seam_call__(instance, :event_stream_position, [
+      def get_event_stream_id(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_stream_id, [
           record,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def set_event_stream_id(%Context{@key => instance} = context, record, value, options \\ []) do
+        __seam_call__(instance, :set_event_stream_id, [
+          record,
+          value,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def get_event_stream_position(%Context{@key => instance} = context, record, options \\ []) do
+        __seam_call__(instance, :get_event_stream_position, [
+          record,
+          [{:__context__, context} | options]
+        ])
+      end
+
+      def set_event_stream_position(
+            %Context{@key => instance} = context,
+            record,
+            value,
+            options \\ []
+          ) do
+        __seam_call__(instance, :set_event_stream_position, [
+          record,
+          value,
           [{:__context__, context} | options]
         ])
       end

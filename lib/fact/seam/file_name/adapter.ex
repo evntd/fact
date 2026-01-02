@@ -18,8 +18,7 @@ defmodule Fact.Seam.FileName.Adapter do
 
       @key unquote(context_key)
 
-      def get(%Context{@key => instance} = context, value, options)
-          when is_binary(value) or is_nil(value) do
+      def get(%Context{@key => instance} = context, value, options) do
         __seam_call__(instance, :get, [value, [{:__context__, context} | options]])
       end
     end

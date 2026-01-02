@@ -12,7 +12,8 @@ defmodule Fact.RecordFile.Name do
         {event_record, encoded_record} = value
       )
       when is_tuple(value) do
-    if :hash == mod.id() do
+   
+    if :hash == mod.family() do
       get(context, encoded_record, [])
     else
       get(context, event_record, [])

@@ -124,6 +124,11 @@ defmodule Fact.Seam.Adapter do
           end
         end
       end
+
+      def from_config(%{family: family, version: version, options: options} = config)
+          when is_map(config) do
+        init({family, version}, options)
+      end
     end
   end
 end

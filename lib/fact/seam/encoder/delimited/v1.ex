@@ -42,4 +42,8 @@ defmodule Fact.Seam.Encoder.Delimited.V1 do
   def encode(%__MODULE__{delimiter: delimiter}, content, _opts) when is_list(content) do
     {:ok, [Enum.intersperse(content, delimiter), delimiter]}
   end
+  
+  def encode(%__MODULE__{} = impl, content, opts) when is_binary(content) do
+    encode(impl, [content], opts)
+  end
 end

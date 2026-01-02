@@ -23,6 +23,9 @@ defmodule Fact.Seam.StorageLayout.Standard.V1 do
   end
 
   @impl true
+  def path(%__MODULE__{path: root}, _opts), do: {:ok, root}
+
+  @impl true
   def records_path(%__MODULE__{path: root}, _opts), do: {:ok, Path.join(root, "events")}
 
   @impl true
