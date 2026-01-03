@@ -213,7 +213,7 @@ defmodule Fact.Context do
   def via(%__MODULE__{} = context, key) do
     {:via, Registry, {registry(context), key}}
   end
-  
+
   def last_store_position(%__MODULE__{} = context) do
     with stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
          {:ok, event} <- Fact.RecordFile.read_event(context, stream |> List.first()) do

@@ -1,4 +1,4 @@
-#defmodule Fact.AppendTest do
+# defmodule Fact.AppendTest do
 #  use ExUnit.Case, async: false
 #
 #  alias Fact
@@ -168,4 +168,4 @@
 #               Fact.append_stream(db, @test_event, "test_stream-9", 1)
 #    end
 #  end
-#end
+# end

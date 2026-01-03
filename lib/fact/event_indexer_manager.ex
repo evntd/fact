@@ -51,8 +51,6 @@ defmodule Fact.EventIndexerManager do
 
   @impl true
   def init({context, indexers}) do
-    
-    
     last_pos = Fact.Context.last_store_position(context)
 
     state = %__MODULE__{

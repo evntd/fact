@@ -50,6 +50,7 @@ defmodule Fact.EventStreamIndexer do
   @spec last_stream_position(Fact.Context.t(), Fact.Types.event_stream()) :: non_neg_integer()
   def last_stream_position(context, event_stream) do
     result = Fact.IndexFile.read_last_event(context, {__MODULE__, nil}, event_stream)
+
     unless is_nil(result) do
       {:ok, event} = result
       Fact.RecordFile.Schema.get_event_stream_position(context, event)

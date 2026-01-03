@@ -1,4 +1,4 @@
-#defmodule Fact.LockTest do
+# defmodule Fact.LockTest do
 #  use ExUnit.Case
 #
 #  alias Fact.Lock
@@ -36,4 +36,4 @@
 #
 #    assert lock1 !== lock2
 #  end
-#end
+# end

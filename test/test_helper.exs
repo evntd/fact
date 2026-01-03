@@ -1,4 +1,4 @@
-#defmodule Fact.TestHelper do
+# defmodule Fact.TestHelper do
 #  require Logger
 #
 #  def create(name, template \\ :default, args \\ []) when is_atom(template) and is_list(args) do
@@ -49,6 +49,6 @@
 #        raise "TIMED OUT waiting for #{position} to be indexed."
 #    end
 #  end
-#end
+# end
 
 ExUnit.start()

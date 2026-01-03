@@ -141,20 +141,22 @@ defmodule Fact.Seam.FileName.Hash.V1Test do
     end
 
     test "sha1 - base64url" do
-      {:ok, sha1_base64url} = V1.get(V1.init(%{algorithm: :sha, encoding: :base64url}), "test", [])
+      {:ok, sha1_base64url} =
+        V1.get(V1.init(%{algorithm: :sha, encoding: :base64url}), "test", [])
+
       # A sha1 is 20-bytes (160 bits), base32 encodes 6 bits to 1 byte. 
       # So this would be 26 bytes with 4 bits remaining, so round up to 27 bytes.
       assert 27 == String.length(sha1_base64url)
     end
 
-#    test "manual construction of the struct with invalid algorithm should fail" do
-#      invalid_algo = %V1{algorithm: :sha384, encoding: :base32}
-#      assert {:error, {:invalid_algorithm_option, :sha384}} == V1.get(invalid_algo, "test", [])
-#    end
-#
-#    test "manual construction of the struct with invalid encoding should fail" do
-#      invalid_algo = %V1{algorithm: :sha256, encoding: :base64}
-#      assert {:error, {:invalid_encoding_option, :base64}} == V1.get(invalid_algo, "test", [])
-#    end
+    #    test "manual construction of the struct with invalid algorithm should fail" do
+    #      invalid_algo = %V1{algorithm: :sha384, encoding: :base32}
+    #      assert {:error, {:invalid_algorithm_option, :sha384}} == V1.get(invalid_algo, "test", [])
+    #    end
+    #
+    #    test "manual construction of the struct with invalid encoding should fail" do
+    #      invalid_algo = %V1{algorithm: :sha256, encoding: :base64}
+    #      assert {:error, {:invalid_encoding_option, :base64}} == V1.get(invalid_algo, "test", [])
+    #    end
   end
 end

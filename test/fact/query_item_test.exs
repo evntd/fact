@@ -1,4 +1,4 @@
-#defmodule Fact.QueryItemTest do
+# defmodule Fact.QueryItemTest do
 #  use ExUnit.Case, async: true
 #  use Fact.Types
 #
@@ -280,4 +280,4 @@
 #      assert contains_events_at_store_positions(events, [1, 2, 6, 8, 9, 10])
 #    end
 #  end
-#end
+# end

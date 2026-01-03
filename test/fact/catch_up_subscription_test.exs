@@ -1,4 +1,4 @@
-#defmodule Fact.CatchUpSubscriptionTest do
+# defmodule Fact.CatchUpSubscriptionTest do
 #  use ExUnit.Case, async: false
 #  use Fact.Types
 #
@@ -213,4 +213,4 @@
 #
 #    assert false == Process.alive?(subscription)
 #  end
-#end
+# end
