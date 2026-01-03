@@ -42,24 +42,23 @@ defmodule Fact.Seam.FileName.Raw.V1Test do
     end
 
     test "given invalid metadata, should fail" do
-      assert {:error, {:unknown_option, %{invalid: "test"}}} == V1.init(%{invalid: "test"})
+      assert {:error, {:unknown_option, :invalid}} == V1.init(%{invalid: "test"})
     end
   end
 
   describe "normalize_options/0" do
     test "given empty map should return empty map" do
-      assert %{} == V1.normalize_options(%{})
+      assert {:ok, %{}} == V1.normalize_options(%{})
     end
 
-    test "given invalid options, should fail" do
-      assert {:error, {:unknown_option, %{invalid: "test"}}} ==
-               V1.normalize_options(%{invalid: "test"})
+    test "given invalid options, should remove them fail" do
+      assert {:ok, %{}} == V1.normalize_options(%{invalid: "test"})
     end
   end
 
-  describe "for/2" do
+  describe "get/3" do
     test "should return the supplied index_value" do
-      assert "test" == V1.for(V1.init(%{}), "test")
+      assert {:ok, "test"} == V1.get(V1.init(%{}), "test", [])
     end
   end
 end

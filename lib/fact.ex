@@ -198,7 +198,7 @@ defmodule Fact do
     read(context, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
   end
 
-  def read(context, {:query, query_fun}, read_opts) when is_function(query_fun) do
+  def read(_context, {:query, query_fun}, _read_opts) when is_function(query_fun) do
     #Fact.Storage.read_query(context, query_fun, read_opts)
     :ok
   end

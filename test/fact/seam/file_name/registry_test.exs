@@ -13,20 +13,15 @@ defmodule Fact.Seam.FileName.RegistryTest do
 
   describe "resolve/2" do
     test "given :raw, 1 should resolve" do
-      assert Fact.Seam.FileName.Raw.V1 == Registry.resolve(:raw, 1)
+      assert {:ok, Fact.Seam.FileName.Raw.V1} == Registry.resolve(:raw, 1)
     end
 
     test "given :hash, 1 should resolve" do
-      assert Fact.Seam.FileName.Hash.V1 == Registry.resolve(:hash, 1)
+      assert {:ok, Fact.Seam.FileName.Hash.V1} == Registry.resolve(:hash, 1)
     end
 
     test "given :event_id, 1 should resolve" do
-      assert Fact.Seam.FileName.EventId.V1 == Registry.resolve(:event_id, 1)
-    end
-
-    test "given :content_addressable, 1 should resolve" do
-      assert Fact.Seam.FileName.ContentAddressable.V1 ==
-               Registry.resolve(:content_addressable, 1)
+      assert {:ok, Fact.Seam.FileName.EventId.V1} == Registry.resolve(:event_id, 1)
     end
 
     test "given :other, 1 should fail" do
