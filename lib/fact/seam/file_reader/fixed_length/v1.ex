@@ -76,6 +76,9 @@ defmodule Fact.Seam.FileReader.FixedLength.V1 do
         end
       end,
       fn
+        {:error, :enoent} = error ->
+          {:halt, error}
+      
         {:error, reason} ->
           raise File.Error, reason: reason, action: "open", path: path
 
@@ -132,6 +135,9 @@ defmodule Fact.Seam.FileReader.FixedLength.V1 do
         end
       end,
       fn
+        {:error, :enoent} = error ->
+          {:halt, error}
+      
         {:error, reason} ->
           raise File.Error, reason: reason, action: "open", path: path
 
