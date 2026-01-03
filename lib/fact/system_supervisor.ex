@@ -1,5 +1,7 @@
 defmodule Fact.SystemSupervisor do
   use Supervisor
+  
+  require Logger
 
   def start_link(opts) do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
@@ -18,11 +20,16 @@ defmodule Fact.SystemSupervisor do
     receive do
       {:database_started, context} ->
         {:ok, context}
+    after
+      3_000 ->
+        {:error, :database_failure}
     end
   end
 
   def start_database(%Fact.Context{} = context) do
-    Supervisor.start_child(__MODULE__, database_supervisor_child_spec(context))
+    {:ok, pid} = Supervisor.start_child(__MODULE__, database_supervisor_child_spec(context))
+    
+    Logger.info("[Fact.Database.#{context.database_id}] started #{inspect(pid)}")
   end
 
   defp bootstrapper_child_spec(path) do

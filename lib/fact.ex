@@ -176,10 +176,11 @@ defmodule Fact do
 
   def read(context, :all, read_opts) do
     Fact.LedgerFile.read(context, read_opts)
+    |> Stream.map(&Fact.RecordFile.read(context, &1))
   end
 
   def read(context, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
-    Fact.IndexFile.read(context, {Fact.EventStreamIndexer, nil}, event_stream, read_opts)
+    read(context, {:index, {Fact.EventStreamIndexer, nil}, event_Stream}, read_opts)
   end
 
   def read(context, {:query, :all}, read_opts) do
@@ -198,12 +199,12 @@ defmodule Fact do
     read(context, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
   end
 
-  def read(_context, {:query, query_fun}, _read_opts) when is_function(query_fun) do
-    # Fact.Storage.read_query(context, query_fun, read_opts)
-    :ok
+  def read(context, {:query, query_fun}, read_opts) when is_function(query_fun) do
+    Fact.Context.read_query(context, query_fun, read_opts)
   end
 
   def read(context, {:index, indexer_mod, index}, read_opts) do
     Fact.IndexFile.read(context, indexer_mod, index, read_opts)
+    |> Stream.map(&Fact.RecordFile.read(context, &1))
   end
 end

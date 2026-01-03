@@ -24,7 +24,7 @@ defmodule Fact.EventPublisher do
   end
 
   def publish(%Fact.Context{} = context, event_id) when is_binary(event_id) do
-    {:ok, record} = Fact.RecordFile.read(context, event_id)
+    record = Fact.RecordFile.read(context, event_id)
     message = {:event_record, record}
     Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @all_events, message)
 

@@ -66,13 +66,13 @@ defmodule Fact.RecordFile do
     with {:ok, record_path} <- path(context, record_id),
          {:ok, encoded_record} <- read_single(context, record_path),
          {:ok, record} <- Decoder.decode(context, encoded_record) do
-      {:ok, {record_id, record}}
+      {record_id, record}
     end
   end
 
   def read_event(%Context{} = context, record_id) do
-    with {:ok, {^record_id, record}} <- read(context, record_id) do
-      {:ok, record}
+    with {^record_id, record} <- read(context, record_id) do
+      record
     end
   end
 

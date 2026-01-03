@@ -165,6 +165,7 @@ defmodule Fact.EventLedger do
   end
 
   defp enrich_events(%Fact.Context{} = context, {events, pos}) do
+    Logger.info("ENRICH EVENTS")
     timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
     Enum.map_reduce(events, pos, fn event, pos ->
