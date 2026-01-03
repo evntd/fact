@@ -37,20 +37,20 @@ defmodule Fact.CatchUpSubscription do
   require Logger
 
   @spec start_link(
-          Fact.Instance.t(),
+          Fact.Context.t(),
           pid(),
           Fact.Types.read_event_source(),
           Fact.Types.read_position(),
           keyword()
         ) :: {:ok, pid()} | {:error, term()}
-  def start_link(instance, subscriber, source \\ :all, position \\ 0, opts \\ []) do
-    GenServer.start_link(__MODULE__, {instance, subscriber, source, position}, opts)
+  def start_link(context, subscriber, source \\ :all, position \\ 0, opts \\ []) do
+    GenServer.start_link(__MODULE__, {context, subscriber, source, position}, opts)
   end
 
   @impl true
-  def init({instance, subscriber, source, position}) do
+  def init({context, subscriber, source, position}) do
     state = %{
-      instance: instance,
+      context: context,
       source: source,
       subscriber: subscriber,
       position: position,
@@ -65,14 +65,14 @@ defmodule Fact.CatchUpSubscription do
   @impl true
   def handle_continue(
         :init_mode,
-        %{instance: instance, source: source} = state
+        %{context: context, source: source} = state
       ) do
     Process.monitor(state.subscriber)
 
     # 1. Subscribe first
-    Fact.EventPublisher.subscribe(instance, source)
+    Fact.EventPublisher.subscribe(context, source)
     # 2. Capture boundary
-    high_water_mark = last_position(instance, source)
+    high_water_mark = last_position(context, source)
     # 3. Start replay
     send(self(), :replay)
 
@@ -81,7 +81,7 @@ defmodule Fact.CatchUpSubscription do
 
   @impl true
   def handle_info(:replay, state) do
-    Fact.read(state.instance, state.source,
+    Fact.read(state.context, state.source,
       position: min(state.position, state.high_water_mark),
       direction: :forward,
       return_type: :record
@@ -134,9 +134,9 @@ defmodule Fact.CatchUpSubscription do
   defp event_position(event, {:stream, event_stream}) when is_binary(event_stream),
     do: event[@event_stream_position]
 
-  defp last_position(instance, :all),
-    do: Fact.Storage.last_store_position(instance)
+  defp last_position(context, :all),
+    do: Fact.Context.last_store_position(context)
 
-  defp last_position(instance, {:stream, event_stream}) when is_binary(event_stream),
-    do: Fact.EventStreamIndexer.last_stream_position(instance, event_stream)
+  defp last_position(context, {:stream, event_stream}) when is_binary(event_stream),
+    do: Fact.EventStreamIndexer.last_stream_position(context, event_stream)
 end

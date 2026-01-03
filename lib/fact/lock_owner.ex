@@ -11,23 +11,23 @@ defmodule Fact.LockOwner do
   Starts the LockOwner server and acquires a lock for the given instance.
 
   ## Options
-    * `:instance` - a `Fact.Instance` representing the database
+    * `:context` - a `Fact.Context` representing the database
     * `:mode` - the lock mode: `:run`, `:restore`, or `:create`
     * Other `GenServer` options.
 
   """
   def start_link(opts) do
-    {lock_opts, genserver_opts} = Keyword.split(opts, [:instance, :mode])
-    instance = Keyword.fetch!(lock_opts, :instance)
+    {lock_opts, genserver_opts} = Keyword.split(opts, [:context, :mode])
+    context = Keyword.fetch!(lock_opts, :context)
     mode = Keyword.fetch!(lock_opts, :mode)
-    GenServer.start_link(__MODULE__, {instance, mode}, genserver_opts)
+    GenServer.start_link(__MODULE__, {context, mode}, genserver_opts)
   end
 
   @impl true
-  def init({instance, mode}) do
-    case Fact.Lock.acquire(instance, mode) do
+  def init({context, mode}) do
+    case Fact.Lock.acquire(context, mode) do
       {:ok, lock} ->
-        {:ok, lock}
+        {:ok, %{context: context, lock: lock}}
 
       {:error, reason} ->
         {:stop, reason}
@@ -35,8 +35,8 @@ defmodule Fact.LockOwner do
   end
 
   @impl true
-  def terminate(_reason, lock) do
-    Fact.Lock.release(lock)
+  def terminate(_reason, %{context: context, lock: lock}) do
+    Fact.Lock.release(context, lock)
     :ok
   end
 end

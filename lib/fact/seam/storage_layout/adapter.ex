@@ -30,6 +30,10 @@ defmodule Fact.Seam.StorageLayout.Adapter do
       def ledger_path(%Context{@key => instance} = context, options \\ []) do
         __seam_call__(instance, :ledger_path, [[{:__context__, context} | options]])
       end
+
+      def locks_path(%Context{@key => instance} = context, options \\ []) do
+        __seam_call__(instance, :locks_path, [[{:__context__, context} | options]])
+      end
     end
   end
 end

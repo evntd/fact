@@ -3,6 +3,7 @@ defmodule Fact.Context do
   alias Fact.IndexCheckpointFile
   alias Fact.IndexFile
   alias Fact.LedgerFile
+  alias Fact.LockFile
   alias Fact.RecordFile
   alias Fact.StorageLayout
 
@@ -41,6 +42,13 @@ defmodule Fact.Context do
     :ledger_file_reader,
     :ledger_file_writer,
 
+    ## Lock File
+    :lock_file_decoder,
+    :lock_file_encoder,
+    :lock_file_name,
+    :lock_file_reader,
+    :lock_file_writer,
+
     ## Records
     :record_file_decoder,
     :record_file_encoder,
@@ -71,6 +79,11 @@ defmodule Fact.Context do
       ledger_file_name: LedgerFile.Name.init(),
       ledger_file_reader: LedgerFile.Reader.init(%{length: 32, padding: 1}),
       ledger_file_writer: LedgerFile.Writer.init(),
+      lock_file_decoder: LockFile.Decoder.init(),
+      lock_file_encoder: LockFile.Encoder.init(),
+      lock_file_name: LockFile.Name.init(),
+      lock_file_reader: LockFile.Reader.init(),
+      lock_file_writer: LockFile.Writer.init(),
       record_file_decoder: RecordFile.Decoder.init(),
       record_file_encoder: RecordFile.Encoder.init(),
       record_file_name: RecordFile.Name.init(),
@@ -110,6 +123,11 @@ defmodule Fact.Context do
       ledger_file_name: LedgerFile.Name.from_config(event.ledger_file_name),
       ledger_file_reader: LedgerFile.Reader.from_config(event.ledger_file_reader),
       ledger_file_writer: LedgerFile.Writer.from_config(event.ledger_file_writer),
+      lock_file_decoder: LockFile.Decoder.from_config(event.lock_file_decoder),
+      lock_file_encoder: LockFile.Encoder.from_config(event.lock_file_encoder),
+      lock_file_name: LockFile.Name.from_config(event.lock_file_name),
+      lock_file_reader: LockFile.Reader.from_config(event.lock_file_reader),
+      lock_file_writer: LockFile.Writer.from_config(event.lock_file_writer),
       record_file_decoder: RecordFile.Decoder.from_config(event.record_file_decoder),
       record_file_encoder: RecordFile.Encoder.from_config(event.record_file_encoder),
       record_file_name: RecordFile.Name.from_config(event.record_file_name),
@@ -164,6 +182,11 @@ defmodule Fact.Context do
         LedgerFile.Reader.from_config(Map.get(event_data, "ledger_file_reader")),
       ledger_file_writer:
         LedgerFile.Writer.from_config(Map.get(event_data, "ledger_file_writer")),
+      lock_file_decoder: LockFile.Decoder.from_config(Map.get(event_data, "lock_file_decoder")),
+      lock_file_encoder: LockFile.Encoder.from_config(Map.get(event_data, "lock_file_encoder")),
+      lock_file_name: LockFile.Name.from_config(Map.get(event_data, "lock_file_name")),
+      lock_file_reader: LockFile.Reader.from_config(Map.get(event_data, "lock_file_reader")),
+      lock_file_writer: LockFile.Writer.from_config(Map.get(event_data, "lock_file_writer")),
       record_file_decoder:
         RecordFile.Decoder.from_config(Map.get(event_data, "record_file_decoder")),
       record_file_encoder:
@@ -177,5 +200,24 @@ defmodule Fact.Context do
         RecordFile.Writer.from_config(Map.get(event_data, "record_file_writer")),
       storage_layout: StorageLayout.from_config(Map.get(event_data, "storage_layout"))
     }
+  end
+
+  def pubsub(%__MODULE__{database_id: id}) do
+    Module.concat(Fact.PubSub, id)
+  end
+
+  def registry(%__MODULE__{database_id: id}) do
+    Module.concat(Fact.Registry, id)
+  end
+
+  def via(%__MODULE__{} = context, key) do
+    {:via, Registry, {registry(context), key}}
+  end
+  
+  def last_store_position(%__MODULE__{} = context) do
+    with stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
+         {:ok, event} <- Fact.RecordFile.read_event(context, stream |> List.first()) do
+      Fact.RecordFile.Schema.get_event_store_position(context, event)
+    end
   end
 end

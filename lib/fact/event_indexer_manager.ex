@@ -8,7 +8,7 @@ defmodule Fact.EventIndexerManager do
   @type indexer_status :: :stopped | :starting | :started | :ready
 
   defstruct [
-    :instance,
+    :context,
     indexers: %{},
     indexer_specs: [],
     chase_position: 0,
@@ -16,52 +16,54 @@ defmodule Fact.EventIndexerManager do
   ]
 
   def start_link(opts) do
-    {indexer_opts, genserver_opts} = Keyword.split(opts, [:instance, :indexers])
-    instance = Keyword.fetch!(indexer_opts, :instance)
+    {indexer_opts, genserver_opts} = Keyword.split(opts, [:context, :indexers])
+    context = Keyword.fetch!(indexer_opts, :context)
     indexers = Keyword.fetch!(indexer_opts, :indexers)
-    GenServer.start_link(__MODULE__, {instance, indexers}, genserver_opts)
+    GenServer.start_link(__MODULE__, {context, indexers}, genserver_opts)
   end
 
-  def ensure_indexer(%Fact.Instance{} = instance, indexer_id) do
-    GenServer.call(Fact.Instance.event_indexer_manager(instance), {:ensure_indexer, indexer_id})
+  def ensure_indexer(%Fact.Context{} = context, indexer_id) do
+    GenServer.call(Fact.Context.via(context, __MODULE__), {:ensure_indexer, indexer_id})
   end
 
-  def start_indexer(%Fact.Instance{} = instance, child_spec) do
-    GenServer.call(Fact.Instance.event_indexer_manager(instance), {:start_indexer, child_spec})
+  def start_indexer(%Fact.Context{} = context, child_spec) do
+    GenServer.call(Fact.Context.via(context, __MODULE__), {:start_indexer, child_spec})
   end
 
-  def notify_ready(%Fact.Instance{} = instance, index, checkpoint) do
+  def notify_ready(%Fact.Context{} = context, index, checkpoint) do
     GenServer.cast(
-      Fact.Instance.event_indexer_manager(instance),
+      Fact.Context.via(context, __MODULE__),
       {:indexer_ready, self(), index, checkpoint}
     )
   end
 
-  def subscribe(%Fact.Instance{} = instance) do
-    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), @topic)
+  def subscribe(%Fact.Context{} = context) do
+    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), @topic)
   end
 
-  def get_state(%Fact.Instance{} = instance) do
-    GenServer.call(Fact.Instance.event_indexer_manager(instance), :get_state)
+  def get_state(%Fact.Context{} = context) do
+    GenServer.call(Fact.Context.via(context, __MODULE__), :get_state)
   end
 
-  defp publish_indexed(%Fact.Instance{} = instance, position) do
-    Phoenix.PubSub.broadcast(Fact.Instance.pubsub(instance), @topic, {:indexed, position})
+  defp publish_indexed(%Fact.Context{} = context, position) do
+    Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @topic, {:indexed, position})
   end
 
   @impl true
-  def init({instance, indexers}) do
-    last_pos = Fact.Storage.last_store_position(instance)
+  def init({context, indexers}) do
+    
+    
+    last_pos = Fact.Context.last_store_position(context)
 
     state = %__MODULE__{
-      instance: instance,
+      context: context,
       indexers: %{},
       indexer_specs: indexers,
       chase_position: last_pos,
       published_position: last_pos
     }
 
-    Fact.EventPublisher.subscribe(instance, :all)
+    Fact.EventPublisher.subscribe(context, :all)
 
     {:ok, state, {:continue, :start_indexers}}
   end
@@ -86,22 +88,22 @@ defmodule Fact.EventIndexerManager do
   @impl true
   def handle_cast(
         {:start_child_indexer, spec},
-        %__MODULE__{instance: instance, indexers: indexers} = state
+        %__MODULE__{context: context, indexers: indexers} = state
       ) do
     indexer_id = get_indexer_id(spec)
 
-    case Registry.lookup(Fact.Instance.registry(instance), indexer_id) do
+    case Registry.lookup(Fact.Context.registry(context), indexer_id) do
       [] ->
         {mod, opts} = spec
 
         # subscribe to indexer messages
-        Fact.EventIndexer.subscribe(instance, indexer_id)
+        Fact.EventIndexer.subscribe(context, indexer_id)
 
         # start the indexer
         {:ok, pid} =
           DynamicSupervisor.start_child(
-            Fact.Instance.event_indexer_supervisor(instance),
-            {mod, {instance, opts}}
+            Fact.Context.via(context, Fact.EventIndexerSupervisor),
+            {mod, {context, opts}}
           )
 
         info = %{
@@ -232,7 +234,7 @@ defmodule Fact.EventIndexerManager do
   @impl true
   def handle_info(
         {:indexed, indexer, %{position: pos}},
-        %{instance: instance, indexers: indexers, published_position: pub_pos} = state
+        %{context: context, indexers: indexers, published_position: pub_pos} = state
       ) do
     {_, new_indexers} =
       Map.get_and_update(indexers, indexer, fn %{position: cur_pos} = info ->
@@ -243,7 +245,7 @@ defmodule Fact.EventIndexerManager do
     min_pos = Enum.map(new_indexers, fn {_, %{position: p}} -> p end) |> Enum.min()
 
     if min_pos > pub_pos do
-      publish_indexed(instance, min_pos)
+      publish_indexed(context, min_pos)
       {:noreply, %{state | indexers: new_indexers, published_position: min_pos}}
     else
       {:noreply, %{state | indexers: new_indexers}}

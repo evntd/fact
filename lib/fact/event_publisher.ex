@@ -8,32 +8,32 @@ defmodule Fact.EventPublisher do
 
   @all_events "*"
 
-  def subscribe(%Fact.Instance{} = instance, {:stream, stream}) when is_binary(stream) do
-    do_subscribe(instance, stream)
+  def subscribe(%Fact.Context{} = context, {:stream, stream}) when is_binary(stream) do
+    do_subscribe(context, stream)
   end
 
-  def subscribe(%Fact.Instance{} = instance, :all), do: do_subscribe(instance, @all_events)
+  def subscribe(%Fact.Context{} = context, :all), do: do_subscribe(context, @all_events)
 
-  defp do_subscribe(%Fact.Instance{} = instance, topic) do
-    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), topic)
+  defp do_subscribe(%Fact.Context{} = context, topic) do
+    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), topic)
   end
 
-  def publish(%Fact.Instance{} = instance, event_ids) when is_list(event_ids) do
-    Enum.each(event_ids, &publish(instance, &1))
+  def publish(%Fact.Context{} = context, event_ids) when is_list(event_ids) do
+    Enum.each(event_ids, &publish(context, &1))
     :ok
   end
 
-  def publish(%Fact.Instance{} = instance, event_id) when is_binary(event_id) do
-    record = Fact.Storage.read_event!(instance, event_id)
+  def publish(%Fact.Context{} = context, event_id) when is_binary(event_id) do
+    {:ok, record} = Fact.RecordFile.read(context, event_id)
     message = {:event_record, record}
-    Phoenix.PubSub.broadcast(Fact.Instance.pubsub(instance), @all_events, message)
+    Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @all_events, message)
 
     case stream_id(record) do
       nil ->
         :ok
 
       stream ->
-        Phoenix.PubSub.broadcast(Fact.Instance.pubsub(instance), stream, message)
+        Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), stream, message)
     end
 
     :ok

@@ -1,11 +1,50 @@
 defmodule Fact.LedgerFile do
   alias Fact.Context
-  alias Fact.LedgerFile.Decoder
-  alias Fact.LedgerFile.Encoder
-  alias Fact.LedgerFile.Name
-  alias Fact.LedgerFile.Reader
-  alias Fact.LedgerFile.Writer
   alias Fact.StorageLayout
+
+  defmodule Decoder do
+    use Fact.Seam.Decoder.Adapter,
+      context: :ledger_file_decoder,
+      allowed_impls: [{:raw, 1}]
+  end
+
+  defmodule Encoder do
+    use Fact.Seam.Encoder.Adapter,
+      context: :ledger_file_encoder,
+      allowed_impls: [{:delimited, 1}]
+  end
+
+  defmodule Name do
+    use Fact.Seam.FileName.Adapter,
+      context: :ledger_file_name,
+      allowed_impls: [{:fixed, 1}],
+      fixed_options: %{
+        {:fixed, 1} => %{name: ".ledger"}
+      }
+
+    def get(%Context{} = context), do: get(context, nil, [])
+  end
+
+  defmodule Reader do
+    use Fact.Seam.FileReader.Adapter,
+      context: :ledger_file_reader,
+      allowed_impls: [{:fixed_length, 1}]
+  end
+
+  defmodule Writer do
+    use Fact.Seam.FileWriter.Adapter,
+      context: :ledger_file_writer,
+      fixed_options: %{
+        {:standard, 1} => %{
+          access: :append,
+          binary: true,
+          exclusive: false,
+          raw: true,
+          sync: true,
+          worm: false
+        }
+      }
+  end
 
   def read(%Context{} = context, opts \\ []) when is_list(opts) do
     with {:ok, path} <- path(context),
@@ -33,9 +72,8 @@ defmodule Fact.LedgerFile do
   end
 
   defp path(%Context{} = context) do
-    with {:ok, ledger_path} <- StorageLayout.ledger_path(context),
-         {:ok, ledger_file} <- Name.get(context) do
-      {:ok, Path.join(ledger_path, ledger_file)}
+    with {:ok, ledger_file} <- Name.get(context) do
+      {:ok, Path.join(StorageLayout.ledger_path(context), ledger_file)}
     end
   end
 

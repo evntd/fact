@@ -146,7 +146,7 @@ defmodule Fact.EventIndexer do
   The state structure used by indexers in the `GenServer` callback functions. 
   """
   @type t :: %{
-          required(:instance) => Fact.Instance.t(),
+          required(:context) => Fact.Context.t(),
           required(:indexer) => Fact.EventIndexer.indexer_id(),
           required(:indexer_opts) => Fact.EventIndexer.indexer_options(),
           required(:checkpoint) => Fact.Types.read_position()
@@ -166,9 +166,9 @@ defmodule Fact.EventIndexer do
     * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.Types.event_record/0` is processed 
     regardless of whether the event is included within the index.
   """
-  @spec subscribe(Fact.Instance.t(), indexer_id()) :: :ok
-  def subscribe(%Fact.Instance{} = instance, indexer) do
-    Phoenix.PubSub.subscribe(Fact.Instance.pubsub(instance), topic(indexer))
+  @spec subscribe(Fact.Context.t(), indexer_id()) :: :ok
+  def subscribe(%Fact.Context{} = context, indexer) do
+    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), topic(indexer))
   end
 
   @doc """
@@ -194,11 +194,11 @@ defmodule Fact.EventIndexer do
 
       require Logger
 
-      defstruct [:instance, :indexer_id, :indexer_opts, :checkpoint]
+      defstruct [:context, :indexer_id, :indexer_opts, :checkpoint]
 
-      @spec child_spec({Fact.Instance.t(), Fact.EventIndexer.start_options()}) ::
+      @spec child_spec({Fact.Context.t(), Fact.EventIndexer.start_options()}) ::
               Supervisor.child_spec()
-      def child_spec({instance, opts}) do
+      def child_spec({context, opts}) do
         indexer_id =
           if is_nil(indexer_key = Keyword.get(opts, :indexer_key)),
             do: __MODULE__,
@@ -213,20 +213,20 @@ defmodule Fact.EventIndexer do
           |> Keyword.drop([:indexer_key])
           |> Keyword.put(:indexer_opts, indexer_opts)
           |> Keyword.put(:indexer_id, indexer_id)
-          |> Keyword.put(:name, Fact.Instance.via(instance, indexer_id))
+          |> Keyword.put(:name, Fact.Context.via(context, indexer_id))
 
         %{
           id: indexer_id,
-          start: {__MODULE__, :start_link, [instance, start_opts]}
+          start: {__MODULE__, :start_link, [context, start_opts]}
         }
       end
 
       @doc """
       Starts the indexer process.
       """
-      @spec start_link(Fact.Instance.t(), Fact.EventIndexer.start_options()) ::
+      @spec start_link(Fact.Context.t(), Fact.EventIndexer.start_options()) ::
               GenServer.on_start()
-      def start_link(instance, opts \\ []) do
+      def start_link(context, opts \\ []) do
         {index_opts, start_opts} =
           Keyword.split(opts, [:indexer_id, :indexer_opts])
 
@@ -234,7 +234,7 @@ defmodule Fact.EventIndexer do
         indexer_opts = Keyword.fetch!(index_opts, :indexer_opts)
 
         state = %__MODULE__{
-          instance: instance,
+          context: context,
           indexer_id: indexer_id,
           indexer_opts: indexer_opts,
           checkpoint: 0
@@ -245,9 +245,9 @@ defmodule Fact.EventIndexer do
 
       @impl true
       @doc false
-      def init(%{instance: instance} = state) do
-        :ok = ensure_storage(state)
-        :ok = Fact.EventPublisher.subscribe(instance, :all)
+      def init(%{context: context, indexer_id: indexer_id} = state) do
+        :ok = Fact.IndexCheckpointFile.ensure_exists(context, indexer_id)
+        :ok = Fact.EventPublisher.subscribe(context, :all)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
@@ -255,10 +255,10 @@ defmodule Fact.EventIndexer do
       @doc false
       def handle_continue(
             :rebuild_and_join,
-            %{instance: instance, indexer_id: indexer_id} = state
+            %{context: context, indexer_id: indexer_id} = state
           ) do
         checkpoint = rebuild_index(state)
-        Fact.EventIndexerManager.notify_ready(instance, indexer_id, checkpoint)
+        Fact.EventIndexerManager.notify_ready(context, indexer_id, checkpoint)
         {:noreply, %{state | checkpoint: checkpoint}}
       end
 
@@ -287,13 +287,17 @@ defmodule Fact.EventIndexer do
       end
 
       @spec rebuild_index(Fact.EventIndexer.t()) :: Fact.Types.read_position()
-      defp rebuild_index(%{instance: instance, indexer_id: indexer_id} = state) do
-        initial_checkpoint = Fact.Storage.read_checkpoint(instance, indexer_id)
+      defp rebuild_index(%{context: context, indexer_id: indexer_id} = state) do
+        {:ok, checkpoint} = Fact.IndexCheckpointFile.read(context, indexer_id)
 
-        Fact.Storage.read_ledger(instance, position: initial_checkpoint, return_type: :record)
-        |> Enum.reduce(initial_checkpoint, fn record, _acc ->
-          {:ok, index_result} = append_index(record, state)
-          index_result.position
+        Fact.LedgerFile.read(context, position: checkpoint)
+        |> Stream.map(fn record_id ->
+          {:ok, record} = Fact.RecordFile.read(context, record_id)
+          record
+        end)
+        |> Enum.reduce(checkpoint, fn record, _acc ->
+          {:ok, result} = append_index(record, state)
+          result.position
         end)
       end
 
@@ -302,19 +306,25 @@ defmodule Fact.EventIndexer do
       defp append_index(
              {record_id, %{@event_store_position => position} = event} = _record,
              %{
-               instance: instance,
+               context: context,
                indexer_id: indexer_id,
                indexer_opts: indexer_opts
              } = state
            ) do
-        index_values = index_event(event, indexer_opts)
-        Fact.Storage.write_index(instance, indexer_id, index_values, record_id)
-        Fact.Storage.write_checkpoint(instance, indexer_id, position)
+        index_values =
+          index_event(event, indexer_opts)
+          |> List.wrap()
+
+        Enum.each(index_values, fn index ->
+          Fact.IndexFile.write(context, indexer_id, index, record_id)
+        end)
+
+        Fact.IndexCheckpointFile.write(context, indexer_id, position)
 
         index_result = %{
           position: position,
           record_id: record_id,
-          index_values: List.wrap(index_values)
+          index_values: index_values
         }
 
         publish(state, index_result)
@@ -322,23 +332,11 @@ defmodule Fact.EventIndexer do
         {:ok, index_result}
       end
 
-      @spec ensure_storage(Fact.EventIndexer.t()) ::
-              :ok | {:error, File.posix() | :badarg | :terminated | :system_limit}
-      defp ensure_storage(%{instance: instance, indexer_id: indexer_id} = state) do
-        checkpoint_path = Fact.Instance.indexer_checkpoint_path(instance, indexer_id)
-
-        with :ok <- File.mkdir_p(Path.dirname(checkpoint_path)) do
-          unless File.exists?(checkpoint_path),
-            do: File.write(checkpoint_path, "0"),
-            else: :ok
-        end
-      end
-
       @spec publish(Fact.EventIndexer.t(), Fact.EventIndexer.index_result()) ::
               :ok | {:error, term()}
-      defp publish(%{instance: instance, indexer_id: indexer_id} = state, index_result) do
+      defp publish(%{context: context, indexer_id: indexer_id} = state, index_result) do
         Phoenix.PubSub.broadcast(
-          Fact.Instance.pubsub(instance),
+          Fact.Context.pubsub(context),
           Fact.EventIndexer.topic(indexer_id),
           {:indexed, indexer_id, index_result}
         )

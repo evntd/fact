@@ -19,29 +19,30 @@ defmodule Fact.Lock do
 
   """
 
+  alias Fact.Context
+  alias Fact.LockFile
+  alias Fact.StorageLayout
+
   @type mode :: :run | :restore | :create
   @type lock_metadata :: map()
 
   @type t :: %__MODULE__{
           mode: mode(),
           socket: port(),
-          socket_path: Path.t(),
-          metadata_path: Path.t()
+          socket_path: Path.t()
         }
 
   defstruct [:mode, :socket, :socket_path, :metadata_path]
 
   @modes [:run, :restore, :create]
 
-  @spec acquire(Fact.Instance.t(), mode()) ::
+  @spec acquire(Context.t(), mode()) ::
           {:ok, t()} | {:error, {:locked, lock_metadata()}} | {:error, term()}
   @doc """
   Acquire a lock for the instance in the specified mode.
   """
-  def acquire(%Fact.Instance{} = instance, mode) when mode in @modes do
-    socket_path = Fact.Instance.lock_path(instance)
-    metadata_path = Fact.Instance.lock_metadata_path(instance)
-
+  def acquire(%Context{} = context, mode) when mode in @modes do
+    socket_path = Path.join(StorageLayout.locks_path(context), "lock.sock")
     if stale_socket?(socket_path), do: File.rm(socket_path)
 
     case :gen_tcp.listen(0, [:binary, active: false, ip: {:local, socket_path}]) do
@@ -54,44 +55,20 @@ defmodule Fact.Lock do
           locked_at: DateTime.utc_now() |> DateTime.to_iso8601()
         }
 
-        File.write!(metadata_path, Fact.Json.encode!(metadata))
+        :ok = LockFile.write(context, metadata)
 
         {:ok,
          %__MODULE__{
            mode: mode,
            socket: socket,
-           socket_path: socket_path,
-           metadata_path: metadata_path
+           socket_path: socket_path
          }}
 
       {:error, :eaddrinuse} ->
-        {:error, {:locked, read_metadata(metadata_path)}}
+        {:error, {:locked, LockFile.read(context)}}
 
       {:error, reason} ->
         {:error, reason}
-    end
-  end
-
-  @doc """
-  Gets the metadata of a lock.
-  """
-  @spec info(t() | Fact.Instance.t()) :: {:ok, lock_metadata()} | {:ok, :unlocked}
-  def info(%Fact.Instance{} = instance) do
-    info(
-      Fact.Instance.lock_metadata_path(instance),
-      Fact.Instance.lock_path(instance)
-    )
-  end
-
-  def info(%__MODULE__{socket_path: socket_path, metadata_path: metadata_path}) do
-    info(metadata_path, socket_path)
-  end
-
-  defp info(metadata_path, socket_path) do
-    if File.exists?(metadata_path) and not stale_socket?(socket_path) do
-      {:ok, File.read!(metadata_path) |> Fact.Json.decode!()}
-    else
-      {:ok, :unlocked}
     end
   end
 
@@ -100,11 +77,11 @@ defmodule Fact.Lock do
     
   Closes the socket, deletes the socket file, and deletes the metadata file.
   """
-  @spec release(t()) :: :ok
-  def release(%__MODULE__{socket: socket, socket_path: socket_path, metadata_path: metadata_path}) do
+  @spec release(Context.t(), t()) :: :ok
+  def release(%Context{} = context, %__MODULE__{socket: socket, socket_path: socket_path}) do
     :gen_tcp.close(socket)
     File.rm(socket_path)
-    File.rm(metadata_path)
+    LockFile.delete(context)
     :ok
   end
 
@@ -120,13 +97,6 @@ defmodule Fact.Lock do
       end
     else
       false
-    end
-  end
-
-  defp read_metadata(path) do
-    case File.read(path) do
-      {:ok, contents} -> Fact.Json.decode!(contents)
-      error -> error
     end
   end
 end

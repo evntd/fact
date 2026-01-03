@@ -2,10 +2,13 @@ defmodule Fact.EventLedger do
   use GenServer
   use Fact.Types
 
+  alias Fact.EventId
+  alias Fact.RecordFile.Schema
+
   require Logger
 
   @type t :: %__MODULE__{
-          instance: :atom,
+          context: Fact.Context.t(),
           position: non_neg_integer()
         }
 
@@ -33,35 +36,35 @@ defmodule Fact.EventLedger do
     type: @event_type
   }
 
-  defstruct [:instance, position: 0]
+  defstruct [:context, position: 0]
 
-  @spec start_link([instance: Fact.Instance.t()] | []) :: {:ok, pid()} | {:error, term()}
+  @spec start_link([context: Fact.Context.t()] | []) :: {:ok, pid()} | {:error, term()}
   def start_link(opts) do
-    {ledger_opts, genserver_opts} = Keyword.split(opts, [:instance])
-    instance = Keyword.fetch!(ledger_opts, :instance)
-    GenServer.start_link(__MODULE__, instance, genserver_opts)
+    {ledger_opts, genserver_opts} = Keyword.split(opts, [:context])
+    context = Keyword.fetch!(ledger_opts, :context)
+    GenServer.start_link(__MODULE__, context, genserver_opts)
   end
 
   @spec commit(
-          Fact.Instance.t(),
+          Fact.Context.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
           Fact.Types.event_position(),
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def commit(instance, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
+  def commit(context, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
 
-  def commit(%Fact.Instance{} = instance, events, nil, after_position, opts),
-    do: commit(instance, events, Fact.Query.from_none(), after_position, opts)
+  def commit(%Fact.Context{} = context, events, nil, after_position, opts),
+    do: commit(context, events, Fact.Query.from_none(), after_position, opts)
 
   # TODO: Rework signatures to handle conversion of Fact.QueryItem to Fact.Query  
 
-  def commit(%Fact.Instance{} = instance, event, fail_if_match, after_position, opts)
+  def commit(%Fact.Context{} = context, event, fail_if_match, after_position, opts)
       when is_map(event) and not is_list(event) do
-    commit(instance, [event], fail_if_match, after_position, opts)
+    commit(context, [event], fail_if_match, after_position, opts)
   end
 
-  def commit(%Fact.Instance{} = instance, events, fail_if_match, after_position, opts) do
+  def commit(%Fact.Context{} = context, events, fail_if_match, after_position, opts) do
     cond do
       not is_list(events) ->
         {:error, :invalid_event_list}
@@ -82,7 +85,7 @@ defmodule Fact.EventLedger do
         timeout = Keyword.get(opts, :timeout, 5000)
 
         GenServer.call(
-          Fact.Instance.event_ledger(instance),
+          Fact.Context.via(context, __MODULE__),
           {:commit, events, condition: {fail_if_match, after_position}},
           timeout
         )
@@ -90,13 +93,13 @@ defmodule Fact.EventLedger do
   end
 
   @impl true
-  def init(instance) do
-    position =
-      unless is_nil(record = Fact.Storage.last_record(instance)),
-        do: record[@event_store_position],
-        else: 0
+  def init(%Fact.Context{} = context) do
+    state = %{
+      context: context,
+      position: Fact.Context.last_store_position(context)
+    }
 
-    {:ok, %__MODULE__{instance: instance, position: position}}
+    {:ok, state}
   end
 
   @impl true
@@ -127,16 +130,16 @@ defmodule Fact.EventLedger do
   defp conditional_commit(
          events,
          {_condition, expected_pos} = condition,
-         %{instance: instance, position: position} = state
+         %{context: context, position: position} = state
        )
        when expected_pos < position do
-    with :ok <- check_query_condition(instance, condition) do
+    with :ok <- check_query_condition(context, condition) do
       do_commit(events, state)
     end
   end
 
-  defp check_query_condition(instance, {query, expected_pos}) do
-    Fact.read(instance, {:query, query}, position: expected_pos, return_type: :record)
+  defp check_query_condition(context, {query, expected_pos}) do
+    Fact.read(context, {:query, query}, position: expected_pos, return_type: :record)
     |> Stream.take(-1)
     |> Enum.at(0)
     |> case do
@@ -153,15 +156,15 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp do_commit(events, %{instance: instance, position: position} = state) do
-    with {enriched_events, end_pos} <- enrich_events({events, position}),
+  defp do_commit(events, %{context: context, position: position} = state) do
+    with {enriched_events, end_pos} <- enrich_events(context, {events, position}),
          {:ok, committed} <- commit_events(enriched_events, state) do
-      Fact.EventPublisher.publish(instance, committed)
+      Fact.EventPublisher.publish(context, committed)
       {:ok, end_pos}
     end
   end
 
-  defp enrich_events({events, pos}) do
+  defp enrich_events(%Fact.Context{} = context, {events, pos}) do
     timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
     Enum.map_reduce(events, pos, fn event, pos ->
@@ -171,25 +174,22 @@ defmodule Fact.EventLedger do
         rename_keys(event, @replacements)
 
       enriched_event =
-        Map.merge(
-          %{
-            @event_data => %{},
-            @event_id => Fact.Uuid.v4(),
-            @event_metadata => %{},
-            @event_tags => [],
-            @event_store_position => next,
-            @event_store_timestamp => timestamp
-          },
-          event_with_renamed_keys
-        )
+        %{}
+        |> then(&Schema.set_event_data(context, &1, %{}))
+        |> then(&Schema.set_event_id(context, &1, EventId.generate(context)))
+        |> then(&Schema.set_event_metadata(context, &1, %{}))
+        |> then(&Schema.set_event_tags(context, &1, []))
+        |> then(&Schema.set_event_store_position(context, &1, next))
+        |> then(&Schema.set_event_store_timestamp(context, &1, timestamp))
+        |> Map.merge(event_with_renamed_keys)
 
       {enriched_event, next}
     end)
   end
 
-  defp commit_events(events, %{instance: instance} = _state) do
-    with {:ok, written_records} <- Fact.Storage.write_events(instance, events) do
-      Fact.Storage.write_index(instance, :ledger, written_records)
+  defp commit_events(events, %{context: context} = _state) do
+    with {:ok, written_records} <- Fact.RecordFile.write(context, events) do
+      Fact.LedgerFile.write(context, written_records)
     end
   end
 

@@ -21,7 +21,7 @@ defmodule Fact.SystemSupervisor do
     end
   end
 
-  def start_database(%Fact.Context{database_id: database_id} = context) do
+  def start_database(%Fact.Context{} = context) do
     Supervisor.start_child(__MODULE__, database_supervisor_child_spec(context))
   end
 

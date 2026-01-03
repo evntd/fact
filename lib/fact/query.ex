@@ -2,9 +2,9 @@ defmodule Fact.Query do
   @moduledoc """
   Provide utilities for constructing event queries for defining consistency boundaries and projection sources.
     
-  A **query** in the Fact system is a higher-order function that takes a database instance and returns a predicate
+  A **query** in the Fact system is a higher-order function that takes a database context and returns a predicate
   function. This predicate is used by `Fact.read/2` and related functions to determine whether each event in the
-  instance should be included in the result set.
+  database should be included in the result set.
     
   ## Query Construction
     
@@ -20,9 +20,9 @@ defmodule Fact.Query do
   """
 
   @typedoc """
-  A query is function which takes a database instance and returns an event_id predicate function. 
+  A query is function which takes a database context and returns an event_id predicate function. 
   """
-  @type t :: (Fact.Instance.t() -> (Fact.Types.event_id() -> boolean()))
+  @type t :: (Fact.Context.t() -> (Fact.Types.event_id() -> boolean()))
 
   @doc """
   This combines multiple queries using logical boolean operations returning a new query as a tuple.
@@ -39,8 +39,8 @@ defmodule Fact.Query do
 
         {:and, queries} ->
           fun =
-            fn instance ->
-              match_funs = Enum.map(queries, fn q -> q.(instance) end)
+            fn context ->
+              match_funs = Enum.map(queries, fn q -> q.(context) end)
 
               fn event_id ->
                 Enum.all?(match_funs, fn m -> m.(event_id) end)
@@ -51,8 +51,8 @@ defmodule Fact.Query do
 
         {:or, queries} ->
           fun =
-            fn instance ->
-              match_funs = Enum.map(queries, fn q -> q.(instance) end)
+            fn context ->
+              match_funs = Enum.map(queries, fn q -> q.(context) end)
 
               fn event_id ->
                 Enum.any?(match_funs, fn m -> m.(event_id) end)
@@ -86,7 +86,7 @@ defmodule Fact.Query do
 
       {:error, :non_function_query} ->
         raise ArgumentError,
-              "each query must be a function (:Fact.Types.instance_name() -> (Fact.Types.event_id() -> boolean()))"
+              "each query must be a function (:Fact.Context.t() -> (Fact.Types.event_id() -> boolean()))"
     end
   end
 
@@ -149,7 +149,7 @@ defmodule Fact.Query do
   """
   @spec from_all() :: t()
   def from_all() do
-    fn _instance ->
+    fn _context ->
       fn _event_id ->
         true
       end
@@ -234,18 +234,18 @@ defmodule Fact.Query do
 
   def from_data(data) when is_list(data) do
     fun =
-      fn instance ->
+      fn context ->
         matching_events =
           data
           |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
           |> Enum.reduce_while(:first, fn {key, values}, acc ->
             indexer_id = {Fact.EventDataIndexer, to_string(key)}
-            {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(instance, indexer_id)
+            {:ok, _pid} = Fact.EventIndexerManager.ensure_indexer(context, indexer_id)
 
             ids =
               values
               |> Enum.flat_map(fn value ->
-                case Fact.Storage.read_index(instance, indexer_id, value, return_type: :record_id) do
+                case Fact.Storage.read_index(context, indexer_id, value, return_type: :record_id) do
                   {:error, _} -> []
                   streamable -> Enum.to_list(streamable)
                 end
@@ -309,7 +309,7 @@ defmodule Fact.Query do
   """
   @spec from_none() :: t()
   def from_none() do
-    fn _instance ->
+    fn _context ->
       fn _event_id ->
         false
       end
@@ -380,11 +380,11 @@ defmodule Fact.Query do
       event_tags = Enum.uniq(tags)
 
       fun =
-        fn instance ->
+        fn context ->
           matching_events =
             Enum.reduce(event_tags, :first, fn tag, acc ->
               matches_tag =
-                Fact.Storage.read_index(instance, Fact.EventTagsIndexer, tag,
+                Fact.Storage.read_index(context, Fact.EventTagsIndexer, tag,
                   return_type: :record_id
                 )
                 |> Enum.into(MapSet.new())
@@ -466,11 +466,11 @@ defmodule Fact.Query do
       event_types = Enum.uniq(types)
 
       fun =
-        fn instance ->
+        fn context ->
           matching_events =
             event_types
             |> Stream.flat_map(
-              &Fact.Storage.read_index(instance, Fact.EventTypeIndexer, &1,
+              &Fact.Storage.read_index(context, Fact.EventTypeIndexer, &1,
                 return_type: :record_id
               )
             )

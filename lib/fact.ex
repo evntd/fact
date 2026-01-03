@@ -41,27 +41,33 @@ defmodule Fact do
   """
 
   def open(path) do
-    manifest = Fact.Storage.Manifest.load!(path)
-    instance = Fact.Instance.new(manifest)
-    {:ok, _supervisor_pid} = Fact.Supervisor.start_link(instance: instance)
-    {:ok, instance}
+    {:ok, _pid} =
+      case Process.whereis(Fact.SystemSupervisor) do
+        nil ->
+          Fact.SystemSupervisor.start_link([])
+
+        pid ->
+          {:ok, pid}
+      end
+
+    Fact.SystemSupervisor.start_database(path)
   end
 
   @spec append(
-          Fact.Instance.t(),
+          Fact.Context.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
           Fact.Types.event_position(),
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def append(
-        %Fact.Instance{} = instance,
+        %Fact.Context{} = context,
         events,
         fail_if_match \\ nil,
         after_position \\ 0,
         opts \\ []
       ) do
-    Fact.EventLedger.commit(instance, events, fail_if_match, after_position, opts)
+    Fact.EventLedger.commit(context, events, fail_if_match, after_position, opts)
   end
 
   @doc """
@@ -115,20 +121,20 @@ defmodule Fact do
 
   """
   @spec append_stream(
-          Fact.Instance.t(),
+          Fact.Context.t(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Types.event_stream(),
           Fact.Types.event_position() | :any | :none | :exists,
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def append_stream(
-        %Fact.Instance{} = instance,
+        %Fact.Context{} = context,
         events,
         event_stream,
         expected_position \\ :any,
         opts \\ []
       ) do
-    Fact.EventStreamWriter.commit(instance, events, event_stream, expected_position, opts)
+    Fact.EventStreamWriter.commit(context, events, event_stream, expected_position, opts)
   end
 
   @doc """
@@ -162,41 +168,42 @@ defmodule Fact do
 
   The reader validates these options and raises a `Fact.DatabaseError` on invalid values.
   """
-  @spec read(Fact.Instance.t(), Fact.Types.read_event_source(), Fact.Types.read_options()) ::
+  @spec read(Fact.Context.t(), Fact.Types.read_event_source(), Fact.Types.read_options()) ::
           Enumerable.t(Fact.Types.event_record())
-  def read(instance, event_source, opts \\ [])
+  def read(context, event_source, opts \\ [])
 
-  def read(_instance, :none, _read_opts), do: Stream.concat([])
+  def read(_context, :none, _read_opts), do: Stream.concat([])
 
-  def read(instance, :all, read_opts) do
-    Fact.Storage.read_ledger(instance, read_opts)
+  def read(context, :all, read_opts) do
+    Fact.LedgerFile.read(context, read_opts)
   end
 
-  def read(instance, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
-    Fact.Storage.read_index(instance, Fact.EventStreamIndexer, event_stream, read_opts)
+  def read(context, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
+    Fact.IndexFile.read(context, {Fact.EventStreamIndexer, nil}, event_stream, read_opts)
   end
 
-  def read(instance, {:query, :all}, read_opts) do
-    read(instance, :all, read_opts)
+  def read(context, {:query, :all}, read_opts) do
+    read(context, :all, read_opts)
   end
 
-  def read(instance, {:query, :none}, read_opts) do
-    read(instance, :none, read_opts)
+  def read(context, {:query, :none}, read_opts) do
+    read(context, :none, read_opts)
   end
 
-  def read(instance, {:query, %Fact.QueryItem{} = query}, read_opts) do
-    read(instance, {:query, Fact.QueryItem.to_function(query)}, read_opts)
+  def read(context, {:query, %Fact.QueryItem{} = query}, read_opts) do
+    read(context, {:query, Fact.QueryItem.to_function(query)}, read_opts)
   end
 
-  def read(instance, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do
-    read(instance, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
+  def read(context, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do
+    read(context, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
   end
 
-  def read(instance, {:query, query_fun}, read_opts) when is_function(query_fun) do
-    Fact.Storage.read_query(instance, query_fun, read_opts)
+  def read(context, {:query, query_fun}, read_opts) when is_function(query_fun) do
+    #Fact.Storage.read_query(context, query_fun, read_opts)
+    :ok
   end
 
-  def read(instance, {:index, indexer_mod, index}, read_opts) do
-    Fact.Storage.read_index(instance, indexer_mod, index, read_opts)
+  def read(context, {:index, indexer_mod, index}, read_opts) do
+    Fact.IndexFile.read(context, indexer_mod, index, read_opts)
   end
 end

@@ -33,12 +33,12 @@ defmodule Fact.Genesis.Builder do
   end
 
   defp init_storage(%Fact.Context{} = context) do
-    with {:ok, path} <- Fact.StorageLayout.path(context),
+    with path <- Fact.StorageLayout.path(context),
          :ok <- File.mkdir_p(path),
          :ok <- File.write(Path.join(path, ".gitignore"), "*"),
-         {:ok, records_path} <- Fact.StorageLayout.records_path(context),
+         records_path <- Fact.StorageLayout.records_path(context),
          :ok <- File.mkdir_p(records_path),
-         {:ok, indices_path} <- Fact.StorageLayout.indices_path(context),
+         indices_path <- Fact.StorageLayout.indices_path(context),
          :ok <- File.mkdir_p(indices_path) do
       :ok
     end

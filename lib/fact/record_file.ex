@@ -1,11 +1,66 @@
 defmodule Fact.RecordFile do
   alias Fact.Context
-  alias Fact.RecordFile.Decoder
-  alias Fact.RecordFile.Encoder
-  alias Fact.RecordFile.Name
-  alias Fact.RecordFile.Reader
-  alias Fact.RecordFile.Writer
   alias Fact.StorageLayout
+
+  defmodule Decoder do
+    use Fact.Seam.Decoder.Adapter,
+      context: :record_file_decoder,
+      allowed_impls: [{:json, 1}]
+  end
+
+  defmodule Encoder do
+    use Fact.Seam.Encoder.Adapter,
+      context: :record_file_encoder,
+      allowed_impls: [{:json, 1}]
+  end
+
+  defmodule Name do
+    use Fact.Seam.FileName.Adapter,
+      context: :record_file_name,
+      allowed_impls: [{:hash, 1}, {:event_id, 1}],
+      default_impl: {:event_id, 1}
+
+    alias Fact.Context
+    alias Fact.Seam.Instance
+
+    def get(
+          %Context{record_file_name: %Instance{module: mod}} = context,
+          {event_record, encoded_record} = value
+        )
+        when is_tuple(value) do
+      if :hash == mod.family() do
+        get(context, encoded_record, [])
+      else
+        get(context, event_record, [])
+      end
+    end
+  end
+
+  defmodule Reader do
+    use Fact.Seam.FileReader.Adapter,
+      context: :record_file_reader,
+      allowed_impls: [{:full, 1}]
+  end
+
+  defmodule Schema do
+    use Fact.Seam.RecordSchema.Adapter,
+      context: :record_file_schema
+  end
+
+  defmodule Writer do
+    use Fact.Seam.FileWriter.Adapter,
+      context: :record_file_writer,
+      fixed_options: %{
+        {:standard, 1} => %{
+          access: :write,
+          binary: true,
+          exclusive: true,
+          raw: true,
+          sync: true,
+          worm: true
+        }
+      }
+  end
 
   def read(%Context{} = context, record_id) do
     with {:ok, record_path} <- path(context, record_id),
@@ -53,8 +108,7 @@ defmodule Fact.RecordFile do
   end
 
   defp path(context, record_id) do
-    {:ok, path} = StorageLayout.records_path(context)
-    {:ok, Path.join(path, record_id)}
+    {:ok, Path.join(StorageLayout.records_path(context), record_id)}
   end
 
   defp process_write_results(results) do
