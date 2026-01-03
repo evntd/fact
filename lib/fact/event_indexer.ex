@@ -198,45 +198,40 @@ defmodule Fact.EventIndexer do
 
       @spec child_spec({Fact.Context.t(), Fact.EventIndexer.start_options()}) ::
               Supervisor.child_spec()
-      def child_spec({context, opts}) do
-        indexer_id =
-          if is_nil(indexer_key = Keyword.get(opts, :indexer_key)),
-            do: __MODULE__,
-            else: {__MODULE__, indexer_key}
-
-        indexer_opts =
-          Keyword.get(opts, :indexer_opts, [])
-          |> Keyword.put(:indexer_key, indexer_key)
-
-        start_opts =
-          opts
-          |> Keyword.drop([:indexer_key])
-          |> Keyword.put(:indexer_opts, indexer_opts)
-          |> Keyword.put(:indexer_id, indexer_id)
-          |> Keyword.put(:name, Fact.Context.via(context, indexer_id))
+      def child_spec(opts) do
+        context = Keyword.fetch!(opts, :context)
+        id = {__MODULE__, Keyword.get(opts, :key)}
+        options = Keyword.get(opts, :options, [])
 
         %{
-          id: indexer_id,
-          start: {__MODULE__, :start_link, [context, start_opts]}
+          id: id,
+          start:
+            {__MODULE__, :start_link,
+             [
+               [
+                 context: context,
+                 id: id,
+                 options: options,
+                 name: Fact.Context.via(context, id)
+               ]
+             ]}
         }
       end
 
       @doc """
       Starts the indexer process.
       """
-      @spec start_link(Fact.Context.t(), Fact.EventIndexer.start_options()) ::
-              GenServer.on_start()
-      def start_link(context, opts \\ []) do
-        {index_opts, start_opts} =
-          Keyword.split(opts, [:indexer_id, :indexer_opts])
+      def start_link(opts \\ []) do
+        {indexer_opts, start_opts} = Keyword.split(opts, [:context, :id, :options])
 
-        indexer_id = Keyword.fetch!(index_opts, :indexer_id)
-        indexer_opts = Keyword.fetch!(index_opts, :indexer_opts)
+        context = Keyword.fetch!(indexer_opts, :context)
+        {indexer_mod, indexer_key} = indexer_id = Keyword.fetch!(indexer_opts, :id)
+        options = Keyword.get(indexer_opts, :options, []) ++ [indexer_key: indexer_key]
 
         state = %__MODULE__{
           context: context,
           indexer_id: indexer_id,
-          indexer_opts: indexer_opts,
+          indexer_opts: options,
           checkpoint: 0
         }
 
@@ -288,13 +283,10 @@ defmodule Fact.EventIndexer do
 
       @spec rebuild_index(Fact.EventIndexer.t()) :: Fact.Types.read_position()
       defp rebuild_index(%{context: context, indexer_id: indexer_id} = state) do
-        {:ok, checkpoint} = Fact.IndexCheckpointFile.read(context, indexer_id)
+        checkpoint = Fact.IndexCheckpointFile.read(context, indexer_id)
 
         Fact.LedgerFile.read(context, position: checkpoint)
-        |> Stream.map(fn record_id ->
-          {:ok, record} = Fact.RecordFile.read(context, record_id)
-          record
-        end)
+        |> Stream.map(&Fact.RecordFile.read(context, &1))
         |> Enum.reduce(checkpoint, fn record, _acc ->
           {:ok, result} = append_index(record, state)
           result.position

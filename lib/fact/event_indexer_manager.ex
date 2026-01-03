@@ -18,7 +18,8 @@ defmodule Fact.EventIndexerManager do
   def start_link(opts) do
     {indexer_opts, genserver_opts} = Keyword.split(opts, [:context, :indexers])
     context = Keyword.fetch!(indexer_opts, :context)
-    indexers = [] #Keyword.fetch!(indexer_opts, :indexers)
+    # Keyword.fetch!(indexer_opts, :indexers)
+    indexers = []
     GenServer.start_link(__MODULE__, {context, indexers}, genserver_opts)
   end
 

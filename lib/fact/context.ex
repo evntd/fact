@@ -216,25 +216,27 @@ defmodule Fact.Context do
 
   def last_store_position(%__MODULE__{} = context) do
     with stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
-         event  <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
+         event <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
       Fact.RecordFile.Schema.get_event_store_position(context, event)
     end
   end
-  
+
   def read_query(%__MODULE__{} = context, query, opts \\ []) do
     {maybe_count, read_ledger_opts} = Keyword.split(opts, [:count])
     predicate = query.(context)
-    Fact.LedgerFile.read(context, opts)
+
+    Fact.LedgerFile.read(context, read_ledger_opts)
     |> Stream.filter(&predicate.(&1))
     |> take(Keyword.get(maybe_count, :count, :all))
   end
-  
+
   defp take(stream, count) do
     case count do
-      :all -> stream
+      :all ->
+        stream
+
       n ->
         Stream.take(stream, n)
     end
   end
-  
 end

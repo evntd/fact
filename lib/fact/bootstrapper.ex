@@ -3,6 +3,15 @@ defmodule Fact.Bootstrapper do
 
   require Logger
 
+  def child_spec(opts) do
+    path = Keyword.fetch!(opts, :path)
+    %{
+      id: {__MODULE__, path},
+      start: {__MODULE__, :start_link, [opts]},
+      restart: :temporary
+    }
+  end
+  
   def start_link(opts) do
     with {:ok, path} <- Keyword.fetch(opts, :path) do
       arg = %{
@@ -19,20 +28,21 @@ defmodule Fact.Bootstrapper do
 
   @impl true
   def init(args) do
-    Logger.info("#{__MODULE__}: init")
     {:ok, args, {:continue, :bootstrap}}
   end
 
   @impl true
   def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
     context = load_context(path)
-    Fact.SystemSupervisor.start_database(context)
-
-    if is_pid(caller) do
-      send(caller, {:database_started, context})
+    with {:ok, _pid} <- Fact.SystemSupervisor.start_database(context) do
+      if is_pid(caller) do
+        send(caller, {:database_started, context})
+      end
+      {:stop, :normal, state}
+    else
+      {:error, reason} ->
+        {:stop, reason, state}
     end
-
-    {:stop, :normal, state}
   end
 
   defp load_context(path) do

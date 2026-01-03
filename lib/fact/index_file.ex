@@ -67,7 +67,7 @@ defmodule Fact.IndexFile do
   def read_last_event(%Context{} = context, indexer, index) do
     read(context, indexer, index, direction: :backward, position: :end, count: 1)
     |> Stream.map(&Fact.RecordFile.read_event(context, &1))
-    |> List.first()
+    |> Enum.at(0)
   end
 
   def write(%Context{} = context, indexer, index, record_ids) do

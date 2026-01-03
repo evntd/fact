@@ -1,6 +1,6 @@
 defmodule Fact.SystemSupervisor do
   use Supervisor
-  
+
   require Logger
 
   def start_link(opts) do
@@ -10,39 +10,23 @@ defmodule Fact.SystemSupervisor do
   @impl true
   def init(opts) do
     databases = Keyword.get(opts, :databases, [])
-    children = Enum.map(databases, &bootstrapper_child_spec/1)
+    children = Enum.map(databases, & {Fact.Bootstrapper, [path: &1]})
     Supervisor.init(children, strategy: :one_for_one)
   end
 
   def start_database(path) when is_binary(path) do
-    {:ok, _pid} = Supervisor.start_child(__MODULE__, bootstrapper_child_spec(path))
-
-    receive do
-      {:database_started, context} ->
-        {:ok, context}
-    after
-      3_000 ->
-        {:error, :database_failure}
+    with {:ok, _pid} <- Supervisor.start_child(__MODULE__, {Fact.Bootstrapper, [path: path, caller: self()]}) do
+      receive do
+        {:database_started, context} ->
+          {:ok, context}
+      after
+        3_000 ->
+          {:error, :database_failure}
+      end
     end
   end
 
   def start_database(%Fact.Context{} = context) do
-    {:ok, pid} = Supervisor.start_child(__MODULE__, database_supervisor_child_spec(context))
-    
-    Logger.info("[Fact.Database.#{context.database_id}] started #{inspect(pid)}")
-  end
-
-  defp bootstrapper_child_spec(path) do
-    Supervisor.child_spec({Fact.Bootstrapper, [path: path, caller: self()]},
-      id: {Fact.Bootstrapper, path},
-      restart: :temporary
-    )
-  end
-
-  defp database_supervisor_child_spec(%Fact.Context{database_id: database_id} = context) do
-    Supervisor.child_spec({Fact.DatabaseSupervisor, context: context},
-      id: {Fact.DatabaseSupervisor, database_id},
-      type: :supervisor
-    )
+    Supervisor.start_child(__MODULE__, {Fact.DatabaseSupervisor, [context: context]})
   end
 end

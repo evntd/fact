@@ -180,7 +180,7 @@ defmodule Fact do
   end
 
   def read(context, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
-    read(context, {:index, {Fact.EventStreamIndexer, nil}, event_Stream}, read_opts)
+    read(context, {:index, {Fact.EventStreamIndexer, nil}, event_stream}, read_opts)
   end
 
   def read(context, {:query, :all}, read_opts) do
@@ -201,6 +201,7 @@ defmodule Fact do
 
   def read(context, {:query, query_fun}, read_opts) when is_function(query_fun) do
     Fact.Context.read_query(context, query_fun, read_opts)
+    |> Stream.map(&Fact.RecordFile.read(context, &1))
   end
 
   def read(context, {:index, indexer_mod, index}, read_opts) do
