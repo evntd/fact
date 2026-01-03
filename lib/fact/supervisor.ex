@@ -1,4 +1,4 @@
-defmodule Fact.SystemSupervisor do
+defmodule Fact.Supervisor do
   use Supervisor
 
   require Logger

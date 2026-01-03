@@ -34,7 +34,7 @@ defmodule Fact.Bootstrapper do
   @impl true
   def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
     context = load_context(path)
-    with {:ok, _pid} <- Fact.SystemSupervisor.start_database(context) do
+    with {:ok, _pid} <- Fact.Supervisor.start_database(context) do
       if is_pid(caller) do
         send(caller, {:database_started, context})
       end

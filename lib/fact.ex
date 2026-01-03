@@ -42,15 +42,15 @@ defmodule Fact do
 
   def open(path) do
     {:ok, _pid} =
-      case Process.whereis(Fact.SystemSupervisor) do
+      case Process.whereis(Fact.Supervisor) do
         nil ->
-          Fact.SystemSupervisor.start_link([])
+          Fact.Supervisor.start_link([])
 
         pid ->
           {:ok, pid}
       end
 
-    Fact.SystemSupervisor.start_database(path)
+    Fact.Supervisor.start_database(path)
   end
 
   @spec append(
