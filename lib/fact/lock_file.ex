@@ -1,6 +1,6 @@
 defmodule Fact.LockFile do
   alias Fact.Context
-  alias Fact.StorageLayout
+  alias Fact.Storage
 
   defmodule Decoder do
     use Fact.Seam.Decoder.Adapter,
@@ -71,7 +71,7 @@ defmodule Fact.LockFile do
 
   defp path(%Context{} = context) do
     with {:ok, filename} <- Name.get(context) do
-      {:ok, Path.join(StorageLayout.locks_path(context), filename)}
+      {:ok, Path.join(Storage.locks_path(context), filename)}
     end
   end
 end

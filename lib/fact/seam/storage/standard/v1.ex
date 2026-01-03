@@ -1,5 +1,5 @@
-defmodule Fact.Seam.StorageLayout.Standard.V1 do
-  use Fact.Seam.StorageLayout,
+defmodule Fact.Seam.Storage.Standard.V1 do
+  use Fact.Seam.Storage,
     family: :standard,
     version: 1
 

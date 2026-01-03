@@ -1,6 +1,6 @@
 defmodule Fact.IndexFile do
   alias Fact.Context
-  alias Fact.StorageLayout
+  alias Fact.Storage
 
   defmodule Decoder do
     use Fact.Seam.Decoder.Adapter,
@@ -82,7 +82,7 @@ defmodule Fact.IndexFile do
     with {:ok, index_file} <- Name.get(context, index) do
       {:ok,
        Path.join([
-         StorageLayout.indices_path(context),
+         Storage.indices_path(context),
          to_string(indexer_mod),
          to_string(indexer_key),
          index_file

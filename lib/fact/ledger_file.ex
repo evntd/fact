@@ -1,6 +1,6 @@
 defmodule Fact.LedgerFile do
   alias Fact.Context
-  alias Fact.StorageLayout
+  alias Fact.Storage
 
   defmodule Decoder do
     use Fact.Seam.Decoder.Adapter,
@@ -73,7 +73,7 @@ defmodule Fact.LedgerFile do
 
   defp path(%Context{} = context) do
     with {:ok, ledger_file} <- Name.get(context) do
-      {:ok, Path.join(StorageLayout.ledger_path(context), ledger_file)}
+      {:ok, Path.join(Storage.ledger_path(context), ledger_file)}
     end
   end
 

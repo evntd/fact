@@ -94,7 +94,7 @@ defmodule Fact.Genesis.Decider do
     record_file_reader: Fact.RecordFile.Reader,
     record_file_schema: Fact.RecordFile.Schema,
     record_file_writer: Fact.RecordFile.Writer,
-    storage_layout: Fact.StorageLayout
+    storage: Fact.Storage
   }
 
   defp build_configuration(args) do
@@ -185,7 +185,7 @@ defmodule Fact.Genesis.Decider do
          %{
            ledger_file_reader: ledger_file_reader,
            index_file_reader: index_file_reader,
-           storage_layout: storage_layout
+           storage: storage
          } = config
        ) do
     # This feels so gross, but I'm a bit stuck on some of the implicit coupling,
@@ -206,8 +206,8 @@ defmodule Fact.Genesis.Decider do
              index_file_reader
              | options: %{length: record_file_name_length, padding: index_file_reader_padding}
            },
-           storage_layout: %{
-             storage_layout
+           storage: %{
+             storage
              | options: %{path: path}
            }
        }}

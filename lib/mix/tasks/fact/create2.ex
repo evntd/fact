@@ -59,8 +59,8 @@ defmodule Mix.Tasks.Fact.Create2 do
     record_file_schema_options: :string,
     record_file_writer: :string,
     record_file_writer_options: :string,
-    storage_layout: :string,
-    storage_layout_options: :string
+    storage: :string,
+    storage_options: :string
   ]
 
   @aliases [

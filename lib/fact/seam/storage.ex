@@ -1,4 +1,4 @@
-defmodule Fact.Seam.StorageLayout do
+defmodule Fact.Seam.Storage do
   use Fact.Seam
 
   @callback path(t(), opts :: keyword()) :: Path.t() | {:error, term()}

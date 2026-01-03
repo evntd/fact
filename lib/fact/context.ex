@@ -5,7 +5,7 @@ defmodule Fact.Context do
   alias Fact.LedgerFile
   alias Fact.LockFile
   alias Fact.RecordFile
-  alias Fact.StorageLayout
+  alias Fact.Storage
 
   defstruct [
     # Identity
@@ -57,8 +57,8 @@ defmodule Fact.Context do
     :record_file_writer,
     :record_file_schema,
 
-    ## Storage Layout
-    :storage_layout
+    ## Storage
+    :storage
   ]
 
   def init(path) do
@@ -90,7 +90,7 @@ defmodule Fact.Context do
       record_file_reader: RecordFile.Reader.init(),
       record_file_writer: RecordFile.Writer.init(),
       record_file_schema: RecordFile.Schema.init(),
-      storage_layout: StorageLayout.init(%{path: Path.absname(path)})
+      storage: Storage.init(%{path: Path.absname(path)})
     }
   end
 
@@ -134,7 +134,7 @@ defmodule Fact.Context do
       record_file_reader: RecordFile.Reader.from_config(event.record_file_reader),
       record_file_writer: RecordFile.Writer.from_config(event.record_file_writer),
       record_file_schema: RecordFile.Schema.from_config(event.record_file_schema),
-      storage_layout: StorageLayout.from_config(event.storage_layout)
+      storage: Storage.from_config(event.storage)
     }
   end
 
@@ -198,7 +198,7 @@ defmodule Fact.Context do
         RecordFile.Schema.from_config(Map.get(event_data, "record_file_schema")),
       record_file_writer:
         RecordFile.Writer.from_config(Map.get(event_data, "record_file_writer")),
-      storage_layout: StorageLayout.from_config(Map.get(event_data, "storage_layout"))
+      storage: Storage.from_config(Map.get(event_data, "storage"))
     }
   end
 

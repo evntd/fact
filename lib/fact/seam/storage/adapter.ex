@@ -1,4 +1,4 @@
-defmodule Fact.Seam.StorageLayout.Adapter do
+defmodule Fact.Seam.Storage.Adapter do
   defmacro __using__(opts) do
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)
     default_impl = Keyword.get(opts, :default_impl, nil)
@@ -6,14 +6,14 @@ defmodule Fact.Seam.StorageLayout.Adapter do
 
     quote do
       use Fact.Seam.Adapter,
-        registry: Fact.Seam.StorageLayout.Registry,
+        registry: Fact.Seam.Storage.Registry,
         allowed_impls: unquote(allowed_impls),
         default_impl: unquote(default_impl),
         fixed_options: unquote(fixed_options)
 
       alias Fact.Context
 
-      @key :storage_layout
+      @key :storage
 
       def path(%Context{@key => instance} = context, options \\ []) do
         __seam_call__(instance, :path, [[{:__context__, context} | options]])

@@ -103,7 +103,7 @@ defmodule Fact.MixProject do
           Fact.RecordFile.Reader,
           Fact.RecordFile.Writer,
           Fact.RecordFile.Schema,
-          Fact.StorageLayout
+          Fact.Storage
         ],
         Core: [
           Fact.EventLedger,
@@ -174,19 +174,10 @@ defmodule Fact.MixProject do
           Fact.Seam.RecordSchema.Adapter,
           Fact.Seam.RecordSchema.Standard.V1,
           Fact.Seam.RecordSchema.Registry,
-          Fact.Seam.StorageLayout,
-          Fact.Seam.StorageLayout.Adapter,
-          Fact.Seam.StorageLayout.Standard.V1,
-          Fact.Seam.StorageLayout.Registry
-        ],
-        Storage: [
-          Fact.Storage,
-          Fact.Storage.Driver,
-          Fact.Storage.Driver.ByEventId,
-          Fact.Storage.Driver.ContentAddressable,
-          Fact.Storage.Format,
-          Fact.Storage.Format.Json,
-          Fact.Storage.Manifest
+          Fact.Seam.Storage,
+          Fact.Seam.Storage.Adapter,
+          Fact.Seam.Storage.Standard.V1,
+          Fact.Seam.Storage.Registry
         ]
       ],
       language: "en",
@@ -204,8 +195,7 @@ defmodule Fact.MixProject do
         Fact.Seam.FileReader,
         Fact.Seam.FileWriter,
         Fact.Seam.RecordSchema,
-        Fact.Seam.StorageLayout,
-        Fact.Storage
+        Fact.Seam.Storage
       ]
     ]
   end

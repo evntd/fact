@@ -33,7 +33,7 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
     :record_file_reader,
     :record_file_schema,
     :record_file_writer,
-    :storage_layout
+    :storage
   ]
 
   @enforce_keys @keys
@@ -79,6 +79,6 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
           record_file_reader: component_config(),
           record_file_schema: component_config(),
           record_file_writer: component_config(),
-          storage_layout: component_config()
+          storage: component_config()
         }
 end

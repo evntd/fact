@@ -1,6 +1,6 @@
 defmodule Fact.RecordFile do
   alias Fact.Context
-  alias Fact.StorageLayout
+  alias Fact.Storage
 
   defmodule Decoder do
     use Fact.Seam.Decoder.Adapter,
@@ -108,7 +108,7 @@ defmodule Fact.RecordFile do
   end
 
   defp path(context, record_id) do
-    {:ok, Path.join(StorageLayout.records_path(context), record_id)}
+    {:ok, Path.join(Storage.records_path(context), record_id)}
   end
 
   defp process_write_results(results) do

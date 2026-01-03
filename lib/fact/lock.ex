@@ -21,7 +21,7 @@ defmodule Fact.Lock do
 
   alias Fact.Context
   alias Fact.LockFile
-  alias Fact.StorageLayout
+  alias Fact.Storage
 
   @type mode :: :run | :restore | :create
   @type lock_metadata :: map()
@@ -42,7 +42,7 @@ defmodule Fact.Lock do
   Acquire a lock for the instance in the specified mode.
   """
   def acquire(%Context{} = context, mode) when mode in @modes do
-    socket_path = Path.join(StorageLayout.locks_path(context), "lock.sock")
+    socket_path = Path.join(Storage.locks_path(context), "lock.sock")
     if stale_socket?(socket_path), do: File.rm(socket_path)
 
     case :gen_tcp.listen(0, [:binary, active: false, ip: {:local, socket_path}]) do
