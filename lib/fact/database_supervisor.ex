@@ -13,8 +13,7 @@ defmodule Fact.DatabaseSupervisor do
   def init(%Fact.Context{} = context) do
     children = [
       {Registry, keys: :unique, name: Fact.Context.registry(context)},
-      {Fact.LockOwner,
-       context: context, mode: :run, name: Fact.Context.via(context, Fact.LockOwner)},
+      {Fact.Database, context: context, name: Fact.Context.via(context, Fact.Database)},
       {DynamicSupervisor,
        strategy: :one_for_one, name: Fact.Context.via(context, Fact.EventIndexerSupervisor)},
       {Phoenix.PubSub, name: Fact.Context.pubsub(context)},
