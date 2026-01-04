@@ -209,6 +209,10 @@ defmodule Fact.Context do
   def registry(%__MODULE__{database_id: id}) do
     Module.concat(Fact.Registry, id)
   end
+  
+  def supervisor(%__MODULE__{database_id: id}) do
+    Module.concat(Fact.DatabaseSupervisor, id)
+  end
 
   def via(%__MODULE__{} = context, key) do
     {:via, Registry, {registry(context), key}}
