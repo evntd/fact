@@ -38,13 +38,6 @@ defmodule Fact.EventIndexerManager do
     end
   end
 
-  def notify_ready(%Fact.Context{} = context, index, checkpoint) do
-    GenServer.cast(
-      Fact.Context.via(context, __MODULE__),
-      {:indexer_ready, self(), index, checkpoint}
-    )
-  end
-
   def subscribe(%Fact.Context{} = context) do
     Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), @topic)
   end
@@ -99,21 +92,6 @@ defmodule Fact.EventIndexerManager do
       [{_pid, _}] ->
         {:noreply, state}
     end
-  end
-
-  @impl true
-  def handle_cast({:indexer_ready, pid, indexer_id, checkpoint}, %__MODULE__{} = state) do
-    # state book keeping, and extract waiting processes
-    {waiters, indexers} =
-      Map.get_and_update!(state.indexers, indexer_id, fn info ->
-        waiters = Map.get(info, :waiters, MapSet.new())
-        {waiters, %{info | status: :ready, pid: pid, position: checkpoint, waiters: MapSet.new()}}
-      end)
-
-    # notify any process waiting on the indexer to be :ready
-    Enum.each(waiters, &GenServer.reply(&1, {:ok, indexer_id}))
-
-    {:noreply, %__MODULE__{state | indexers: indexers}}
   end
 
   @impl true
@@ -202,5 +180,20 @@ defmodule Fact.EventIndexerManager do
     else
       {:noreply, %{state | indexers: new_indexers}}
     end
+  end
+
+  @impl true
+  def handle_info({:ready, indexer_id, checkpoint}, %__MODULE__{} = state) do
+    # state book keeping, and extract waiting processes
+    {waiters, indexers} =
+      Map.get_and_update!(state.indexers, indexer_id, fn info ->
+        waiters = Map.get(info, :waiters, MapSet.new())
+        {waiters, %{info | status: :ready, position: checkpoint, waiters: MapSet.new()}}
+      end)
+
+    # notify any process waiting on the indexer to be :ready
+    Enum.each(waiters, &GenServer.reply(&1, {:ok, indexer_id}))
+
+    {:noreply, %__MODULE__{state | indexers: indexers}}
   end
 end

@@ -177,11 +177,11 @@ defmodule Fact.EventIndexer do
   @spec topic(indexer_id()) :: String.t()
   def topic(indexer) do
     case indexer do
+      {indexer_mod, nil} ->
+        "index:#{indexer_mod}"
+        
       {indexer_mod, indexer_key} ->
-        "#{indexer_mod}:#{indexer_key}"
-
-      indexer ->
-        to_string(indexer)
+        "index:#{indexer_mod}:#{indexer_key}"
     end
   end
 
@@ -195,7 +195,7 @@ defmodule Fact.EventIndexer do
       require Logger
 
       defstruct [:context, :indexer_id, :indexer_opts, :checkpoint]
-
+      
       @spec child_spec({Fact.Context.t(), Fact.EventIndexer.start_options()}) ::
               Supervisor.child_spec()
       def child_spec(opts) do
@@ -253,7 +253,7 @@ defmodule Fact.EventIndexer do
             %{context: context, indexer_id: indexer_id} = state
           ) do
         checkpoint = rebuild_index(state)
-        Fact.EventIndexerManager.notify_ready(context, indexer_id, checkpoint)
+        publish_ready(state, checkpoint)
         {:noreply, %{state | checkpoint: checkpoint}}
       end
 
@@ -319,18 +319,26 @@ defmodule Fact.EventIndexer do
           index_values: index_values
         }
 
-        publish(state, index_result)
+        publish_indexed(state, index_result)
 
         {:ok, index_result}
       end
 
-      @spec publish(Fact.EventIndexer.t(), Fact.EventIndexer.index_result()) ::
+      @spec publish_indexed(Fact.EventIndexer.t(), Fact.EventIndexer.index_result()) ::
               :ok | {:error, term()}
-      defp publish(%{context: context, indexer_id: indexer_id} = state, index_result) do
+      defp publish_indexed(%{context: context, indexer_id: indexer_id} = state, index_result) do
         Phoenix.PubSub.broadcast(
           Fact.Context.pubsub(context),
           Fact.EventIndexer.topic(indexer_id),
           {:indexed, indexer_id, index_result}
+        )
+      end
+      
+      defp publish_ready(%{context: context, indexer_id: indexer_id} = state, checkpoint) do
+        Phoenix.PubSub.broadcast(
+          Fact.Context.pubsub(context),
+          Fact.EventIndexer.topic(indexer_id),
+          {:ready, indexer_id, checkpoint}
         )
       end
     end
