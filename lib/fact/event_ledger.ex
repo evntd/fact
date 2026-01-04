@@ -86,7 +86,7 @@ defmodule Fact.EventLedger do
         timeout = Keyword.get(opts, :timeout, 5000)
 
         GenServer.call(
-          Fact.Context.via(database_id, __MODULE__),
+          Fact.Registry.via(database_id, __MODULE__),
           {:commit, events, condition: {fail_if_match, after_position}},
           timeout
         )

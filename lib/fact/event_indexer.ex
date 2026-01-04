@@ -168,7 +168,7 @@ defmodule Fact.EventIndexer do
   """
   @spec subscribe(Fact.Context.t(), indexer_id()) :: :ok
   def subscribe(%Fact.Context{} = context, indexer) do
-    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), topic(indexer))
+    Phoenix.PubSub.subscribe(Fact.Registry.pubsub(context), topic(indexer))
   end
 
   @doc """
@@ -210,7 +210,7 @@ defmodule Fact.EventIndexer do
                  database_id: database_id,
                  id: id,
                  options: options,
-                 name: Fact.Context.via(database_id, id)
+                 name: Fact.Registry.via(database_id, id)
                ]
              ]}
         }
@@ -333,7 +333,7 @@ defmodule Fact.EventIndexer do
            ) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           Phoenix.PubSub.broadcast(
-            Fact.Context.pubsub(context),
+            Fact.Registry.pubsub(context),
             Fact.EventIndexer.topic(indexer_id),
             {:indexed, indexer_id, index_result}
           )
@@ -343,7 +343,7 @@ defmodule Fact.EventIndexer do
       defp publish_ready(%{database_id: database_id, indexer_id: indexer_id} = state, checkpoint) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           Phoenix.PubSub.broadcast(
-            Fact.Context.pubsub(context),
+            Fact.Registry.pubsub(context),
             Fact.EventIndexer.topic(indexer_id),
             {:indexer_ready, indexer_id, checkpoint}
           )

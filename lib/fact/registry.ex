@@ -1,5 +1,4 @@
 defmodule Fact.Registry do
-  
   @doc """
   Get the `Fact.Context` for a running database by its `:database_id` or `:database_name`.
   """
@@ -25,12 +24,32 @@ defmodule Fact.Registry do
         {:error, :not_found}
     end
   end
-  
+
+  def lookup(database_id, key) do
+    Registry.lookup(registry(database_id), key)
+  end
+
+  def pubsub(database_id) when is_binary(database_id) do
+    Module.concat(Fact.PubSub, database_id)
+  end
+
   def register(%Fact.Context{database_id: database_id, database_name: database_name} = context) do
     # Store the context by id and name within the registry for lookups when needed.
     Registry.register(__MODULE__, {:context, database_id}, context)
     Registry.register(__MODULE__, {:context, database_name}, context)
     # Store the id by name.
     Registry.register(__MODULE__, {:id, database_name}, database_id)
+  end
+
+  def registry(database_id) when is_binary(database_id) do
+    Module.concat(Fact.Registry, database_id)
+  end
+
+  def supervisor(database_id) when is_binary(database_id) do
+    Module.concat(Fact.DatabaseSupervisor, database_id)
+  end
+
+  def via(database_id, key) when is_binary(database_id) do
+    {:via, Registry, {registry(database_id), key}}
   end
 end

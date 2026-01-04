@@ -6,7 +6,7 @@ defmodule Fact.EventPublisher do
   @all_events "*"
 
   def publish_appended(database_id, record_ids) do
-    GenServer.cast(Fact.Context.via(database_id, __MODULE__), {:publish_appended, record_ids})
+    GenServer.cast(Fact.Registry.via(database_id, __MODULE__), {:publish_appended, record_ids})
   end
 
   def start_link(options \\ []) do
@@ -22,7 +22,7 @@ defmodule Fact.EventPublisher do
   def subscribe(database_id, :all), do: do_subscribe(database_id, @all_events)
 
   defp do_subscribe(database_id, topic) do
-    Phoenix.PubSub.subscribe(Fact.Context.pubsub(database_id), topic)
+    Phoenix.PubSub.subscribe(Fact.Registry.pubsub(database_id), topic)
   end
 
   @impl true
@@ -39,7 +39,7 @@ defmodule Fact.EventPublisher do
   @impl true
   def handle_cast({:publish_appended, record_ids}, %{database_id: database_id} = state) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      pubsub = Fact.Context.pubsub(database_id)
+      pubsub = Fact.Registry.pubsub(database_id)
 
       Enum.each(record_ids, fn record_id ->
         {^record_id, event} = record = Fact.Database.read_record(database_id, record_id)

@@ -16,7 +16,7 @@ defmodule Fact.Database do
   def ensure_indexer(database_id, indexer_module, options \\ []) do
     if function_exported?(indexer_module, :child_spec, 1) do
       child_spec = indexer_module.child_spec(Keyword.put(options, :database_id, database_id))
-      GenServer.call(Fact.Context.via(database_id, __MODULE__), {:ensure_indexer, child_spec})
+      GenServer.call(Fact.Registry.via(database_id, __MODULE__), {:ensure_indexer, child_spec})
     else
       {:error, :invalid_indexer_module}
     end
@@ -31,7 +31,7 @@ defmodule Fact.Database do
   end
 
   defp publish_indexed(database_id, position) do
-    Phoenix.PubSub.broadcast(Fact.Context.pubsub(database_id), @topic, {:indexed, position})
+    Phoenix.PubSub.broadcast(Fact.Registry.pubsub(database_id), @topic, {:indexed, position})
   end
 
   def read_event(database_id, record_id) do
@@ -39,7 +39,7 @@ defmodule Fact.Database do
       Fact.RecordFile.read_event(context, record_id)
     end
   end
-  
+
   def read_index(database_id, indexer_id, index, read_opts) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
@@ -53,7 +53,7 @@ defmodule Fact.Database do
       map_read_results.(Fact.LedgerFile.read(context, read_opts))
     end
   end
-  
+
   def read_query(database_id, query_fun, read_opts) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       {maybe_count, read_ledger_opts} = Keyword.split(read_opts, [:count])
@@ -64,9 +64,11 @@ defmodule Fact.Database do
         |> Stream.filter(&predicate.(&1))
 
       map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
+
       case Keyword.get(maybe_count, :count, :all) do
         :all ->
           map_read_results.(stream)
+
         n ->
           map_read_results.(Stream.take(stream, n))
       end
@@ -78,7 +80,7 @@ defmodule Fact.Database do
       Fact.RecordFile.read(context, record_id)
     end
   end
-  
+
   defp start_child_indexer(child_spec) do
     GenServer.cast(self(), {:start_child_indexer, child_spec})
   end
@@ -86,7 +88,7 @@ defmodule Fact.Database do
   def start_indexer(database_id, indexer_module, options \\ []) do
     if function_exported?(indexer_module, :child_spec, 1) do
       child_spec = indexer_module.child_spec(Keyword.put(options, :database_id, database_id))
-      GenServer.call(Fact.Context.via(database_id, __MODULE__), {:start_indexer, child_spec})
+      GenServer.call(Fact.Registry.via(database_id, __MODULE__), {:start_indexer, child_spec})
     else
       {:error, :invalid_indexer_module}
     end
@@ -105,7 +107,7 @@ defmodule Fact.Database do
   end
 
   def subscribe(%Fact.Context{} = context) do
-    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), @topic)
+    Phoenix.PubSub.subscribe(Fact.Registry.pubsub(context), @topic)
   end
 
   defp to_result_type(context, result_type) do
@@ -169,13 +171,13 @@ defmodule Fact.Database do
         {:start_child_indexer, child_spec},
         %__MODULE__{database_id: database_id, indexers: indexers} = state
       ) do
-    case Registry.lookup(Fact.Context.registry(database_id), child_spec.id) do
+    case Fact.Registry.lookup(database_id, child_spec.id) do
       [] ->
         # subscribe to indexer messages
         Fact.EventIndexer.subscribe(database_id, child_spec.id)
 
         # start the indexer
-        {:ok, pid} = Supervisor.start_child(Fact.Context.supervisor(database_id), child_spec)
+        {:ok, pid} = Supervisor.start_child(Fact.Registry.supervisor(database_id), child_spec)
 
         info = %{
           pid: pid,

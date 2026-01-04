@@ -14,26 +14,25 @@ defmodule Fact.DatabaseSupervisor do
   def start_link(context: context) do
     %Fact.Context{database_id: database_id} = context
 
-    Supervisor.start_link(__MODULE__, context, name: Fact.Context.supervisor(database_id))
+    Supervisor.start_link(__MODULE__, context, name: Fact.Registry.supervisor(database_id))
   end
 
   @impl true
   def init(%Fact.Context{database_id: database_id} = context) do
-    
     Fact.Registry.register(context)
 
     children = [
-      {Registry, keys: :unique, name: Fact.Context.registry(database_id)},
-      {Phoenix.PubSub, name: Fact.Context.pubsub(database_id)},
+      {Registry, keys: :unique, name: Fact.Registry.registry(database_id)},
+      {Phoenix.PubSub, name: Fact.Registry.pubsub(database_id)},
       {Fact.EventPublisher,
-       database_id: database_id, name: Fact.Context.via(database_id, Fact.EventPublisher)},
+       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
       {Fact.Database,
-       database_id: database_id, name: Fact.Context.via(database_id, Fact.Database)},
+       database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
       {Fact.EventLedger,
-       database_id: database_id, name: Fact.Context.via(database_id, Fact.EventLedger)},
+       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
       {DynamicSupervisor,
        strategy: :one_for_one,
-       name: Fact.Context.via(database_id, Fact.EventStreamWriterSupervisor)}
+       name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

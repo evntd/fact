@@ -126,20 +126,4 @@ defmodule Fact.Context do
       storage: Storage.from_config(Map.get(event_data, "storage"))
     }
   end
-
-  def pubsub(database_id) when is_binary(database_id) do
-    Module.concat(Fact.PubSub, database_id)
-  end
-
-  def registry(database_id) when is_binary(database_id) do
-    Module.concat(Fact.Registry, database_id)
-  end
-
-  def supervisor(database_id) when is_binary(database_id) do
-    Module.concat(Fact.DatabaseSupervisor, database_id)
-  end
-
-  def via(database_id, key) when is_binary(database_id) do
-    {:via, Registry, {registry(database_id), key}}
-  end
 end
