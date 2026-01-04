@@ -81,27 +81,25 @@ defmodule Fact.CatchUpSubscription do
 
   @impl true
   def handle_info(:replay, state) do
-    with {:ok, context} <- Fact.Supervisor.get_context(state.database_id) do
-      Fact.read(context, state.source,
-        position: min(state.position, state.high_water_mark),
-        direction: :forward,
-        return_type: :record
-      )
-      |> Stream.take_while(fn {_, event} ->
-        event_position(event, state.source) <= state.high_water_mark
-      end)
-      |> Enum.each(&deliver(&1, state))
+    Fact.read(state.database_id, state.source,
+      position: min(state.position, state.high_water_mark),
+      direction: :forward,
+      result_type: :record
+    )
+    |> Stream.take_while(fn {_, event} ->
+      event_position(event, state.source) <= state.high_water_mark
+    end)
+    |> Enum.each(&deliver(&1, state))
 
-      # Flush any buffered live events in order
-      state.buffer
-      |> :gb_trees.to_list()
-      |> Enum.sort_by(fn {pos, _} -> pos end)
-      |> Enum.each(fn {_, record} -> deliver(record, state) end)
+    # Flush any buffered live events in order
+    state.buffer
+    |> :gb_trees.to_list()
+    |> Enum.sort_by(fn {pos, _} -> pos end)
+    |> Enum.each(fn {_, record} -> deliver(record, state) end)
 
-      send(state.subscriber, :caught_up)
+    send(state.subscriber, :caught_up)
 
-      {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
-    end
+    {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
   end
 
   @impl true

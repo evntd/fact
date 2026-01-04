@@ -127,61 +127,19 @@ defmodule Fact.Context do
     }
   end
 
-  def pubsub(%__MODULE__{database_id: id}) do
-    Module.concat(Fact.PubSub, id)
-  end
-
   def pubsub(database_id) when is_binary(database_id) do
     Module.concat(Fact.PubSub, database_id)
-  end
-
-  def registry(%__MODULE__{database_id: id}) do
-    Module.concat(Fact.Registry, id)
   end
 
   def registry(database_id) when is_binary(database_id) do
     Module.concat(Fact.Registry, database_id)
   end
 
-  def supervisor(%__MODULE__{database_id: id}) do
-    Module.concat(Fact.DatabaseSupervisor, id)
-  end
-
   def supervisor(database_id) when is_binary(database_id) do
     Module.concat(Fact.DatabaseSupervisor, database_id)
   end
 
-  def via(%__MODULE__{} = context, key) do
-    {:via, Registry, {registry(context), key}}
-  end
-
   def via(database_id, key) when is_binary(database_id) do
     {:via, Registry, {registry(database_id), key}}
-  end
-
-  def last_store_position(%__MODULE__{} = context) do
-    with stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
-         event <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
-      Fact.RecordFile.Schema.get_event_store_position(context, event)
-    end
-  end
-
-  def read_query(%__MODULE__{} = context, query, opts \\ []) do
-    {maybe_count, read_ledger_opts} = Keyword.split(opts, [:count])
-    predicate = query.(context)
-
-    Fact.LedgerFile.read(context, read_ledger_opts)
-    |> Stream.filter(&predicate.(&1))
-    |> take(Keyword.get(maybe_count, :count, :all))
-  end
-
-  defp take(stream, count) do
-    case count do
-      :all ->
-        stream
-
-      n ->
-        Stream.take(stream, n)
-    end
   end
 end

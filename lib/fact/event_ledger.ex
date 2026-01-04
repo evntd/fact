@@ -131,16 +131,16 @@ defmodule Fact.EventLedger do
   defp conditional_commit(
          events,
          {_condition, expected_pos} = condition,
-         %{context: context, position: position} = state
+         %{database_id: database_id, position: position} = state
        )
        when expected_pos < position do
-    with :ok <- check_query_condition(context, condition) do
+    with :ok <- check_query_condition(database_id, condition) do
       do_commit(events, state)
     end
   end
 
-  defp check_query_condition(context, {query, expected_pos}) do
-    Fact.read(context, {:query, query}, position: expected_pos, return_type: :record)
+  defp check_query_condition(database_id, {query, expected_pos}) do
+    Fact.Database.read_query(database_id, query, position: expected_pos, result_type: :record)
     |> Stream.take(-1)
     |> Enum.at(0)
     |> case do

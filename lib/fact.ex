@@ -54,20 +54,20 @@ defmodule Fact do
   end
 
   @spec append(
-          Fact.Context.t(),
+          Fact.Types.database_id(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
           Fact.Types.event_position(),
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def append(
-        %Fact.Context{} = context,
+        database_id,
         events,
         fail_if_match \\ nil,
         after_position \\ 0,
         opts \\ []
       ) do
-    Fact.EventLedger.commit(context, events, fail_if_match, after_position, opts)
+    Fact.EventLedger.commit(database_id, events, fail_if_match, after_position, opts)
   end
 
   @doc """
@@ -121,20 +121,20 @@ defmodule Fact do
 
   """
   @spec append_stream(
-          Fact.Context.t(),
+          Fact.Types.database_id(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Types.event_stream(),
           Fact.Types.event_position() | :any | :none | :exists,
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
   def append_stream(
-        %Fact.Context{} = context,
+        database_id,
         events,
         event_stream,
         expected_position \\ :any,
         opts \\ []
       ) do
-    Fact.EventStreamWriter.commit(context, events, event_stream, expected_position, opts)
+    Fact.EventStreamWriter.commit(database_id, events, event_stream, expected_position, opts)
   end
 
   @doc """
@@ -168,44 +168,41 @@ defmodule Fact do
 
   The reader validates these options and raises a `Fact.DatabaseError` on invalid values.
   """
-  @spec read(Fact.Context.t(), Fact.Types.read_event_source(), Fact.Types.read_options()) ::
+  @spec read(Fact.Types.database_id(), Fact.Types.read_event_source(), Fact.Types.read_options()) ::
           Enumerable.t(Fact.Types.event_record())
-  def read(context, event_source, opts \\ [])
+  def read(database_id, event_source, opts \\ [])
 
   def read(_context, :none, _read_opts), do: Stream.concat([])
 
-  def read(context, :all, read_opts) do
-    Fact.LedgerFile.read(context, read_opts)
-    |> Stream.map(&Fact.RecordFile.read(context, &1))
+  def read(database_id, :all, read_opts) do
+    Fact.Database.read_ledger(database_id, read_opts)
   end
 
-  def read(context, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
-    read(context, {:index, {Fact.EventStreamIndexer, nil}, event_stream}, read_opts)
+  def read(database_id, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
+    read(database_id, {:index, {Fact.EventStreamIndexer, nil}, event_stream}, read_opts)
   end
 
-  def read(context, {:query, :all}, read_opts) do
-    read(context, :all, read_opts)
+  def read(database_id, {:query, :all}, read_opts) do
+    read(database_id, :all, read_opts)
   end
 
-  def read(context, {:query, :none}, read_opts) do
-    read(context, :none, read_opts)
+  def read(database_id, {:query, :none}, read_opts) do
+    read(database_id, :none, read_opts)
   end
 
-  def read(context, {:query, %Fact.QueryItem{} = query}, read_opts) do
-    read(context, {:query, Fact.QueryItem.to_function(query)}, read_opts)
+  def read(database_id, {:query, %Fact.QueryItem{} = query}, read_opts) do
+    read(database_id, {:query, Fact.QueryItem.to_function(query)}, read_opts)
   end
 
-  def read(context, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do
-    read(context, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
+  def read(database_id, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do
+    read(database_id, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
   end
 
-  def read(context, {:query, query_fun}, read_opts) when is_function(query_fun) do
-    Fact.Context.read_query(context, query_fun, read_opts)
-    |> Stream.map(&Fact.RecordFile.read(context, &1))
+  def read(database_id, {:query, query_fun}, read_opts) when is_function(query_fun) do
+    Fact.Database.read_query(database_id, query_fun, read_opts)
   end
 
-  def read(context, {:index, indexer_mod, index}, read_opts) do
-    Fact.IndexFile.read(context, indexer_mod, index, read_opts)
-    |> Stream.map(&Fact.RecordFile.read(context, &1))
+  def read(database_id, {:index, indexer_id, index}, read_opts) do
+    Fact.Database.read_index(database_id, indexer_id, index, read_opts)
   end
 end

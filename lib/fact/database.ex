@@ -34,10 +34,58 @@ defmodule Fact.Database do
     Phoenix.PubSub.broadcast(Fact.Context.pubsub(database_id), @topic, {:indexed, position})
   end
 
-  def read(%Fact.Context{} = context, record_id) do
-    Fact.RecordFile.read(context, record_id)
+  def read_record(database_id, record_id) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      Fact.RecordFile.read(context, record_id)  
+    end
   end
+  
+  def read_ledger(database_id, read_opts) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
+      map_read_results.(Fact.LedgerFile.read(context, read_opts))
+    end
+  end
+  
+  defp to_result_type(context, result_type) do
+    case result_type do
+      :event ->
+        &Stream.map(&1, fn record_id -> elem(Fact.RecordFile.read(context, record_id), 1) end)
+        
+      :record ->
+        &Stream.map(&1, fn record_id -> Fact.RecordFile.read(context, record_id) end) 
 
+      :record_id ->
+        & &1
+    end
+  end
+  
+  def read_index(database_id, indexer_id, index, read_opts) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
+      map_read_results.(Fact.IndexFile.read(context, indexer_id, index, read_opts))
+    end
+  end
+  
+  def read_query(database_id, query_fun, read_opts) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      {maybe_count, read_ledger_opts} = Keyword.split(read_opts, [:count])
+      predicate = query_fun.(context)
+
+      stream =
+        Fact.LedgerFile.read(context, read_ledger_opts)
+        |> Stream.filter(&predicate.(&1))
+
+      map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
+      case Keyword.get(maybe_count, :count, :all) do
+        :all ->
+          map_read_results.(stream)
+        n ->
+          map_read_results.(Stream.take(stream, n))
+      end
+    end
+  end
+  
   defp start_child_indexer(child_spec) do
     GenServer.cast(self(), {:start_child_indexer, child_spec})
   end

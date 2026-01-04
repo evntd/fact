@@ -169,7 +169,7 @@ defmodule Fact.Types do
           direction: read_direction(),
           position: read_position(),
           count: read_count(),
-          return_type: read_return_type()
+          result_type: read_return_type()
         ]
 
   @typedoc """

@@ -37,12 +37,12 @@ defmodule Fact.EventPublisher do
   end
 
   @impl true
-  def handle_cast({:publish_appended, record_ids}, %{database_id: id} = state) do
+  def handle_cast({:publish_appended, record_ids}, %{database_id: database_id} = state) do
     with {:ok, context} <- Fact.Supervisor.get_context(id) do
-      pubsub = Fact.Context.pubsub(context)
+      pubsub = Fact.Context.pubsub(database_id)
 
       Enum.each(record_ids, fn record_id ->
-        {^record_id, event} = record = Fact.Database.read(context, record_id)
+        {^record_id, event} = record = Fact.Database.read_record(database_id, record_id)
         message = {:appended, record}
         Phoenix.PubSub.broadcast(pubsub, @all_events, message)
 
