@@ -10,6 +10,7 @@ defmodule Fact.Context do
   defstruct [
     # Identity
     :database_id,
+    :database_name,
 
     # Compatibility,
     :elixir_version,
@@ -97,6 +98,7 @@ defmodule Fact.Context do
   def from_genesis(%Fact.Genesis.Event.DatabaseCreated.V1{} = event) do
     %__MODULE__{
       database_id: event.database_id,
+      database_name: event.database_name,
       elixir_version: event.elixir_version,
       erts_version: event.erts_version,
       fact_version: event.fact_version,
@@ -143,6 +145,7 @@ defmodule Fact.Context do
 
     %__MODULE__{
       database_id: Map.get(event_data, "database_id"),
+      database_name: Map.get(event_data, "database_name"),
       elixir_version: Map.get(event_data, "elixir_version"),
       erts_version: Map.get(event_data, "erts_version"),
       fact_version: Map.get(event_data, "fact_version"),
@@ -209,7 +212,7 @@ defmodule Fact.Context do
   def registry(%__MODULE__{database_id: id}) do
     Module.concat(Fact.Registry, id)
   end
-  
+
   def supervisor(%__MODULE__{database_id: id}) do
     Module.concat(Fact.DatabaseSupervisor, id)
   end

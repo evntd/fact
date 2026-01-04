@@ -4,6 +4,7 @@ defmodule Mix.Tasks.Fact.Create2 do
   use Mix.Task
 
   @switches [
+    name: :string,
     path: :string,
     event_id: :string,
     event_id_options: :string,
@@ -64,6 +65,7 @@ defmodule Mix.Tasks.Fact.Create2 do
   ]
 
   @aliases [
+    n: :name,
     p: :path
   ]
 

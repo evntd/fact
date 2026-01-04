@@ -5,11 +5,13 @@ defmodule Fact.Genesis.Decider do
   def initial_state(), do: :initial_state
 
   def decide(:initial_state, %CreateDatabase.V1{args: args} = _command) do
-    with {:ok, path} <- Keyword.fetch(args, :path),
+    with {:ok, name} <- Keyword.fetch(args, :name),
+         {:ok, path} <- Keyword.fetch(args, :path),
          :ok <- verify_path(path),
          {:ok, configuration} <- build_configuration(args) do
       info = %{
         database_id: generate_database_id(),
+        database_name: name,
         elixir_version: elixir_version(),
         erts_version: erts_version(),
         fact_version: fact_version(),

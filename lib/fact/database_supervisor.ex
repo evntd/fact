@@ -1,8 +1,9 @@
 defmodule Fact.DatabaseSupervisor do
   use Supervisor
-  
+
   def child_spec(opts) do
     context = Keyword.fetch!(opts, :context)
+
     %{
       id: {__MODULE__, context.database_id},
       start: {__MODULE__, :start_link, [[context: context]]},
@@ -19,7 +20,10 @@ defmodule Fact.DatabaseSupervisor do
   end
 
   @impl true
-  def init(%Fact.Context{} = context) do
+  def init(%Fact.Context{database_id: id, database_name: name} = context) do
+    Registry.register(Fact.Registry, id, context)
+    Registry.register(Fact.Registry, name, context)
+
     children = [
       {Registry, keys: :unique, name: Fact.Context.registry(context)},
       {Fact.Database, context: context, name: Fact.Context.via(context, Fact.Database)},

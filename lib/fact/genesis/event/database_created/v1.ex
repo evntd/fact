@@ -1,6 +1,7 @@
 defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
   @keys [
     :database_id,
+    :database_name,
     :elixir_version,
     :erts_version,
     :fact_version,
@@ -47,6 +48,7 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
 
   @type t :: %__MODULE__{
           database_id: Fact.Types.database_id(),
+          database_name: String.t(),
           elixir_version: String.t(),
           erts_version: String.t(),
           fact_version: String.t(),
