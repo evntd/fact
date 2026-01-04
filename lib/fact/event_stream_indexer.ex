@@ -49,7 +49,7 @@ defmodule Fact.EventStreamIndexer do
   """
   @spec last_stream_position(Fact.Context.t(), Fact.Types.event_stream()) :: non_neg_integer()
   def last_stream_position(database_id, event_stream) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       unless(
         is_nil(event = Fact.IndexFile.read_last_event(context, {__MODULE__, nil}, event_stream)),
         do: Fact.RecordFile.Schema.get_event_stream_position(context, event),

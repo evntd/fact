@@ -18,12 +18,9 @@ defmodule Fact.DatabaseSupervisor do
   end
 
   @impl true
-  def init(%Fact.Context{database_id: database_id, database_name: database_name} = context) do
-    # Store the context by id and name within the registry for lookups when needed.
-    Registry.register(Fact.Registry, {:context, database_id}, context)
-    Registry.register(Fact.Registry, {:context, database_name}, context)
-    # Store the id by name.
-    Registry.register(Fact.Registry, {:id, database_name}, database_id)
+  def init(%Fact.Context{database_id: database_id} = context) do
+    
+    Fact.Registry.register(context)
 
     children = [
       {Registry, keys: :unique, name: Fact.Context.registry(database_id)},

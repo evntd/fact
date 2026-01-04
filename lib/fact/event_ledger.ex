@@ -167,7 +167,7 @@ defmodule Fact.EventLedger do
   end
 
   defp enrich_events(database_id, {events, pos}) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
       Enum.map_reduce(events, pos, fn event, pos ->
@@ -192,7 +192,7 @@ defmodule Fact.EventLedger do
   end
 
   defp commit_events(events, %{database_id: database_id} = _state) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id),
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
          {:ok, written_records} <- Fact.RecordFile.write(context, events) do
       Fact.LedgerFile.write(context, written_records)
     end

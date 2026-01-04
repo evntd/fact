@@ -239,7 +239,7 @@ defmodule Fact.EventIndexer do
       @impl true
       @doc false
       def init(%{database_id: database_id, indexer_id: indexer_id} = state) do
-        with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
           :ok = Fact.IndexCheckpointFile.ensure_exists(context, indexer_id)
           :ok = Fact.EventPublisher.subscribe(context, :all)
           {:ok, state, {:continue, :rebuild_and_join}}
@@ -280,7 +280,7 @@ defmodule Fact.EventIndexer do
 
       @spec rebuild_index(Fact.EventIndexer.t()) :: Fact.Types.read_position()
       defp rebuild_index(%{database_id: database_id, indexer_id: indexer_id} = state) do
-        with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
           checkpoint = Fact.IndexCheckpointFile.read(context, indexer_id)
 
           Fact.LedgerFile.read(context, position: checkpoint)
@@ -302,7 +302,7 @@ defmodule Fact.EventIndexer do
                indexer_opts: indexer_opts
              } = state
            ) do
-        with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
           index_values =
             index_event(event, indexer_opts)
             |> List.wrap()
@@ -331,7 +331,7 @@ defmodule Fact.EventIndexer do
              %{database_id: database_id, indexer_id: indexer_id} = state,
              index_result
            ) do
-        with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
           Phoenix.PubSub.broadcast(
             Fact.Context.pubsub(context),
             Fact.EventIndexer.topic(indexer_id),
@@ -341,7 +341,7 @@ defmodule Fact.EventIndexer do
       end
 
       defp publish_ready(%{database_id: database_id, indexer_id: indexer_id} = state, checkpoint) do
-        with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
           Phoenix.PubSub.broadcast(
             Fact.Context.pubsub(context),
             Fact.EventIndexer.topic(indexer_id),

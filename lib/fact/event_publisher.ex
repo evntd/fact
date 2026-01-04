@@ -38,7 +38,7 @@ defmodule Fact.EventPublisher do
 
   @impl true
   def handle_cast({:publish_appended, record_ids}, %{database_id: database_id} = state) do
-    with {:ok, context} <- Fact.Supervisor.get_context(id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       pubsub = Fact.Context.pubsub(database_id)
 
       Enum.each(record_ids, fn record_id ->

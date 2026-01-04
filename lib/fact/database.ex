@@ -23,7 +23,7 @@ defmodule Fact.Database do
   end
 
   def last_position(database_id) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id),
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
          stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
          event <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
       Fact.RecordFile.Schema.get_event_store_position(context, event)
@@ -34,41 +34,28 @@ defmodule Fact.Database do
     Phoenix.PubSub.broadcast(Fact.Context.pubsub(database_id), @topic, {:indexed, position})
   end
 
-  def read_record(database_id, record_id) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
-      Fact.RecordFile.read(context, record_id)  
+  def read_event(database_id, record_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      Fact.RecordFile.read_event(context, record_id)
     end
   end
   
+  def read_index(database_id, indexer_id, index, read_opts) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
+      map_read_results.(Fact.IndexFile.read(context, indexer_id, index, read_opts))
+    end
+  end
+
   def read_ledger(database_id, read_opts) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
       map_read_results.(Fact.LedgerFile.read(context, read_opts))
     end
   end
   
-  defp to_result_type(context, result_type) do
-    case result_type do
-      :event ->
-        &Stream.map(&1, fn record_id -> elem(Fact.RecordFile.read(context, record_id), 1) end)
-        
-      :record ->
-        &Stream.map(&1, fn record_id -> Fact.RecordFile.read(context, record_id) end) 
-
-      :record_id ->
-        & &1
-    end
-  end
-  
-  def read_index(database_id, indexer_id, index, read_opts) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
-      map_read_results = to_result_type(context, Keyword.get(read_opts, :result_type, :event))
-      map_read_results.(Fact.IndexFile.read(context, indexer_id, index, read_opts))
-    end
-  end
-  
   def read_query(database_id, query_fun, read_opts) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       {maybe_count, read_ledger_opts} = Keyword.split(read_opts, [:count])
       predicate = query_fun.(context)
 
@@ -83,6 +70,12 @@ defmodule Fact.Database do
         n ->
           map_read_results.(Stream.take(stream, n))
       end
+    end
+  end
+
+  def read_record(database_id, record_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      Fact.RecordFile.read(context, record_id)
     end
   end
   
@@ -113,6 +106,19 @@ defmodule Fact.Database do
 
   def subscribe(%Fact.Context{} = context) do
     Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), @topic)
+  end
+
+  defp to_result_type(context, result_type) do
+    case result_type do
+      :event ->
+        &Stream.map(&1, fn record_id -> elem(Fact.RecordFile.read(context, record_id), 1) end)
+
+      :record ->
+        &Stream.map(&1, fn record_id -> Fact.RecordFile.read(context, record_id) end)
+
+      :record_id ->
+        & &1
+    end
   end
 
   @impl true
@@ -191,7 +197,7 @@ defmodule Fact.Database do
         {:appended, {_, event}},
         %__MODULE__{database_id: database_id, chase_pos: chase_pos} = state
       ) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       pos = Fact.RecordFile.Schema.get_event_store_position(context, event)
 
       if pos > chase_pos do

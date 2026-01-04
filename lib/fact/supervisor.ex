@@ -3,32 +3,6 @@ defmodule Fact.Supervisor do
 
   require Logger
 
-  @doc """
-  Get the `Fact.Context` for a running database by its `:database_id` or `:database_name`.
-  """
-  def get_context(id_or_name) when is_binary(id_or_name) do
-    case Registry.lookup(Fact.Registry, {:context, id_or_name}) do
-      [{_pid, context}] ->
-        {:ok, context}
-
-      [] ->
-        {:error, :not_found}
-    end
-  end
-
-  @doc """
-  Get the `:database_id` for a running database by its `:database_name`.
-  """
-  def get_database_id(name) when is_binary(name) do
-    case Registry.lookup(Fact.Registry, {:id, name}) do
-      [{_pid, id}] ->
-        {:ok, id}
-
-      [] ->
-        {:error, :not_found}
-    end
-  end
-
   def start_database(path) when is_binary(path) do
     with {:ok, _pid} <-
            Supervisor.start_child(__MODULE__, {Fact.Bootstrapper, [path: path, caller: self()]}) do

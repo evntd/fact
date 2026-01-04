@@ -41,7 +41,7 @@ defmodule Fact.Lock do
   Acquire a lock for the instance in the specified mode.
   """
   def acquire(database_id, mode) when mode in @modes do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       socket_path = Path.join(Storage.locks_path(context), "lock.sock")
       if stale_socket?(socket_path), do: File.rm(socket_path)
 
@@ -80,7 +80,7 @@ defmodule Fact.Lock do
   """
   @spec release(Fact.Types.database_id(), t()) :: :ok
   def release(database_id, %__MODULE__{socket: socket, socket_path: socket_path}) do
-    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
       :gen_tcp.close(socket)
       File.rm(socket_path)
       LockFile.delete(context)
