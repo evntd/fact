@@ -26,7 +26,7 @@ defmodule Fact.EventIndexerManager do
       GenServer.call(Fact.Context.via(context, __MODULE__), {:ensure_indexer, child_spec})
     else
       {:error, :invalid_indexer_module}
-    end    
+    end
   end
 
   def start_indexer(%Fact.Context{} = context, indexer_module, options \\ []) do
@@ -53,6 +53,10 @@ defmodule Fact.EventIndexerManager do
     Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @topic, {:indexed, position})
   end
 
+  defp start_child_indexer(indexer_spec) do
+    GenServer.cast(self(), {:start_child_indexer, indexer_spec})
+  end
+
   @impl true
   def init(context) do
     last_pos = Fact.Context.last_store_position(context)
@@ -74,7 +78,6 @@ defmodule Fact.EventIndexerManager do
         {:start_child_indexer, indexer_spec},
         %__MODULE__{context: context, indexers: indexers} = state
       ) do
-
     case Registry.lookup(Fact.Context.registry(context), indexer_spec.id) do
       [] ->
         # subscribe to indexer messages
@@ -82,6 +85,7 @@ defmodule Fact.EventIndexerManager do
 
         # start the indexer
         {:ok, pid} = Supervisor.start_child(Fact.Context.supervisor(context), indexer_spec)
+
         info = %{
           pid: pid,
           status: :started,
@@ -103,7 +107,7 @@ defmodule Fact.EventIndexerManager do
     {waiters, indexers} =
       Map.get_and_update!(state.indexers, indexer_id, fn info ->
         waiters = Map.get(info, :waiters, MapSet.new())
-        {waiters, %{info | status: :ready, pid: pid, position: checkpoint}}
+        {waiters, %{info | status: :ready, pid: pid, position: checkpoint, waiters: MapSet.new()}}
       end)
 
     # notify any process waiting on the indexer to be :ready
@@ -113,11 +117,11 @@ defmodule Fact.EventIndexerManager do
   end
 
   @impl true
-  def handle_call({:start_indexer, indexer_spec},
+  def handle_call(
+        {:start_indexer, indexer_spec},
         _from,
         %__MODULE__{indexers: indexers} = state
       ) do
-
     :ok = start_child_indexer(indexer_spec)
 
     new_indexers =
@@ -130,7 +134,7 @@ defmodule Fact.EventIndexerManager do
 
     {:reply, :ok, %{state | indexers: new_indexers}}
   end
-  
+
   @impl true
   def handle_call(
         {:ensure_indexer, indexer_spec},
@@ -140,21 +144,22 @@ defmodule Fact.EventIndexerManager do
     case Map.get(indexers, indexer_spec.id) do
       # Not started
       nil ->
-        
         :ok = start_child_indexer(indexer_spec)
 
         new_indexers =
-            Map.put(state.indexers, indexer_spec.id, %{
-              pid: nil,
-              status: :starting,
-              waiters: MapSet.new([from]),
-              position: 0
-            })
+          Map.put(state.indexers, indexer_spec.id, %{
+            pid: nil,
+            status: :starting,
+            waiters: MapSet.new([from]),
+            position: 0
+          })
 
         {:noreply, %__MODULE__{state | indexers: new_indexers}}
-        
+
       %{status: status, waiters: waiters} = info when status in [:starting, :started] ->
-        indexers = Map.put(state.indexers, indexer_spec.id, %{info | waiters: MapSet.put(waiters, from)})
+        indexers =
+          Map.put(state.indexers, indexer_spec.id, %{info | waiters: MapSet.put(waiters, from)})
+
         {:noreply, %__MODULE__{state | indexers: indexers}}
 
       %{status: :ready, pid: pid} ->
@@ -197,9 +202,5 @@ defmodule Fact.EventIndexerManager do
     else
       {:noreply, %{state | indexers: new_indexers}}
     end
-  end
-
-  defp start_child_indexer(indexer_spec) do
-    GenServer.cast(self(), {:start_child_indexer, indexer_spec})
   end
 end

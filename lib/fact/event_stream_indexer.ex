@@ -51,8 +51,8 @@ defmodule Fact.EventStreamIndexer do
   def last_stream_position(context, event_stream) do
     unless(
       is_nil(event = Fact.IndexFile.read_last_event(context, {__MODULE__, nil}, event_stream)),
-        do: Fact.RecordFile.Schema.get_event_stream_position(context, event),
-        else: 0
+      do: Fact.RecordFile.Schema.get_event_stream_position(context, event),
+      else: 0
     )
   end
 end

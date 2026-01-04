@@ -12,15 +12,15 @@ defmodule Fact.Database do
   #    GenServer.call(Fact.Context.via(context, __MODULE__), {:start_indexer, indexer_module, indexer_opts}, call_opts)
   #  end
 
-  def start_link(opts) do
-    {db_opts, gs_opts} = Keyword.split(opts, [:context])
+  def start_link(options) do
+    {opts, start_opts} = Keyword.split(options, [:context])
 
-    case Keyword.get(db_opts, :context) do
+    case Keyword.get(opts, :context) do
       nil ->
         {:error, :database_context_required}
 
       context ->
-        GenServer.start_link(__MODULE__, context, gs_opts)
+        GenServer.start_link(__MODULE__, context, start_opts)
     end
   end
 
