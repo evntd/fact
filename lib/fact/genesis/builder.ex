@@ -7,7 +7,7 @@ defmodule Fact.Genesis.Builder do
   def initial_state(), do: :initial_state
 
   def evolve(:initial_state, %DatabaseCreated.V1{} = event) do
-    with context <- Fact.Context.from_genesis(event),
+    with context <- DatabaseCreated.V1.to_context(event),
          :ok <- init_storage(context) do
       genesis =
         %{}
