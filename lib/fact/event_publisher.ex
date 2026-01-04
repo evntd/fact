@@ -1,12 +1,19 @@
 defmodule Fact.EventPublisher do
-  @moduledoc """
-  TODO
-  """
-  use Fact.Types
+  use GenServer
 
-  @type record_message :: {:event_record, Fact.Types.record()}
+  @type appended_message :: {:appended, Fact.Types.record()}
 
   @all_events "*"
+
+  def publish_appended(%Fact.Context{} = context, record_ids) do
+    GenServer.cast(Fact.Context.via(context, __MODULE__), {:publish_appended, record_ids})
+  end
+
+  def start_link(options \\ []) do
+    {opts, start_opts} = Keyword.split(options, [:database_id])
+
+    GenServer.start_link(__MODULE__, opts, start_opts)
+  end
 
   def subscribe(%Fact.Context{} = context, {:stream, stream}) when is_binary(stream) do
     do_subscribe(context, stream)
@@ -18,26 +25,37 @@ defmodule Fact.EventPublisher do
     Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), topic)
   end
 
-  def publish(%Fact.Context{} = context, event_ids) when is_list(event_ids) do
-    Enum.each(event_ids, &publish(context, &1))
-    :ok
+  @impl true
+  def init(opts) do
+    database_id = Keyword.fetch!(opts, :database_id)
+
+    state = %{
+      database_id: database_id
+    }
+
+    {:ok, state}
   end
 
-  def publish(%Fact.Context{} = context, event_id) when is_binary(event_id) do
-    record = Fact.RecordFile.read(context, event_id)
-    message = {:event_record, record}
-    Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @all_events, message)
+  @impl true
+  def handle_cast({:publish_appended, record_ids}, %{database_id: id} = state) do
+    with {:ok, context} <- Fact.Supervisor.get_context(id) do
+      pubsub = Fact.Context.pubsub(context)
 
-    case stream_id(record) do
-      nil ->
-        :ok
+      Enum.each(record_ids, fn record_id ->
+        {^record_id, event} = record = Fact.Database.read(context, record_id)
+        message = {:appended, record}
+        Phoenix.PubSub.broadcast(pubsub, @all_events, message)
 
-      stream ->
-        Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), stream, message)
+        case Fact.RecordFile.Schema.get_event_stream_id(context, event) do
+          nil ->
+            :ok
+
+          stream ->
+            Phoenix.PubSub.broadcast(pubsub, stream, message)
+        end
+      end)
     end
 
-    :ok
+    {:noreply, state}
   end
-
-  defp stream_id({_, event}), do: event[@event_stream]
 end

@@ -27,6 +27,8 @@ defmodule Fact.DatabaseSupervisor do
     children = [
       {Registry, keys: :unique, name: Fact.Context.registry(context)},
       {Phoenix.PubSub, name: Fact.Context.pubsub(context)},
+      {Fact.EventPublisher,
+       database_id: id, name: Fact.Context.via(context, Fact.EventPublisher)},
       {Fact.Database, context: context, name: Fact.Context.via(context, Fact.Database)},
       {Fact.EventLedger, context: context, name: Fact.Context.via(context, Fact.EventLedger)},
       {DynamicSupervisor,

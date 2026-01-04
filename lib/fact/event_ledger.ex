@@ -159,7 +159,8 @@ defmodule Fact.EventLedger do
   defp do_commit(events, %{context: context, position: position} = state) do
     with {enriched_events, end_pos} <- enrich_events(context, {events, position}),
          {:ok, committed} <- commit_events(enriched_events, state) do
-      Fact.EventPublisher.publish(context, committed)
+      Fact.EventPublisher.publish_appended(context, committed)
+
       {:ok, end_pos}
     end
   end

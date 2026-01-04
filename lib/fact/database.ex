@@ -37,6 +37,10 @@ defmodule Fact.Database do
     Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @topic, {:indexed, position})
   end
 
+  def read(%Fact.Context{} = context, record_id) do
+    Fact.RecordFile.read(context, record_id)
+  end
+
   defp start_child_indexer(child_spec) do
     GenServer.cast(self(), {:start_child_indexer, child_spec})
   end
@@ -139,7 +143,7 @@ defmodule Fact.Database do
 
   @impl true
   def handle_info(
-        {:event_record, {_, event}},
+        {:appended, {_, event}},
         %__MODULE__{context: context, chase_pos: chase_pos} = state
       ) do
     pos = Fact.RecordFile.Schema.get_event_store_position(context, event)
@@ -148,7 +152,7 @@ defmodule Fact.Database do
       {:noreply, %{state | chase_pos: pos}}
     else
       Logger.warning(
-        "[#{__MODULE__}] handle :event_record received event at #{pos}, but high water mark is #{chase_pos}"
+        "[#{__MODULE__}] handle :appended received event at #{pos}, but high water mark is #{chase_pos}"
       )
 
       {:noreply, state}

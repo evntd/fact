@@ -9,7 +9,7 @@ defmodule Fact.CatchUpSubscription do
     
   Subscriber processes will receive:
     
-  * `{:event_record, {record_id, event_record}}` - for each event
+  * `{:appended, {record_id, event_record}}` - for each event
   * `:caught_up` - sent when all events have been replayed
 
   ## Sources
@@ -103,7 +103,7 @@ defmodule Fact.CatchUpSubscription do
   end
 
   @impl true
-  def handle_info({:event_record, {_, event} = record}, state) do
+  def handle_info({:appended, {_, event} = record}, state) do
     position = event_position(event, state.source)
 
     cond do
@@ -126,7 +126,7 @@ defmodule Fact.CatchUpSubscription do
   end
 
   defp deliver(record, state) do
-    send(state.subscriber, {:event_record, record})
+    send(state.subscriber, {:appended, record})
   end
 
   defp event_position(event, :all), do: event[@event_store_position]

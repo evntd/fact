@@ -260,7 +260,7 @@ defmodule Fact.EventIndexer do
       @impl true
       @doc false
       def handle_info(
-            {:event_record, {_, %{@event_store_position => position} = event} = record},
+            {:appended, {_, %{@event_store_position => position} = event} = record},
             %{checkpoint: checkpoint} = state
           ) do
         unindexed = position - checkpoint
