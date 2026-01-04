@@ -5,8 +5,8 @@ defmodule Fact.EventPublisher do
 
   @all_events "*"
 
-  def publish_appended(%Fact.Context{} = context, record_ids) do
-    GenServer.cast(Fact.Context.via(context, __MODULE__), {:publish_appended, record_ids})
+  def publish_appended(database_id, record_ids) do
+    GenServer.cast(Fact.Context.via(database_id, __MODULE__), {:publish_appended, record_ids})
   end
 
   def start_link(options \\ []) do
@@ -15,14 +15,14 @@ defmodule Fact.EventPublisher do
     GenServer.start_link(__MODULE__, opts, start_opts)
   end
 
-  def subscribe(%Fact.Context{} = context, {:stream, stream}) when is_binary(stream) do
-    do_subscribe(context, stream)
+  def subscribe(database_id, {:stream, stream}) when is_binary(stream) do
+    do_subscribe(database_id, stream)
   end
 
-  def subscribe(%Fact.Context{} = context, :all), do: do_subscribe(context, @all_events)
+  def subscribe(database_id, :all), do: do_subscribe(database_id, @all_events)
 
-  defp do_subscribe(%Fact.Context{} = context, topic) do
-    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), topic)
+  defp do_subscribe(database_id, topic) do
+    Phoenix.PubSub.subscribe(Fact.Context.pubsub(database_id), topic)
   end
 
   @impl true

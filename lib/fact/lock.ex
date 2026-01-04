@@ -19,7 +19,6 @@ defmodule Fact.Lock do
 
   """
 
-  alias Fact.Context
   alias Fact.LockFile
   alias Fact.Storage
 
@@ -32,43 +31,45 @@ defmodule Fact.Lock do
           socket_path: Path.t()
         }
 
-  defstruct [:mode, :socket, :socket_path, :metadata_path]
+  defstruct [:mode, :socket, :socket_path]
 
   @modes [:run, :restore, :create]
 
-  @spec acquire(Context.t(), mode()) ::
+  @spec acquire(Fact.Types.database_id(), mode()) ::
           {:ok, t()} | {:error, {:locked, lock_metadata()}} | {:error, term()}
   @doc """
   Acquire a lock for the instance in the specified mode.
   """
-  def acquire(%Context{} = context, mode) when mode in @modes do
-    socket_path = Path.join(Storage.locks_path(context), "lock.sock")
-    if stale_socket?(socket_path), do: File.rm(socket_path)
+  def acquire(database_id, mode) when mode in @modes do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      socket_path = Path.join(Storage.locks_path(context), "lock.sock")
+      if stale_socket?(socket_path), do: File.rm(socket_path)
 
-    case :gen_tcp.listen(0, [:binary, active: false, ip: {:local, socket_path}]) do
-      {:ok, socket} ->
-        metadata = %{
-          mode: mode,
-          os_pid: System.pid(),
-          vm_pid: Kernel.inspect(self()),
-          node: node(),
-          locked_at: DateTime.utc_now() |> DateTime.to_iso8601()
-        }
+      case :gen_tcp.listen(0, [:binary, active: false, ip: {:local, socket_path}]) do
+        {:ok, socket} ->
+          metadata = %{
+            mode: mode,
+            os_pid: System.pid(),
+            vm_pid: Kernel.inspect(self()),
+            node: node(),
+            locked_at: DateTime.utc_now() |> DateTime.to_iso8601()
+          }
 
-        :ok = LockFile.write(context, metadata)
+          :ok = LockFile.write(context, metadata)
 
-        {:ok,
-         %__MODULE__{
-           mode: mode,
-           socket: socket,
-           socket_path: socket_path
-         }}
+          {:ok,
+           %__MODULE__{
+             mode: mode,
+             socket: socket,
+             socket_path: socket_path
+           }}
 
-      {:error, :eaddrinuse} ->
-        {:error, {:locked, LockFile.read(context)}}
+        {:error, :eaddrinuse} ->
+          {:error, {:locked, LockFile.read(context)}}
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
@@ -77,12 +78,14 @@ defmodule Fact.Lock do
     
   Closes the socket, deletes the socket file, and deletes the metadata file.
   """
-  @spec release(Context.t(), t()) :: :ok
-  def release(%Context{} = context, %__MODULE__{socket: socket, socket_path: socket_path}) do
-    :gen_tcp.close(socket)
-    File.rm(socket_path)
-    LockFile.delete(context)
-    :ok
+  @spec release(Fact.Types.database_id(), t()) :: :ok
+  def release(database_id, %__MODULE__{socket: socket, socket_path: socket_path}) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      :gen_tcp.close(socket)
+      File.rm(socket_path)
+      LockFile.delete(context)
+      :ok
+    end
   end
 
   defp stale_socket?(path) do

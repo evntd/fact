@@ -43,14 +43,14 @@ defmodule Fact.CatchUpSubscription do
           Fact.Types.read_position(),
           keyword()
         ) :: {:ok, pid()} | {:error, term()}
-  def start_link(context, subscriber, source \\ :all, position \\ 0, opts \\ []) do
-    GenServer.start_link(__MODULE__, {context, subscriber, source, position}, opts)
+  def start_link(database_id, subscriber, source \\ :all, position \\ 0, opts \\ []) do
+    GenServer.start_link(__MODULE__, {database_id, subscriber, source, position}, opts)
   end
 
   @impl true
-  def init({context, subscriber, source, position}) do
+  def init({database_id, subscriber, source, position}) do
     state = %{
-      context: context,
+      database_id: database_id,
       source: source,
       subscriber: subscriber,
       position: position,
@@ -65,14 +65,14 @@ defmodule Fact.CatchUpSubscription do
   @impl true
   def handle_continue(
         :init_mode,
-        %{context: context, source: source} = state
+        %{database_id: database_id, source: source} = state
       ) do
     Process.monitor(state.subscriber)
 
     # 1. Subscribe first
-    Fact.EventPublisher.subscribe(context, source)
+    Fact.EventPublisher.subscribe(database_id, source)
     # 2. Capture boundary
-    high_water_mark = last_position(context, source)
+    high_water_mark = last_position(database_id, source)
     # 3. Start replay
     send(self(), :replay)
 
@@ -81,25 +81,27 @@ defmodule Fact.CatchUpSubscription do
 
   @impl true
   def handle_info(:replay, state) do
-    Fact.read(state.context, state.source,
-      position: min(state.position, state.high_water_mark),
-      direction: :forward,
-      return_type: :record
-    )
-    |> Stream.take_while(fn {_, event} ->
-      event_position(event, state.source) <= state.high_water_mark
-    end)
-    |> Enum.each(&deliver(&1, state))
+    with {:ok, context} <- Fact.Supervisor.get_context(state.database_id) do
+      Fact.read(context, state.source,
+        position: min(state.position, state.high_water_mark),
+        direction: :forward,
+        return_type: :record
+      )
+      |> Stream.take_while(fn {_, event} ->
+        event_position(event, state.source) <= state.high_water_mark
+      end)
+      |> Enum.each(&deliver(&1, state))
 
-    # Flush any buffered live events in order
-    state.buffer
-    |> :gb_trees.to_list()
-    |> Enum.sort_by(fn {pos, _} -> pos end)
-    |> Enum.each(fn {_, record} -> deliver(record, state) end)
+      # Flush any buffered live events in order
+      state.buffer
+      |> :gb_trees.to_list()
+      |> Enum.sort_by(fn {pos, _} -> pos end)
+      |> Enum.each(fn {_, record} -> deliver(record, state) end)
 
-    send(state.subscriber, :caught_up)
+      send(state.subscriber, :caught_up)
 
-    {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
+      {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
+    end
   end
 
   @impl true
@@ -134,9 +136,9 @@ defmodule Fact.CatchUpSubscription do
   defp event_position(event, {:stream, event_stream}) when is_binary(event_stream),
     do: event[@event_stream_position]
 
-  defp last_position(context, :all),
-    do: Fact.Context.last_store_position(context)
+  defp last_position(database_id, :all),
+    do: Fact.Database.last_position(database_id)
 
-  defp last_position(context, {:stream, event_stream}) when is_binary(event_stream),
-    do: Fact.EventStreamIndexer.last_stream_position(context, event_stream)
+  defp last_position(database_id, {:stream, event_stream}) when is_binary(event_stream),
+    do: Fact.EventStreamIndexer.last_stream_position(database_id, event_stream)
 end

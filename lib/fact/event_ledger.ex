@@ -8,7 +8,7 @@ defmodule Fact.EventLedger do
   require Logger
 
   @type t :: %__MODULE__{
-          context: Fact.Context.t(),
+          database_id: Types.database_id(),
           position: non_neg_integer()
         }
 
@@ -36,35 +36,36 @@ defmodule Fact.EventLedger do
     type: @event_type
   }
 
-  defstruct [:context, position: 0]
+  defstruct [:database_id, position: 0]
 
-  @spec start_link([context: Fact.Context.t()] | []) :: {:ok, pid()} | {:error, term()}
+  @spec start_link([database_id: Fact.Types.database_id()] | []) ::
+          {:ok, pid()} | {:error, term()}
   def start_link(opts) do
-    {ledger_opts, genserver_opts} = Keyword.split(opts, [:context])
-    context = Keyword.fetch!(ledger_opts, :context)
-    GenServer.start_link(__MODULE__, context, genserver_opts)
+    {ledger_opts, genserver_opts} = Keyword.split(opts, [:database_id])
+    database_id = Keyword.fetch!(ledger_opts, :database_id)
+    GenServer.start_link(__MODULE__, database_id, genserver_opts)
   end
 
   @spec commit(
-          Fact.Context.t(),
+          Fact.Types.database_id(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Query.t(),
           Fact.Types.event_position(),
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def commit(context, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
+  def commit(database_id, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
 
-  def commit(%Fact.Context{} = context, events, nil, after_position, opts),
-    do: commit(context, events, Fact.Query.from_none(), after_position, opts)
+  def commit(database_id, events, nil, after_position, opts),
+    do: commit(database_id, events, Fact.Query.from_none(), after_position, opts)
 
   # TODO: Rework signatures to handle conversion of Fact.QueryItem to Fact.Query  
 
-  def commit(%Fact.Context{} = context, event, fail_if_match, after_position, opts)
+  def commit(database_id, event, fail_if_match, after_position, opts)
       when is_map(event) and not is_list(event) do
-    commit(context, [event], fail_if_match, after_position, opts)
+    commit(database_id, [event], fail_if_match, after_position, opts)
   end
 
-  def commit(%Fact.Context{} = context, events, fail_if_match, after_position, opts) do
+  def commit(database_id, events, fail_if_match, after_position, opts) do
     cond do
       not is_list(events) ->
         {:error, :invalid_event_list}
@@ -85,7 +86,7 @@ defmodule Fact.EventLedger do
         timeout = Keyword.get(opts, :timeout, 5000)
 
         GenServer.call(
-          Fact.Context.via(context, __MODULE__),
+          Fact.Context.via(database_id, __MODULE__),
           {:commit, events, condition: {fail_if_match, after_position}},
           timeout
         )
@@ -93,10 +94,10 @@ defmodule Fact.EventLedger do
   end
 
   @impl true
-  def init(%Fact.Context{} = context) do
+  def init(database_id) do
     state = %{
-      context: context,
-      position: Fact.Context.last_store_position(context)
+      database_id: database_id,
+      position: Fact.Database.last_position(database_id)
     }
 
     {:ok, state}
@@ -156,40 +157,43 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp do_commit(events, %{context: context, position: position} = state) do
-    with {enriched_events, end_pos} <- enrich_events(context, {events, position}),
+  defp do_commit(events, %{database_id: database_id, position: position} = state) do
+    with {enriched_events, end_pos} <- enrich_events(database_id, {events, position}),
          {:ok, committed} <- commit_events(enriched_events, state) do
-      Fact.EventPublisher.publish_appended(context, committed)
+      Fact.EventPublisher.publish_appended(database_id, committed)
 
       {:ok, end_pos}
     end
   end
 
-  defp enrich_events(%Fact.Context{} = context, {events, pos}) do
-    timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
+  defp enrich_events(database_id, {events, pos}) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
-    Enum.map_reduce(events, pos, fn event, pos ->
-      next = pos + 1
+      Enum.map_reduce(events, pos, fn event, pos ->
+        next = pos + 1
 
-      event_with_renamed_keys =
-        rename_keys(event, @replacements)
+        event_with_renamed_keys =
+          rename_keys(event, @replacements)
 
-      enriched_event =
-        %{}
-        |> then(&Schema.set_event_data(context, &1, %{}))
-        |> then(&Schema.set_event_id(context, &1, EventId.generate(context)))
-        |> then(&Schema.set_event_metadata(context, &1, %{}))
-        |> then(&Schema.set_event_tags(context, &1, []))
-        |> then(&Schema.set_event_store_position(context, &1, next))
-        |> then(&Schema.set_event_store_timestamp(context, &1, timestamp))
-        |> Map.merge(event_with_renamed_keys)
+        enriched_event =
+          %{}
+          |> then(&Schema.set_event_data(context, &1, %{}))
+          |> then(&Schema.set_event_id(context, &1, EventId.generate(context)))
+          |> then(&Schema.set_event_metadata(context, &1, %{}))
+          |> then(&Schema.set_event_tags(context, &1, []))
+          |> then(&Schema.set_event_store_position(context, &1, next))
+          |> then(&Schema.set_event_store_timestamp(context, &1, timestamp))
+          |> Map.merge(event_with_renamed_keys)
 
-      {enriched_event, next}
-    end)
+        {enriched_event, next}
+      end)
+    end
   end
 
-  defp commit_events(events, %{context: context} = _state) do
-    with {:ok, written_records} <- Fact.RecordFile.write(context, events) do
+  defp commit_events(events, %{database_id: database_id} = _state) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id),
+         {:ok, written_records} <- Fact.RecordFile.write(context, events) do
       Fact.LedgerFile.write(context, written_records)
     end
   end

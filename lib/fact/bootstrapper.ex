@@ -38,7 +38,7 @@ defmodule Fact.Bootstrapper do
 
     with {:ok, _pid} <- Fact.Supervisor.start_database(context) do
       if is_pid(caller) do
-        send(caller, {:database_started, context})
+        send(caller, {:database_started, context.database_id})
       end
 
       {:stop, :normal, state}

@@ -10,14 +10,14 @@ defmodule Fact.EventStreamWriter do
 
   @idle_timeout :timer.minutes(1)
 
-  defstruct [:context, :event_stream, :last_pos, :idle_timer]
+  defstruct [:database_id, :event_stream, :last_pos, :idle_timer]
 
   def child_spec(opts) do
-    context = Keyword.fetch!(opts, :context)
+    database_id = Keyword.fetch!(opts, :database_id)
     event_stream = Keyword.fetch!(opts, :event_stream)
 
     %{
-      id: {__MODULE__, {context.database_id, event_stream}},
+      id: {__MODULE__, {database_id, event_stream}},
       start: {__MODULE__, :start_link, [opts]},
       restart: :temporary,
       shutdown: 5000,
@@ -26,27 +26,32 @@ defmodule Fact.EventStreamWriter do
   end
 
   def start_link(opts) do
-    context = Keyword.fetch!(opts, :context)
+    database_id = Keyword.fetch!(opts, :database_id)
     event_stream = Keyword.fetch!(opts, :event_stream)
-    start_opts = Keyword.put(opts, :name, Fact.Context.via(context, event_stream))
-    GenServer.start_link(__MODULE__, [context: context, event_stream: event_stream], start_opts)
+    start_opts = Keyword.put(opts, :name, Fact.Context.via(database_id, event_stream))
+
+    GenServer.start_link(
+      __MODULE__,
+      [database_id: database_id, event_stream: event_stream],
+      start_opts
+    )
   end
 
   @spec commit(
-          Fact.Context.t(),
+          Fact.Types.database_id(),
           Fact.Types.event() | [Fact.Types.event(), ...],
           Fact.Types.event_stream(),
           Fact.Types.event_position() | :any | :none | :exists,
           keyword()
         ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
-  def commit(context, events, event_stream, expected_position \\ :any, opts \\ [])
+  def commit(database_id, events, event_stream, expected_position \\ :any, opts \\ [])
 
-  def commit(%Fact.Context{} = context, event, event_stream, expected_position, opts)
+  def commit(database_id, event, event_stream, expected_position, opts)
       when is_map(event) and not is_list(event) do
-    commit(context, [event], event_stream, expected_position, opts)
+    commit(database_id, [event], event_stream, expected_position, opts)
   end
 
-  def commit(%Fact.Context{} = context, events, event_stream, expected_position, opts) do
+  def commit(database_id, events, event_stream, expected_position, opts) do
     cond do
       not is_list(events) ->
         {:error, :invalid_event_list}
@@ -65,22 +70,22 @@ defmodule Fact.EventStreamWriter do
         {:error, :invalid_expected_position}
 
       true ->
-        ensure_started(context, event_stream)
+        ensure_started(database_id, event_stream)
 
         GenServer.call(
-          Fact.Context.via(context, event_stream),
+          Fact.Context.via(database_id, event_stream),
           {:commit, events, expected_position},
           Keyword.get(opts, :timeout, 5000)
         )
     end
   end
 
-  defp ensure_started(%Fact.Context{} = context, event_stream) do
-    case Registry.lookup(Fact.Context.registry(context), event_stream) do
+  defp ensure_started(database_id, event_stream) do
+    case Registry.lookup(Fact.Context.registry(database_id), event_stream) do
       [] ->
         DynamicSupervisor.start_child(
-          Fact.Context.via(context, Fact.EventStreamWriterSupervisor),
-          {__MODULE__, [context: context, event_stream: event_stream]}
+          Fact.Context.via(database_id, Fact.EventStreamWriterSupervisor),
+          {__MODULE__, [database_id: database_id, event_stream: event_stream]}
         )
 
       _ ->
@@ -92,11 +97,11 @@ defmodule Fact.EventStreamWriter do
 
   @impl true
   def init(opts) do
-    context = Keyword.fetch!(opts, :context)
+    database_id = Keyword.fetch!(opts, :database_id)
     event_stream = Keyword.fetch!(opts, :event_stream)
 
     state = %__MODULE__{
-      context: context,
+      database_id: database_id,
       event_stream: event_stream,
       last_pos: 0,
       idle_timer: schedule_idle_timeout()
@@ -106,8 +111,11 @@ defmodule Fact.EventStreamWriter do
   end
 
   @impl true
-  def handle_continue(:load_position, %{context: context, event_stream: event_stream} = state) do
-    last_pos = Fact.EventStreamIndexer.last_stream_position(context, event_stream)
+  def handle_continue(
+        :load_position,
+        %{database_id: database_id, event_stream: event_stream} = state
+      ) do
+    last_pos = Fact.EventStreamIndexer.last_stream_position(database_id, event_stream)
     {:noreply, %{state | last_pos: last_pos}}
   end
 
@@ -115,7 +123,7 @@ defmodule Fact.EventStreamWriter do
   def handle_call(
         {:commit, events, expect},
         _from,
-        %{context: context, event_stream: event_stream, last_pos: last_pos} = state
+        %{database_id: database_id, event_stream: event_stream, last_pos: last_pos} = state
       ) do
     cancel_idle_timeout(state.idle_timer)
     idle_timer = schedule_idle_timeout()
@@ -139,7 +147,7 @@ defmodule Fact.EventStreamWriter do
           {enriched_event, next_pos}
         end)
 
-      case Fact.EventLedger.commit(context, enriched_events) do
+      case Fact.EventLedger.commit(database_id, enriched_events) do
         {:ok, _last_store_pos} ->
           {:reply, {:ok, end_pos}, %{state | idle_timer: idle_timer, last_pos: end_pos}}
 

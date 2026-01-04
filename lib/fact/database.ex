@@ -3,13 +3,9 @@ defmodule Fact.Database do
 
   require Logger
 
-  @type t :: %__MODULE__{
-          context: Fact.Context.t()
-        }
-
   defstruct [
     :chase_pos,
-    :context,
+    :database_id,
     :indexers,
     :lock,
     :published_pos
@@ -17,24 +13,25 @@ defmodule Fact.Database do
 
   @topic "#{__MODULE__}"
 
-  def ensure_indexer(%Fact.Context{} = context, indexer_module, options \\ []) do
+  def ensure_indexer(database_id, indexer_module, options \\ []) do
     if function_exported?(indexer_module, :child_spec, 1) do
-      child_spec = indexer_module.child_spec(Keyword.put(options, :context, context))
-      GenServer.call(Fact.Context.via(context, __MODULE__), {:ensure_indexer, child_spec})
+      child_spec = indexer_module.child_spec(Keyword.put(options, :database_id, database_id))
+      GenServer.call(Fact.Context.via(database_id, __MODULE__), {:ensure_indexer, child_spec})
     else
       {:error, :invalid_indexer_module}
     end
   end
 
-  defp last_position(%Fact.Context{} = context) do
-    with stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
+  def last_position(database_id) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id),
+         stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
          event <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
       Fact.RecordFile.Schema.get_event_store_position(context, event)
     end
   end
 
-  defp publish_indexed(%Fact.Context{} = context, position) do
-    Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @topic, {:indexed, position})
+  defp publish_indexed(database_id, position) do
+    Phoenix.PubSub.broadcast(Fact.Context.pubsub(database_id), @topic, {:indexed, position})
   end
 
   def read(%Fact.Context{} = context, record_id) do
@@ -45,24 +42,24 @@ defmodule Fact.Database do
     GenServer.cast(self(), {:start_child_indexer, child_spec})
   end
 
-  def start_indexer(%Fact.Context{} = context, indexer_module, options \\ []) do
+  def start_indexer(database_id, indexer_module, options \\ []) do
     if function_exported?(indexer_module, :child_spec, 1) do
-      child_spec = indexer_module.child_spec(Keyword.put(options, :context, context))
-      GenServer.call(Fact.Context.via(context, __MODULE__), {:start_indexer, child_spec})
+      child_spec = indexer_module.child_spec(Keyword.put(options, :database_id, database_id))
+      GenServer.call(Fact.Context.via(database_id, __MODULE__), {:start_indexer, child_spec})
     else
       {:error, :invalid_indexer_module}
     end
   end
 
   def start_link(options) do
-    {opts, start_opts} = Keyword.split(options, [:context])
+    {opts, start_opts} = Keyword.split(options, [:database_id])
 
-    case Keyword.get(opts, :context) do
+    case Keyword.get(opts, :database_id) do
       nil ->
         {:error, :database_context_required}
 
-      context ->
-        GenServer.start_link(__MODULE__, context, start_opts)
+      database_id ->
+        GenServer.start_link(__MODULE__, database_id, start_opts)
     end
   end
 
@@ -116,15 +113,15 @@ defmodule Fact.Database do
   @impl true
   def handle_cast(
         {:start_child_indexer, child_spec},
-        %__MODULE__{context: context, indexers: indexers} = state
+        %__MODULE__{database_id: database_id, indexers: indexers} = state
       ) do
-    case Registry.lookup(Fact.Context.registry(context), child_spec.id) do
+    case Registry.lookup(Fact.Context.registry(database_id), child_spec.id) do
       [] ->
         # subscribe to indexer messages
-        Fact.EventIndexer.subscribe(context, child_spec.id)
+        Fact.EventIndexer.subscribe(database_id, child_spec.id)
 
         # start the indexer
-        {:ok, pid} = Supervisor.start_child(Fact.Context.supervisor(context), child_spec)
+        {:ok, pid} = Supervisor.start_child(Fact.Context.supervisor(database_id), child_spec)
 
         info = %{
           pid: pid,
@@ -144,25 +141,27 @@ defmodule Fact.Database do
   @impl true
   def handle_info(
         {:appended, {_, event}},
-        %__MODULE__{context: context, chase_pos: chase_pos} = state
+        %__MODULE__{database_id: database_id, chase_pos: chase_pos} = state
       ) do
-    pos = Fact.RecordFile.Schema.get_event_store_position(context, event)
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      pos = Fact.RecordFile.Schema.get_event_store_position(context, event)
 
-    if pos > chase_pos do
-      {:noreply, %{state | chase_pos: pos}}
-    else
-      Logger.warning(
-        "[#{__MODULE__}] handle :appended received event at #{pos}, but high water mark is #{chase_pos}"
-      )
+      if pos > chase_pos do
+        {:noreply, %{state | chase_pos: pos}}
+      else
+        Logger.warning(
+          "[#{__MODULE__}] handle :appended received event at #{pos}, but high water mark is #{chase_pos}"
+        )
 
-      {:noreply, state}
+        {:noreply, state}
+      end
     end
   end
 
   @impl true
   def handle_info(
         {:indexed, indexer, %{position: pos}},
-        %{context: context, indexers: indexers, published_pos: published_pos} = state
+        %{database_id: database_id, indexers: indexers, published_pos: published_pos} = state
       ) do
     {_, new_indexers} =
       Map.get_and_update(indexers, indexer, fn %{position: cur_pos} = info ->
@@ -173,7 +172,7 @@ defmodule Fact.Database do
     min_pos = Enum.map(new_indexers, fn {_, %{position: p}} -> p end) |> Enum.min()
 
     if min_pos > published_pos do
-      publish_indexed(context, min_pos)
+      publish_indexed(database_id, min_pos)
       {:noreply, %{state | indexers: new_indexers, published_pos: min_pos}}
     else
       {:noreply, %{state | indexers: new_indexers}}
@@ -196,20 +195,20 @@ defmodule Fact.Database do
   end
 
   @impl true
-  def init(context) do
-    case Fact.Lock.acquire(context, :run) do
+  def init(database_id) do
+    case Fact.Lock.acquire(database_id, :run) do
       {:ok, lock} ->
-        last_pos = last_position(context)
+        last_pos = last_position(database_id)
 
         state = %__MODULE__{
           chase_pos: last_pos,
-          context: context,
+          database_id: database_id,
           indexers: %{},
           lock: lock,
           published_pos: last_pos
         }
 
-        Fact.EventPublisher.subscribe(context, :all)
+        Fact.EventPublisher.subscribe(database_id, :all)
 
         {:ok, state}
 
@@ -219,8 +218,8 @@ defmodule Fact.Database do
   end
 
   @impl true
-  def terminate(_reason, %{context: context, lock: lock}) do
-    Fact.Lock.release(context, lock)
+  def terminate(_reason, %{database_id: database_id, lock: lock}) do
+    Fact.Lock.release(database_id, lock)
     :ok
   end
 end

@@ -48,11 +48,13 @@ defmodule Fact.EventStreamIndexer do
   This is similar to `Fact.Storage.last_store_position/1`, but for a streams.
   """
   @spec last_stream_position(Fact.Context.t(), Fact.Types.event_stream()) :: non_neg_integer()
-  def last_stream_position(context, event_stream) do
-    unless(
-      is_nil(event = Fact.IndexFile.read_last_event(context, {__MODULE__, nil}, event_stream)),
-      do: Fact.RecordFile.Schema.get_event_stream_position(context, event),
-      else: 0
-    )
+  def last_stream_position(database_id, event_stream) do
+    with {:ok, context} <- Fact.Supervisor.get_context(database_id) do
+      unless(
+        is_nil(event = Fact.IndexFile.read_last_event(context, {__MODULE__, nil}, event_stream)),
+        do: Fact.RecordFile.Schema.get_event_stream_position(context, event),
+        else: 0
+      )
+    end
   end
 end
