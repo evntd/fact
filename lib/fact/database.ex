@@ -1,16 +1,54 @@
 defmodule Fact.Database do
   use GenServer
 
+  require Logger
+
   @type t :: %__MODULE__{
           context: Fact.Context.t()
         }
 
-  defstruct [:context, :lock]
+  defstruct [
+    :chase_pos,
+    :context,
+    :indexers,
+    :lock,
+    :published_pos
+  ]
 
-  #  def start_indexer(%Fact.Context{} = context, indexer_module, opts \\ []) do
-  #    {call_opts, indexer_opts} = Keyword.split(opts, [:timeout])
-  #    GenServer.call(Fact.Context.via(context, __MODULE__), {:start_indexer, indexer_module, indexer_opts}, call_opts)
-  #  end
+  @topic "#{__MODULE__}"
+
+  def ensure_indexer(%Fact.Context{} = context, indexer_module, options \\ []) do
+    if function_exported?(indexer_module, :child_spec, 1) do
+      child_spec = indexer_module.child_spec(Keyword.put(options, :context, context))
+      GenServer.call(Fact.Context.via(context, __MODULE__), {:ensure_indexer, child_spec})
+    else
+      {:error, :invalid_indexer_module}
+    end
+  end
+
+  defp last_position(%Fact.Context{} = context) do
+    with stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
+         event <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
+      Fact.RecordFile.Schema.get_event_store_position(context, event)
+    end
+  end
+
+  defp publish_indexed(%Fact.Context{} = context, position) do
+    Phoenix.PubSub.broadcast(Fact.Context.pubsub(context), @topic, {:indexed, position})
+  end
+
+  defp start_child_indexer(child_spec) do
+    GenServer.cast(self(), {:start_child_indexer, child_spec})
+  end
+
+  def start_indexer(%Fact.Context{} = context, indexer_module, options \\ []) do
+    if function_exported?(indexer_module, :child_spec, 1) do
+      child_spec = indexer_module.child_spec(Keyword.put(options, :context, context))
+      GenServer.call(Fact.Context.via(context, __MODULE__), {:start_indexer, child_spec})
+    else
+      {:error, :invalid_indexer_module}
+    end
+  end
 
   def start_link(options) do
     {opts, start_opts} = Keyword.split(options, [:context])
@@ -24,24 +62,150 @@ defmodule Fact.Database do
     end
   end
 
-  #  @impl true
-  #  def handle_call({:decide, command}, _from, state) do
-  #    {:reply, decide(state, command), state}
-  #  end
-  #  
-  #  @impl true
-  #  def handle_cast({:evolve, event}, state) do
-  #    {:noreply, evolve(state, event)}        
-  #  end
+  def subscribe(%Fact.Context{} = context) do
+    Phoenix.PubSub.subscribe(Fact.Context.pubsub(context), @topic)
+  end
+
+  @impl true
+  def handle_call({:ensure_indexer, child_spec}, from, %__MODULE__{indexers: indexers} = state) do
+    case Map.get(indexers, child_spec.id) do
+      # Not started
+      nil ->
+        :ok = start_child_indexer(child_spec)
+
+        new_indexers =
+          Map.put(state.indexers, child_spec.id, %{
+            pid: nil,
+            status: :starting,
+            waiters: MapSet.new([from]),
+            position: 0
+          })
+
+        {:noreply, %__MODULE__{state | indexers: new_indexers}}
+
+      %{status: status, waiters: waiters} = info when status in [:starting, :started] ->
+        new_indexers =
+          Map.put(state.indexers, child_spec.id, %{info | waiters: MapSet.put(waiters, from)})
+
+        {:noreply, %__MODULE__{state | indexers: new_indexers}}
+
+      %{status: :ready, pid: pid} ->
+        {:reply, {:ok, pid}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:start_indexer, child_spec}, _from, %__MODULE__{indexers: indexers} = state) do
+    :ok = start_child_indexer(child_spec)
+
+    new_indexers =
+      Map.put_new(indexers, child_spec.id, %{
+        pid: nil,
+        status: :starting,
+        waiters: MapSet.new(),
+        position: 0
+      })
+
+    {:reply, :ok, %{state | indexers: new_indexers}}
+  end
+
+  @impl true
+  def handle_cast(
+        {:start_child_indexer, child_spec},
+        %__MODULE__{context: context, indexers: indexers} = state
+      ) do
+    case Registry.lookup(Fact.Context.registry(context), child_spec.id) do
+      [] ->
+        # subscribe to indexer messages
+        Fact.EventIndexer.subscribe(context, child_spec.id)
+
+        # start the indexer
+        {:ok, pid} = Supervisor.start_child(Fact.Context.supervisor(context), child_spec)
+
+        info = %{
+          pid: pid,
+          status: :started,
+          waiters: Map.get(indexers[child_spec.id], :waiters, MapSet.new()),
+          position: 0
+        }
+
+        new_indexers = Map.put(indexers, child_spec.id, info)
+        {:noreply, %__MODULE__{state | indexers: new_indexers}}
+
+      [{_pid, _}] ->
+        {:noreply, state}
+    end
+  end
+
+  @impl true
+  def handle_info(
+        {:event_record, {_, event}},
+        %__MODULE__{context: context, chase_pos: chase_pos} = state
+      ) do
+    pos = Fact.RecordFile.Schema.get_event_store_position(context, event)
+
+    if pos > chase_pos do
+      {:noreply, %{state | chase_pos: pos}}
+    else
+      Logger.warning(
+        "[#{__MODULE__}] handle :event_record received event at #{pos}, but high water mark is #{chase_pos}"
+      )
+
+      {:noreply, state}
+    end
+  end
+
+  @impl true
+  def handle_info(
+        {:indexed, indexer, %{position: pos}},
+        %{context: context, indexers: indexers, published_pos: published_pos} = state
+      ) do
+    {_, new_indexers} =
+      Map.get_and_update(indexers, indexer, fn %{position: cur_pos} = info ->
+        new_pos = max(cur_pos, pos)
+        {new_pos, %{info | position: new_pos}}
+      end)
+
+    min_pos = Enum.map(new_indexers, fn {_, %{position: p}} -> p end) |> Enum.min()
+
+    if min_pos > published_pos do
+      publish_indexed(context, min_pos)
+      {:noreply, %{state | indexers: new_indexers, published_pos: min_pos}}
+    else
+      {:noreply, %{state | indexers: new_indexers}}
+    end
+  end
+
+  @impl true
+  def handle_info({:indexer_ready, indexer_id, checkpoint}, %__MODULE__{} = state) do
+    # state book keeping, and extract waiting processes
+    {waiters, indexers} =
+      Map.get_and_update!(state.indexers, indexer_id, fn info ->
+        waiters = Map.get(info, :waiters, MapSet.new())
+        {waiters, %{info | status: :ready, position: checkpoint, waiters: MapSet.new()}}
+      end)
+
+    # notify any process waiting on the indexer to be :ready
+    Enum.each(waiters, &GenServer.reply(&1, {:ok, indexer_id}))
+
+    {:noreply, %__MODULE__{state | indexers: indexers}}
+  end
 
   @impl true
   def init(context) do
     case Fact.Lock.acquire(context, :run) do
       {:ok, lock} ->
+        last_pos = last_position(context)
+
         state = %__MODULE__{
+          chase_pos: last_pos,
           context: context,
-          lock: lock
+          indexers: %{},
+          lock: lock,
+          published_pos: last_pos
         }
+
+        Fact.EventPublisher.subscribe(context, :all)
 
         {:ok, state}
 
@@ -55,12 +219,4 @@ defmodule Fact.Database do
     Fact.Lock.release(context, lock)
     :ok
   end
-
-  #  defp decide({:start_indexer, indexer_module, indexer_opts}, state) do
-  #    
-  #  end
-  #  
-  #  defp evolve({:indexer_started, data}, state) do
-  #    
-  #  end
 end

@@ -240,9 +240,7 @@ defmodule Fact.Query do
           |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
           |> Enum.reduce_while(:first, fn {key, values}, acc ->
             {:ok, indexer_id} =
-              Fact.EventIndexerManager.ensure_indexer(context, Fact.EventDataIndexer,
-                key: to_string(key)
-              )
+              Fact.Database.ensure_indexer(context, Fact.EventDataIndexer, key: to_string(key))
 
             ids =
               values

@@ -179,7 +179,7 @@ defmodule Fact.EventIndexer do
     case indexer do
       {indexer_mod, nil} ->
         "index:#{indexer_mod}"
-        
+
       {indexer_mod, indexer_key} ->
         "index:#{indexer_mod}:#{indexer_key}"
     end
@@ -195,7 +195,7 @@ defmodule Fact.EventIndexer do
       require Logger
 
       defstruct [:context, :indexer_id, :indexer_opts, :checkpoint]
-      
+
       @spec child_spec({Fact.Context.t(), Fact.EventIndexer.start_options()}) ::
               Supervisor.child_spec()
       def child_spec(opts) do
@@ -333,12 +333,12 @@ defmodule Fact.EventIndexer do
           {:indexed, indexer_id, index_result}
         )
       end
-      
+
       defp publish_ready(%{context: context, indexer_id: indexer_id} = state, checkpoint) do
         Phoenix.PubSub.broadcast(
           Fact.Context.pubsub(context),
           Fact.EventIndexer.topic(indexer_id),
-          {:ready, indexer_id, checkpoint}
+          {:indexer_ready, indexer_id, checkpoint}
         )
       end
     end
