@@ -1,142 +1,105 @@
 defmodule Fact.CatchUpSubscription do
-  @moduledoc """
-  Provides a catch-up then live subscription to the event store or specified event stream.
-    
-  This ensures that a subscriber receives all historical events for a given event source
-  before receiving any live events, preserving strict ordering guarantees.
-    
-  ## Messages
-    
-  Subscriber processes will receive:
-    
-  * `{:appended, {record_id, event_record}}` - for each event
-  * `:caught_up` - sent when all events have been replayed
+  @callback subscribe(database_id :: Fact.Types.database_id(), event_source :: term()) :: :ok
+  @callback high_water_mark(database_id :: Fact.Types.database_id(), event_source :: term()) ::
+              Fact.Types.read_position()
+  @callback replay(
+              database_id :: Fact.Types.database_id(),
+              event_source :: term(),
+              from :: non_neg_integer(),
+              to :: non_neg_integer,
+              deliver_fun :: (term() -> any())
+            ) :: :ok
+  @callback get_position(
+              database_id :: Fact.Types.database_id(),
+              event_source :: term(),
+              message :: term()
+            ) :: non_neg_integer()
 
-  ## Sources
-    
-  The `source` argument can be:
+  defmacro __using__(_opts) do
+    quote do
+      use GenServer
+      @behaviour Fact.CatchUpSubscriptionBehaviour
 
-  * `:all` - will receive all events in the event store
-  * `binary()` - a specific event stream
-      
-  ## Lifecycle
+      @impl true
+      def init({database_id, subscriber, source, position}) do
+        state = %{
+          database_id: database_id,
+          source: source,
+          subscriber: subscriber,
+          position: position,
+          high_water_mark: nil,
+          mode: :init,
+          buffer: :gb_trees.empty()
+        }
 
-  1. Process starts and monitors the subscriber
-  2. Subscribes to the PubSub topic for the source
-  3. Captures the current high-water mark for the source
-  4. Replays events from the requested start position
-  5. Buffers any new events arriving during replay
-  6. Flushes the buffer in order
-  7. Transitions to live mode
-  8. Terminates automatically when the subscriber exits.
-  """
+        {:ok, state, {:continue, :init_mode}}
+      end
 
-  use GenServer
-  use Fact.Types
+      @impl true
+      def handle_continue(
+            :init_mode,
+            %{database_id: database_id, source: source, subscriber: subscriber} = state
+          ) do
+        Process.monitor(subscriber)
 
-  require Logger
+        # 1. Subscribe first
+        __MODULE__.subscribe(database_id, source)
+        # 2. Capture high water mark
+        high_water_mark = __MODULE__.high_water_mark(database_id, source)
+        # 3. Start replay
+        send(self(), :replay)
 
-  @spec start_link(
-          Fact.Context.t(),
-          pid(),
-          Fact.Types.read_event_source(),
-          Fact.Types.read_position(),
-          keyword()
-        ) :: {:ok, pid()} | {:error, term()}
-  def start_link(database_id, subscriber, source \\ :all, position \\ 0, opts \\ []) do
-    GenServer.start_link(__MODULE__, {database_id, subscriber, source, position}, opts)
-  end
+        {:noreply, %{state | high_water_mark: high_water_mark, mode: :catchup}}
+      end
 
-  @impl true
-  def init({database_id, subscriber, source, position}) do
-    state = %{
-      database_id: database_id,
-      source: source,
-      subscriber: subscriber,
-      position: position,
-      high_water_mark: nil,
-      mode: :init,
-      buffer: :gb_trees.empty()
-    }
+      @impl true
+      def handle_info(:replay, state) do
+        __MODULE__.replay(
+          state.database_id,
+          state.source,
+          min(state.position, state.high_water_mark),
+          state.high_water_mark,
+          fn record -> deliver(state.subscriber, record) end
+        )
 
-    {:ok, state, {:continue, :init_mode}}
-  end
+        flush_buffer(state)
 
-  @impl true
-  def handle_continue(
-        :init_mode,
-        %{database_id: database_id, source: source} = state
-      ) do
-    Process.monitor(state.subscriber)
+        send(state.subscriber, :caught_up)
 
-    # 1. Subscribe first
-    Fact.EventPublisher.subscribe(database_id, source)
-    # 2. Capture boundary
-    high_water_mark = last_position(database_id, source)
-    # 3. Start replay
-    send(self(), :replay)
+        {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
+      end
 
-    {:noreply, %{state | high_water_mark: high_water_mark, mode: :catchup}}
-  end
+      @impl true
+      def handle_info({:DOWN, _ref, :process, pid, _reason}, %{subscriber: pid} = state) do
+        {:stop, :normal, state}
+      end
 
-  @impl true
-  def handle_info(:replay, state) do
-    Fact.read(state.database_id, state.source,
-      position: min(state.position, state.high_water_mark),
-      direction: :forward,
-      result_type: :record
-    )
-    |> Stream.take_while(fn {_, event} ->
-      event_position(event, state.source) <= state.high_water_mark
-    end)
-    |> Enum.each(&deliver(&1, state))
+      defp buffer_or_deliver({_, event} = record, state) do
+        pos = __MODULE__.get_position(state.database_id, state.source, event)
 
-    # Flush any buffered live events in order
-    state.buffer
-    |> :gb_trees.to_list()
-    |> Enum.sort_by(fn {pos, _} -> pos end)
-    |> Enum.each(fn {_, record} -> deliver(record, state) end)
+        cond do
+          pos <= state.high_water_mark ->
+            {:noreply, state}
 
-    send(state.subscriber, :caught_up)
+          :catchup == state.mode ->
+            {:noreply, %{state | buffer: :gb_trees.enter(pos, record, state.buffer)}}
 
-    {:noreply, %{state | mode: :live, buffer: :gb_trees.empty()}}
-  end
+          true ->
+            deliver(state.subscriber, record)
+            {:noreply, state}
+        end
+      end
 
-  @impl true
-  def handle_info({:appended, {_, event} = record}, state) do
-    position = event_position(event, state.source)
+      defp flush_buffer(state) do
+        state.buffer
+        |> :gb_trees.to_list()
+        |> Enum.sort_by(fn {pos, _} -> pos end)
+        |> Enum.each(fn {_, record} -> deliver(state.subscriber, record) end)
+      end
 
-    cond do
-      position <= state.high_water_mark ->
-        {:noreply, state}
-
-      state.mode == :catchup ->
-        buffer = :gb_trees.enter(position, record, state.buffer)
-        {:noreply, %{state | buffer: buffer}}
-
-      true ->
-        deliver(record, state)
-        {:noreply, state}
+      defp deliver(subscriber, record) do
+        send(subscriber, {:event_record, record})
+      end
     end
   end
-
-  @impl true
-  def handle_info({:DOWN, _ref, :process, pid, _reason}, %{subscriber: pid} = state) do
-    {:stop, :normal, state}
-  end
-
-  defp deliver(record, state) do
-    send(state.subscriber, {:appended, record})
-  end
-
-  defp event_position(event, :all), do: event[@event_store_position]
-
-  defp event_position(event, {:stream, event_stream}) when is_binary(event_stream),
-    do: event[@event_stream_position]
-
-  defp last_position(database_id, :all),
-    do: Fact.Database.last_position(database_id)
-
-  defp last_position(database_id, {:stream, event_stream}) when is_binary(event_stream),
-    do: Fact.EventStreamIndexer.last_stream_position(database_id, event_stream)
 end

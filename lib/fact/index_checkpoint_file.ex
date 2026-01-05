@@ -40,7 +40,7 @@ defmodule Fact.IndexCheckpointFile do
           binary: true,
           exclusive: false,
           raw: false,
-          sync: true,
+          sync: false,
           worm: false
         }
       }
@@ -57,9 +57,11 @@ defmodule Fact.IndexCheckpointFile do
 
   def read(%Context{} = context, indexer) do
     with {:ok, path} <- path(context, indexer),
-         encoded <- read_single(context, path),
+         {:ok, encoded} <- read_single(context, path),
          {:ok, decoded} <- Decoder.decode(context, encoded) do
       decoded
+    else
+      {:error, :enoent} -> 0
     end
   end
 
@@ -85,7 +87,7 @@ defmodule Fact.IndexCheckpointFile do
 
   defp read_single(%Context{} = context, path) do
     with {:ok, stream} <- Reader.read(context, path, []) do
-      stream |> Enum.at(0)
+      {:ok, stream |> Enum.at(0)}
     end
   end
 end

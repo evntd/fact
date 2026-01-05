@@ -26,4 +26,4 @@ fact-*.tar
 .idea
 
 # Test DBs
-test_*
+test_*/

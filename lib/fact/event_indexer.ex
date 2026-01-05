@@ -166,9 +166,9 @@ defmodule Fact.EventIndexer do
     * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.Types.event_record/0` is processed 
     regardless of whether the event is included within the index.
   """
-  @spec subscribe(Fact.Context.t(), indexer_id()) :: :ok
-  def subscribe(%Fact.Context{} = context, indexer) do
-    Phoenix.PubSub.subscribe(Fact.Registry.pubsub(context), topic(indexer))
+  @spec subscribe(Fact.Types.database_id(), indexer_id()) :: :ok
+  def subscribe(database_id, indexer) do
+    Phoenix.PubSub.subscribe(Fact.Registry.pubsub(database_id), topic(indexer))
   end
 
   @doc """
@@ -241,7 +241,7 @@ defmodule Fact.EventIndexer do
       def init(%{database_id: database_id, indexer_id: indexer_id} = state) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           :ok = Fact.IndexCheckpointFile.ensure_exists(context, indexer_id)
-          :ok = Fact.EventPublisher.subscribe(context, :all)
+          :ok = Fact.EventPublisher.subscribe(database_id, :all)
           {:ok, state, {:continue, :rebuild_and_join}}
         end
       end
@@ -331,23 +331,19 @@ defmodule Fact.EventIndexer do
              %{database_id: database_id, indexer_id: indexer_id} = state,
              index_result
            ) do
-        with {:ok, context} <- Fact.Registry.get_context(database_id) do
-          Phoenix.PubSub.broadcast(
-            Fact.Registry.pubsub(context),
-            Fact.EventIndexer.topic(indexer_id),
-            {:indexed, indexer_id, index_result}
-          )
-        end
+        Phoenix.PubSub.broadcast(
+          Fact.Registry.pubsub(database_id),
+          Fact.EventIndexer.topic(indexer_id),
+          {:indexed, indexer_id, index_result}
+        )
       end
 
       defp publish_ready(%{database_id: database_id, indexer_id: indexer_id} = state, checkpoint) do
-        with {:ok, context} <- Fact.Registry.get_context(database_id) do
-          Phoenix.PubSub.broadcast(
-            Fact.Registry.pubsub(context),
-            Fact.EventIndexer.topic(indexer_id),
-            {:indexer_ready, indexer_id, checkpoint}
-          )
-        end
+        Phoenix.PubSub.broadcast(
+          Fact.Registry.pubsub(database_id),
+          Fact.EventIndexer.topic(indexer_id),
+          {:indexer_ready, indexer_id, checkpoint}
+        )
       end
     end
   end
