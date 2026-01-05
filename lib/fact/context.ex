@@ -1,5 +1,5 @@
 defmodule Fact.Context do
-  alias Fact.EventId
+  alias Fact.Event
   alias Fact.IndexCheckpointFile
   alias Fact.IndexFile
   alias Fact.LedgerFile
@@ -21,6 +21,7 @@ defmodule Fact.Context do
 
     # Seams
     :event_id,
+    :event_schema,
 
     ## Index Checkpoints
     :index_checkpoint_file_decoder,
@@ -56,7 +57,6 @@ defmodule Fact.Context do
     :record_file_name,
     :record_file_reader,
     :record_file_writer,
-    :record_file_schema,
 
     ## Storage
     :storage
@@ -72,7 +72,8 @@ defmodule Fact.Context do
       erts_version: Map.get(event_data, "erts_version"),
       fact_version: Map.get(event_data, "fact_version"),
       otp_version: Map.get(event_data, "otp_version"),
-      event_id: EventId.from_config(Map.get(event_data, "event_id")),
+      event_id: Event.Id.from_config(Map.get(event_data, "event_id")),
+      event_schema: Event.Schema.from_config(Map.get(event_data, "event_schema")),
       index_checkpoint_file_decoder:
         IndexCheckpointFile.Decoder.from_config(
           Map.get(event_data, "index_checkpoint_file_decoder")
@@ -119,8 +120,6 @@ defmodule Fact.Context do
       record_file_name: RecordFile.Name.from_config(Map.get(event_data, "record_file_name")),
       record_file_reader:
         RecordFile.Reader.from_config(Map.get(event_data, "record_file_reader")),
-      record_file_schema:
-        RecordFile.Schema.from_config(Map.get(event_data, "record_file_schema")),
       record_file_writer:
         RecordFile.Writer.from_config(Map.get(event_data, "record_file_writer")),
       storage: Storage.from_config(Map.get(event_data, "storage"))

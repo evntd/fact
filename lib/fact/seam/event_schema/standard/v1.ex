@@ -1,5 +1,5 @@
-defmodule Fact.Seam.RecordSchema.Standard.V1 do
-  use Fact.Seam.RecordSchema,
+defmodule Fact.Seam.EventSchema.Standard.V1 do
+  use Fact.Seam.EventSchema,
     family: :standard,
     version: 1
 

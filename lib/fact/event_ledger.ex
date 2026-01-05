@@ -2,8 +2,8 @@ defmodule Fact.EventLedger do
   use GenServer
   use Fact.Types
 
-  alias Fact.EventId
-  alias Fact.RecordFile.Schema
+  alias Fact.Event.Id
+  alias Fact.Event.Schema
 
   require Logger
 
@@ -179,7 +179,7 @@ defmodule Fact.EventLedger do
         enriched_event =
           %{}
           |> then(&Schema.set_event_data(context, &1, %{}))
-          |> then(&Schema.set_event_id(context, &1, EventId.generate(context)))
+          |> then(&Schema.set_event_id(context, &1, Id.generate(context)))
           |> then(&Schema.set_event_metadata(context, &1, %{}))
           |> then(&Schema.set_event_tags(context, &1, []))
           |> then(&Schema.set_event_store_position(context, &1, next))

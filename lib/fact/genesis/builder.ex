@@ -2,7 +2,7 @@ defmodule Fact.Genesis.Builder do
   @moduledoc false
 
   alias Fact.Genesis.Event.DatabaseCreated
-  alias Fact.RecordFile.Schema
+  alias Fact.Event
 
   def initial_state(), do: :initial_state
 
@@ -11,19 +11,19 @@ defmodule Fact.Genesis.Builder do
          :ok <- init_storage(context) do
       genesis =
         %{}
-        |> then(&Schema.set_event_type(context, &1, to_string(event.__struct__)))
-        |> then(&Schema.set_event_id(context, &1, Fact.EventId.generate(context)))
-        |> then(&Schema.set_event_data(context, &1, Map.from_struct(event)))
-        |> then(&Schema.set_event_metadata(context, &1, %{}))
-        |> then(&Schema.set_event_store_position(context, &1, 1))
+        |> then(&Event.Schema.set_event_type(context, &1, to_string(event.__struct__)))
+        |> then(&Event.Schema.set_event_id(context, &1, Event.Id.generate(context)))
+        |> then(&Event.Schema.set_event_data(context, &1, Map.from_struct(event)))
+        |> then(&Event.Schema.set_event_metadata(context, &1, %{}))
+        |> then(&Event.Schema.set_event_store_position(context, &1, 1))
         |> then(
-          &Schema.set_event_store_timestamp(
+          &Event.Schema.set_event_store_timestamp(
             context,
             &1,
             DateTime.utc_now() |> DateTime.to_unix(:microsecond)
           )
         )
-        |> then(&Schema.set_event_tags(context, &1, ["__fact__:#{event.database_id}"]))
+        |> then(&Event.Schema.set_event_tags(context, &1, ["__fact__:#{event.database_id}"]))
 
       {:ok, record_id} = Fact.RecordFile.write(context, genesis)
       {:ok, ^record_id} = Fact.LedgerFile.write(context, record_id)

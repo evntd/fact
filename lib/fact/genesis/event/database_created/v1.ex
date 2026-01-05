@@ -1,5 +1,5 @@
 defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
-  alias Fact.EventId
+  alias Fact.Event
   alias Fact.IndexCheckpointFile
   alias Fact.IndexFile
   alias Fact.LedgerFile
@@ -16,6 +16,7 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
     :os_version,
     :otp_version,
     :event_id,
+    :event_schema,
     :index_checkpoint_file_decoder,
     :index_checkpoint_file_encoder,
     :index_checkpoint_file_name,
@@ -40,7 +41,6 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
     :record_file_encoder,
     :record_file_name,
     :record_file_reader,
-    :record_file_schema,
     :record_file_writer,
     :storage
   ]
@@ -63,6 +63,7 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
           os_version: String.t(),
           otp_version: String.t(),
           event_id: component_config(),
+          event_schema: component_config(),
           index_checkpoint_file_decoder: component_config(),
           index_checkpoint_file_encoder: component_config(),
           index_checkpoint_file_name: component_config(),
@@ -87,7 +88,6 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
           record_file_encoder: component_config(),
           record_file_name: component_config(),
           record_file_reader: component_config(),
-          record_file_schema: component_config(),
           record_file_writer: component_config(),
           storage: component_config()
         }
@@ -101,7 +101,8 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
       fact_version: event.fact_version,
       otp_version: event.otp_version,
       os_version: event.os_version,
-      event_id: EventId.from_config(event.event_id),
+      event_id: Event.Id.from_config(event.event_id),
+      event_schema: Event.Schema.from_config(event.event_schema),
       index_checkpoint_file_decoder:
         IndexCheckpointFile.Decoder.from_config(event.index_checkpoint_file_decoder),
       index_checkpoint_file_encoder:
@@ -132,7 +133,6 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
       record_file_name: RecordFile.Name.from_config(event.record_file_name),
       record_file_reader: RecordFile.Reader.from_config(event.record_file_reader),
       record_file_writer: RecordFile.Writer.from_config(event.record_file_writer),
-      record_file_schema: RecordFile.Schema.from_config(event.record_file_schema),
       storage: Storage.from_config(event.storage)
     }
   end

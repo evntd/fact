@@ -26,7 +26,7 @@ defmodule Fact.Database do
     with {:ok, context} <- Fact.Registry.get_context(database_id),
          stream <- Fact.LedgerFile.read(context, direction: :backward, position: :end, count: 1),
          event <- Fact.RecordFile.read_event(context, stream |> Enum.at(0)) do
-      Fact.RecordFile.Schema.get_event_store_position(context, event)
+      Fact.Event.Schema.get_event_store_position(context, event)
     end
   end
 
@@ -200,7 +200,7 @@ defmodule Fact.Database do
         %__MODULE__{database_id: database_id, chase_pos: chase_pos} = state
       ) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      pos = Fact.RecordFile.Schema.get_event_store_position(context, event)
+      pos = Fact.Event.Schema.get_event_store_position(context, event)
 
       if pos > chase_pos do
         {:noreply, %{state | chase_pos: pos}}

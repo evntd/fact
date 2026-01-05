@@ -42,11 +42,6 @@ defmodule Fact.RecordFile do
       allowed_impls: [{:full, 1}]
   end
 
-  defmodule Schema do
-    use Fact.Seam.RecordSchema.Adapter,
-      context: :record_file_schema
-  end
-
   defmodule Writer do
     use Fact.Seam.FileWriter.Adapter,
       context: :record_file_writer,

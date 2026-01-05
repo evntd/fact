@@ -1,4 +1,4 @@
-defmodule Fact.Seam.RecordSchema.Adapter do
+defmodule Fact.Seam.EventSchema.Adapter do
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)
@@ -7,7 +7,7 @@ defmodule Fact.Seam.RecordSchema.Adapter do
 
     quote do
       use Fact.Seam.Adapter,
-        registry: Fact.Seam.RecordSchema.Registry,
+        registry: Fact.Seam.EventSchema.Registry,
         allowed_impls: unquote(allowed_impls),
         default_impl: unquote(default_impl),
         fixed_options: unquote(fixed_options)

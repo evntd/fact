@@ -46,7 +46,7 @@ defmodule Fact.EventPublisher do
         message = {:appended, record}
         Phoenix.PubSub.broadcast(pubsub, @all_events, message)
 
-        case Fact.RecordFile.Schema.get_event_stream_id(context, event) do
+        case Fact.Event.Schema.get_event_stream_id(context, event) do
           nil ->
             :ok
 

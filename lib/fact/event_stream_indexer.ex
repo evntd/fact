@@ -52,7 +52,7 @@ defmodule Fact.EventStreamIndexer do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       unless(
         is_nil(event = Fact.IndexFile.read_last_event(context, {__MODULE__, nil}, event_stream)),
-        do: Fact.RecordFile.Schema.get_event_stream_position(context, event),
+        do: Fact.Event.Schema.get_event_stream_position(context, event),
         else: 0
       )
     end

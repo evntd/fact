@@ -69,7 +69,8 @@ defmodule Fact.Genesis.Decider do
   def fact_version(), do: Fact.MixProject.project()[:version]
 
   @abstractions %{
-    event_id: Fact.EventId,
+    event_id: Fact.Event.Id,
+    event_schema: Fact.Event.Schema,
     index_checkpoint_file_decoder: Fact.IndexCheckpointFile.Decoder,
     index_checkpoint_file_encoder: Fact.IndexCheckpointFile.Encoder,
     index_checkpoint_file_name: Fact.IndexCheckpointFile.Name,
@@ -94,7 +95,6 @@ defmodule Fact.Genesis.Decider do
     record_file_encoder: Fact.RecordFile.Encoder,
     record_file_name: Fact.RecordFile.Name,
     record_file_reader: Fact.RecordFile.Reader,
-    record_file_schema: Fact.RecordFile.Schema,
     record_file_writer: Fact.RecordFile.Writer,
     storage: Fact.Storage
   }

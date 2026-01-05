@@ -1,4 +1,4 @@
-defmodule Fact.Seam.RecordSchema do
+defmodule Fact.Seam.EventSchema do
   use Fact.Seam
   use Fact.Types
 
