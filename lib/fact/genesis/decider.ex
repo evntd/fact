@@ -5,13 +5,13 @@ defmodule Fact.Genesis.Decider do
   def initial_state(), do: :initial_state
 
   def decide(:initial_state, %CreateDatabase.V1{args: args} = _command) do
-    with {:ok, name} <- Keyword.fetch(args, :name),
-         {:ok, path} <- Keyword.fetch(args, :path),
-         :ok <- verify_path(path),
+    with args <- resolve_name_and_path(args),
+         :ok <- verify_path(Keyword.get(args, :path)),
          {:ok, configuration} <- build_configuration(args) do
+      
       info = %{
         database_id: generate_database_id(),
-        database_name: name,
+        database_name: Keyword.get(args, :name),
         elixir_version: elixir_version(),
         erts_version: erts_version(),
         fact_version: fact_version(),
@@ -21,6 +21,41 @@ defmodule Fact.Genesis.Decider do
 
       {:ok, [struct(DatabaseCreated.V1, Map.merge(info, configuration))]}
     end
+  end
+  
+  defp resolve_name_and_path(args) do
+    cwd = File.cwd!()
+    name = Keyword.get(args, :name)
+    path = Keyword.get(args, :path)
+
+    resolved =
+      cond do
+        name && is_nil(path) ->
+          path = Path.join(cwd, name)
+          [name: name, path: path]
+        path && is_nil(name) ->
+          name = Path.expand(path) |> Path.basename()
+          [name: name, path: path]
+        is_nil(name) && is_nil(path) ->
+          path = cwd
+          name = Path.basename(cwd)
+          [name: name, path: path]
+        true ->
+          expanded = Path.expand(path)
+          
+          last = expanded |> Path.basename()
+          
+          path =
+            if last == name do
+              expanded
+            else
+              Path.join(expanded, name)
+            end
+          
+          [name: name, path: path]
+      end
+      
+    Keyword.merge(args, resolved)
   end
 
   def verify_path(path) do

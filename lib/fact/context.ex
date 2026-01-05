@@ -71,6 +71,7 @@ defmodule Fact.Context do
       elixir_version: Map.get(event_data, "elixir_version"),
       erts_version: Map.get(event_data, "erts_version"),
       fact_version: Map.get(event_data, "fact_version"),
+      os_version: Map.get(event_data, "os_version"),
       otp_version: Map.get(event_data, "otp_version"),
       event_id: Event.Id.from_config(Map.get(event_data, "event_id")),
       event_schema: Event.Schema.from_config(Map.get(event_data, "event_schema")),
