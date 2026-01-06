@@ -95,6 +95,10 @@ defmodule Mix.Tasks.Fact.Create do
 
   use Mix.Task
 
+  alias Fact.Genesis.Command.CreateDatabase
+  alias Fact.Genesis.Creator
+  alias Fact.Genesis.Decider
+
   @switches [
     name: :string,
     path: :string,
@@ -165,6 +169,22 @@ defmodule Mix.Tasks.Fact.Create do
     not_directory: "the path must be a directory",
     not_empty_directory: "the path must be an empty directory"
   }
+  
+  @quotes [
+    "Append or append not. There is no delete.",
+    "Turtle Power!",
+    "Cowabunga!",
+    "I'm no Kung fu frog.",
+    "You need to stick your neck out to make progress.",
+    "Forget about speed, just move forward.",
+    "Your turtle is ready",
+    "GWAHAHA!",
+    "Peaches, Peaches, Peaches, Peaches, Peaches, I love you",
+    "A thousand troops of Koopas couldn't keep me from you",
+    "Stay. Use your skills for good, young warrior",
+    "An acorn can only become the mighty oak, not a cherry tree",
+    "Everything is consistent...eventually"
+  ]
 
   @impl true
   def run(args) do
@@ -178,15 +198,16 @@ defmodule Mix.Tasks.Fact.Create do
       Mix.raise("Unexpected arguments: #{Enum.join(argv, " ")}")
     end
 
-    command = %Fact.Genesis.Command.CreateDatabase.V1{args: parsed}
-    state = Fact.Genesis.Decider.initial_state()
+    command = %CreateDatabase.V1{args: parsed}
+    state = Decider.initial_state()
 
-    with {:ok, events} <- Fact.Genesis.Decider.decide(state, command) do
-      Enum.reduce(events, Fact.Genesis.Builder.initial_state(), fn event, state ->
-        Fact.Genesis.Builder.evolve(state, event)
-      end)
+    with {:ok, [genesis_event]} <- Decider.decide(state, command) do
+      Creator.let_there_be_light(genesis_event)
 
-      Mix.shell().info("\nResults:\n#{inspect(events)}")
+      display_banner()
+      display_results(genesis_event, Keyword.get(command.args, :path))
+      display_next_steps()
+
       :ok
     else
       {:error, reason} ->
@@ -194,5 +215,44 @@ defmodule Mix.Tasks.Fact.Create do
           "Database creation failed: #{Map.get(@error_messages_by_reason, reason, reason)}."
         )
     end
+  end
+
+  defp display_banner() do
+    # ANSI Shadow
+    Mix.shell().info("""
+
+
+          ███████╗ █████╗  ██████╗ ████████╗
+          ██╔════╝██╔══██╗██╔════╝ ╚══██╔══╝
+          █████╗  ███████║██║         ██║   
+          ██╔══╝  ██╔══██║██║         ██║   
+          ██║     ██║  ██║╚██████╗    ██║   
+          ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project()[:version]} (#{Fact.MixProject.project()[:codename]})  
+
+             🐢 #{Enum.random(@quotes)}
+    
+    """)
+  end
+
+  defp display_results(event, path) do
+    Mix.shell().info("""
+        Event sourcing database created, you're ready to rock!!! 🤘
+
+      ================================================================  
+          ID: #{event.database_id}
+        NAME: #{event.database_name}
+        PATH: #{Path.absname(path)}
+      ================================================================    
+    """)
+  end
+
+  defp display_next_steps() do
+    Mix.shell().info("""
+        Next Steps:
+        
+          📖 \e]8;;#{Fact.MixProject.project()[:docs][:canonical]}\e\\Read the documentation\e]8;;\e\\ at #{Fact.MixProject.project()[:docs][:canonical]}
+          🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\ 
+          🍺 \e]8;;https://www.amazon.com/Complete-Joy-Homebrewing-Fourth-Revised/dp/0062215752\e\\Relax, don't worry, have a homebrew\e]8;;\e\\
+    """)
   end
 end

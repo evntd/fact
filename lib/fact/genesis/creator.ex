@@ -2,9 +2,7 @@ defmodule Fact.Genesis.Creator do
   alias Fact.Genesis.Event.DatabaseCreated
   alias Fact.Event
 
-  def initial_state(), do: :initial_state
-
-  def evolve(:initial_state, %DatabaseCreated.V1{} = event) do
+  def let_there_be_light(%DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
          :ok <- init_storage(context) do
       schema = Event.Schema.get(context)
@@ -23,7 +21,7 @@ defmodule Fact.Genesis.Creator do
       {:ok, record_id} = Fact.RecordFile.write(context, genesis)
       {:ok, ^record_id} = Fact.LedgerFile.write(context, record_id)
 
-      :built
+      :ok
     end
   end
 
