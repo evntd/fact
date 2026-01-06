@@ -39,9 +39,7 @@ defmodule Fact.EventStreamIndexer do
       "__fact"
   """
   @impl true
-  @spec index_event(event :: Fact.Types.event_record(), Fact.EventIndexer.indexer_options()) ::
-          Fact.EventIndexer.index_event_result()
-  def index_event(event, _opts), do: event[@event_stream]
+  def index_event(schema, event, _opts), do: event[schema.event_stream_id]
 
   @doc """
   Utility method to determine the last position within an event stream. 

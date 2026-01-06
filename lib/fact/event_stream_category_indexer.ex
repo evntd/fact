@@ -55,12 +55,10 @@ defmodule Fact.EventStreamCategoryIndexer do
 
   """
   @impl true
-  @spec index_event(Fact.Types.event_record(), options()) ::
-          Fact.EventIndexer.index_event_result()
-  def index_event(%{@event_stream => stream}, opts) do
-    separator = Keyword.get(opts, :separator, @default_separator)
-    stream |> String.split(separator, parts: 2) |> List.first()
+  def index_event(schema, event, opts) do
+    unless is_nil(stream = event[schema.event_stream_id]) do
+      separator = Keyword.get(opts, :separator, @default_separator)
+      stream |> String.split(separator, parts: 2) |> List.first()  
+    end
   end
-
-  def index_event(_event, _opts), do: nil
 end

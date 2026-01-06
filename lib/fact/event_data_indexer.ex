@@ -52,15 +52,11 @@ defmodule Fact.EventDataIndexer do
 
   """
   @impl true
-  @spec index_event(Fact.Types.event_record(), options()) ::
-          Fact.EventIndexer.index_event_result()
-  def index_event(%{@event_data => data} = _event, opts) do
-    unless is_nil(val = data[Keyword.get(opts, :indexer_key)]) do
-      to_string(val)
-    else
-      nil
+  def index_event(schema, event, opts) do
+    event_data = event[schema.event_data]
+    indexer_key = Keyword.get(opts, :indexer_key)
+    unless is_nil(value = Map.get(event_data, indexer_key)) do
+      to_string(value)
     end
   end
-
-  def index_event(_event, _opts), do: nil
 end

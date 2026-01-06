@@ -10,8 +10,6 @@ defmodule Fact.ConcurrencyError do
   * `:actual` - the actual position during the append operation
   """
 
-  use Fact.Types
-
   defexception [:source, :expected, :actual]
 
   @impl true
@@ -19,7 +17,7 @@ defmodule Fact.ConcurrencyError do
     do: message(exception.source, exception.expected, exception.actual) |> String.trim()
 
   defp message(:all, expected, actual) do
-    "expected #{@event_store_position} to be #{expected}, but was #{actual}"
+    "expected to be #{expected}, but was #{actual}"
   end
 
   defp message(source, :none, _actual) do
@@ -36,7 +34,7 @@ defmodule Fact.ConcurrencyError do
 
   defp message(source, expected, actual) do
     """
-    expected "#{source}" #{@event_stream_position} to be #{expected}, but was #{actual}
+    expected "#{source}" to be #{expected}, but was #{actual}
     """
   end
 end

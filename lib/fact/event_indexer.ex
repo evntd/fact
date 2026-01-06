@@ -155,7 +155,7 @@ defmodule Fact.EventIndexer do
   @doc """
   Called when an event needs to be indexed. 
   """
-  @callback index_event(event :: Fact.Types.event_record(), indexer_options()) ::
+  @callback index_event(schema :: Fact.event_schema(), event :: Fact.event(), indexer_options()) ::
               index_event_result()
 
   @doc """
@@ -190,11 +190,10 @@ defmodule Fact.EventIndexer do
       @behaviour Fact.EventIndexer
 
       use GenServer
-      use Fact.Types
 
       require Logger
 
-      defstruct [:database_id, :indexer_id, :indexer_opts, :checkpoint]
+      defstruct [:database_id, :indexer_id, :indexer_opts, :checkpoint, :schema]
 
       def child_spec(opts) do
         database_id = Keyword.fetch!(opts, :database_id)
@@ -230,7 +229,8 @@ defmodule Fact.EventIndexer do
           database_id: database_id,
           indexer_id: indexer_id,
           indexer_opts: options,
-          checkpoint: 0
+          checkpoint: 0,
+          schema: Fact.Event.Schema.get(database_id)
         }
 
         GenServer.start_link(__MODULE__, state, start_opts)
@@ -255,10 +255,10 @@ defmodule Fact.EventIndexer do
       @impl true
       @doc false
       def handle_info(
-            {:appended, {_, %{@event_store_position => position} = event} = record},
-            %{checkpoint: checkpoint} = state
+            {:appended, {_, event} = record},
+            %{checkpoint: checkpoint, schema: schema} = state
           ) do
-        unindexed = position - checkpoint
+        unindexed = event[schema.event_store_position] - checkpoint
 
         new_checkpoint =
           cond do
@@ -291,15 +291,19 @@ defmodule Fact.EventIndexer do
       @spec append_index(Fact.Types.record(), Fact.EventIndexer.t()) ::
               {:ok, Fact.EventIndexer.index_result()}
       defp append_index(
-             {record_id, %{@event_store_position => position} = event} = _record,
+             {record_id, event} = _record,
              %{
                database_id: database_id,
                indexer_id: indexer_id,
-               indexer_opts: indexer_opts
+               indexer_opts: indexer_opts,
+               schema: schema,
              } = state
            ) do
+        
+        position = event[schema.event_store_position]
+        
         index_values =
-          index_event(event, indexer_opts)
+          index_event(schema, event, indexer_opts)
           |> List.wrap()
 
         Enum.each(index_values, fn index ->

@@ -61,12 +61,10 @@ defmodule Fact.EventStreamsByCategoryIndexer do
       "__fact"
   """
   @impl true
-  @spec index_event(Fact.Types.event_record(), options()) ::
-          Fact.EventIndexer.index_event_result()
-  def index_event(%{@event_stream => stream, @event_stream_position => 1}, opts) do
-    separator = Keyword.get(opts, :separator, @default_separator)
-    stream |> String.split(separator, parts: 2) |> List.first()
+  def index_event(schema, event, opts) do
+    if (stream = event[schema.event_stream_id]) && 1 == event[schema.event_stream_position] do
+      separator = Keyword.get(opts, :separator, @default_separator)
+      stream |> String.split(separator, parts: 2) |> List.first()
+    end
   end
-
-  def index_event(_event, _opts), do: nil
 end

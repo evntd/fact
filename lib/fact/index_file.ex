@@ -46,10 +46,17 @@ defmodule Fact.IndexFile do
         }
       }
   end
+  
+  def read(database, indexer, index, opts \\ [])
 
-  def read(database_id, indexer, index, opts \\ []) when is_list(opts) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id),
-         {:ok, path} <- path(context, indexer, index),
+  def read(database_id, indexer, index, opts) when is_binary(database_id) and is_list(opts) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      read(context, indexer, index, opts)
+    end
+  end
+  
+  def read(%Context{} = context, indexer, index, opts) do
+    with {:ok, path} <- path(context, indexer, index),
          {:ok, stream} <- Reader.read(context, path, Keyword.take(opts, [:direction, :position])) do
       decoded_stream =
         stream
