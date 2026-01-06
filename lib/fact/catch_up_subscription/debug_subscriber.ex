@@ -1,4 +1,5 @@
 defmodule Fact.CatchUpSubscription.DebugSubscriber do
+  @moduledoc false
   use GenServer
 
   require Logger

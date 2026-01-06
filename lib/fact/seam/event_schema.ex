@@ -1,7 +1,9 @@
 defmodule Fact.Seam.EventSchema do
   use Fact.Seam
-  use Fact.Types
+  
+  alias Fact.Types
 
+  @callback event_data(t(), opts :: keyword()) :: String.t()
   @callback get_event_data(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_data() | {:error, term()}
   @callback set_event_data(
@@ -12,6 +14,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_id(t(), opts :: keyword()) :: String.t()
   @callback get_event_id(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_id() | {:error, term()}
   @callback set_event_id(
@@ -22,6 +25,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_metadata(t(), opts :: keyword()) :: String.t()
   @callback get_event_metadata(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_metadata() | {:error, term()}
   @callback set_event_metadata(
@@ -32,6 +36,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_tags(t(), opts :: keyword()) :: String.t()
   @callback get_event_tags(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_tags() | {:error, term()}
   @callback set_event_tags(
@@ -42,6 +47,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_type(t(), opts :: keyword()) :: String.t()
   @callback get_event_type(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_type() | {:error, term()}
   @callback set_event_type(
@@ -52,6 +58,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_store_position(t(), opts :: keyword()) :: String.t()
   @callback get_event_store_position(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_position() | {:error, term()}
   @callback set_event_store_position(
@@ -62,6 +69,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_store_timestamp(t(), opts :: keyword()) :: String.t()
   @callback get_event_store_timestamp(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_timestamp() | {:error, term()}
   @callback set_event_store_timestamp(
@@ -72,6 +80,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_stream_id(t(), opts :: keyword()) :: String.t()
   @callback get_event_stream_id(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_stream_id() | {:error, term()}
   @callback set_event_stream_id(
@@ -82,6 +91,7 @@ defmodule Fact.Seam.EventSchema do
             ) ::
               Types.event_record() | {:error, term()}
 
+  @callback event_stream_position(t(), opts :: keyword()) :: String.t()
   @callback get_event_stream_position(t(), Types.event_record(), opts :: keyword()) ::
               Types.event_position() | {:error, term()}
   @callback set_event_stream_position(

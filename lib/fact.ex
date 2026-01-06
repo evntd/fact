@@ -1,43 +1,6 @@
 defmodule Fact do
   @moduledoc """
-  Fact provides a lightweight, event sourcing database backed by the file system.
-
-  An instance consists of a supervision tree containing the processes that manage reads and writes to ledger, 
-  indexing, streams, and queries. Multiple instances may be started within the same BEAM node. Each instance is
-  identified by a `Fact.Instance` structure. 
-      
-  ## Start an Instance
-    
-  Use `open/1` to start a Fact supervision tree and receive the `Fact.Instance` that provides a handle for accessing
-  the database. 
-
-      {:ok, instance } = Fact.open("/var/lib/fact-db")
-
-  ### Process Structure
-    
-  Starting an instance creates a supervision tree containing:
-    
-  - `Fact.Registry` - processes for event streams, writers, and indexers.  
-  - `Fact.Storage` - the file system backed persistence layer.
-  - `Fact.EventLedger` - manages appending events, sequencing, and managing event query based consistency boundaries.  
-  - `Fact.EventPublisher` - publishes events to subscribers.
-  - `Fact.EventIndexerManager` - starts and supervises indexers.
-  - `Fact.EventStreamWriterSupervisor` - A `DynamicSupervisor` for managing event streams as consistency boundaries.  
-
-  ## Appending Events
-    
-  Events can be appended via streams or query conditions.  
-    
-  ## Reading Events  
-
-  Events can be read from the ledger, streams, queries, or any index.
-
-  ## Using `Fact` in your Modules
-    
-  To bind a module to a specific Fact instance, use:
-    
-      use Fact, name: :my_instance
-    
+  Fact is an event sourcing database, an event store.
   """
 
   def open(path) do
@@ -88,23 +51,23 @@ defmodule Fact do
     
   Append a single event.
     
-      iex> Fact.start_link(:mydb)
-      {:ok, #PID<0.200.0>}
+      iex> {:ok, db} = Fact.open("data/turtle")
+      {:ok, "TURTLE4F7Q6Y2X3VQKBJ5M7P4Z"}
     
-      iex> Fact.append_stream(:mydb, %{type: "MyFirstEvent"}, "myteststream")
+      iex> Fact.append_stream(db, %{type: "egg_hatched", data: %{name: "Turts"}}, "turtle-1")
       {:ok, 1}
     
-      iex> Fact.read(:mydb, "myteststream") |> Enum.to_list()
+      iex> Fact.read(db, {:stream, "turtle-1"}) |> Enum.to_list()
       [
         %{
-          "event_data" => %{},
-          "event_id" => "13b92de902c44763aaffd5df6d42036e",                                                                                                                                                                                                                                                               
+          "event_data" => %{"name" => "Turts"},
+          "event_id" => "3bb4808303c847fd9ceb0a1251ef95da",                                                                                                                                                                                                                                                               
           "event_metadata" => %{},                                                                                                                                                                                                                                                                                        
           "event_tags" => [],                                                                                                                                                                                                                                                                                             
-          "event_type" => "MyTestEvent",                                                                                                                                                                                                                                                                                  
-          "store_position" => 1,                                                                                                                                                                                                                                                                                          
-          "store_timestamp" => 1765434877444299,                                                                                                                                                                                                                                                                          
-          "stream_id" => "myteststream",                                                                                                                                                                                                                                                                                  
+          "event_type" => "egg_hatched",                                                                                                                                                                                                                                                                                  
+          "store_position" => 2,                                                                                                                                                                                                                                                                                          
+          "store_timestamp" => 1765039106962264,                                                                                                                                                                                                                                                                          
+          "stream_id" => "turtle-1",                                                                                                                                                                                                                                                                                  
           "stream_position" => 1                                                                                                                                                                                                                                                                                          
         }                                                                                                                                                                                                                                                                                                                 
       ]  

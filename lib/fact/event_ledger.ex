@@ -1,9 +1,7 @@
 defmodule Fact.EventLedger do
   use GenServer
-  use Fact.Types
-
-  alias Fact.Event.Id
-  alias Fact.Event.Schema
+  
+  alias Fact.Event
 
   require Logger
 
@@ -28,15 +26,9 @@ defmodule Fact.EventLedger do
   @type write_ledger_error ::
           {:error, {:ledger_write_failed, File.posix()}}
 
-  @replacements %{
-    data: @event_data,
-    id: @event_id,
-    metadata: @event_metadata,
-    tags: @event_tags,
-    type: @event_type
-  }
+  
 
-  defstruct [:database_id, position: 0]
+  defstruct [:database_id, :schema, :replacements, position: 0]
 
   @spec start_link([database_id: Fact.Types.database_id()] | []) ::
           {:ok, pid()} | {:error, term()}
@@ -95,9 +87,21 @@ defmodule Fact.EventLedger do
 
   @impl true
   def init(database_id) do
-    state = %{
+    schema = Event.Schema.get(database_id)
+      
+    replacements = %{
+      data: schema.event_data,
+      id: schema.event_id,
+      metadata: schema.event_metadata,
+      tags: schema.event_tags,
+      type: schema.event_type
+    }
+    
+    state = %__MODULE__{
       database_id: database_id,
-      position: Fact.Database.last_position(database_id)
+      position: Fact.Database.last_position(database_id),
+      schema: schema,
+      replacements: replacements
     }
 
     {:ok, state}
@@ -131,15 +135,15 @@ defmodule Fact.EventLedger do
   defp conditional_commit(
          events,
          {_condition, expected_pos} = condition,
-         %{database_id: database_id, position: position} = state
+         %{position: position} = state
        )
        when expected_pos < position do
-    with :ok <- check_query_condition(database_id, condition) do
+    with :ok <- check_query_condition(state, condition) do
       do_commit(events, state)
     end
   end
 
-  defp check_query_condition(database_id, {query, expected_pos}) do
+  defp check_query_condition(%{database_id: database_id, schema: schema} = _state, {query, expected_pos}) do
     Fact.Database.read_query(database_id, query, position: expected_pos, result_type: :record)
     |> Stream.take(-1)
     |> Enum.at(0)
@@ -152,13 +156,13 @@ defmodule Fact.EventLedger do
          Fact.ConcurrencyError.exception(
            source: :all,
            expected: expected_pos,
-           actual: record[@event_store_position]
+           actual: record[schema.event_store_position]
          )}
     end
   end
 
-  defp do_commit(events, %{database_id: database_id, position: position} = state) do
-    with {enriched_events, end_pos} <- enrich_events(database_id, {events, position}),
+  defp do_commit(events, %{database_id: database_id} = state) do
+    with {enriched_events, end_pos} <- enrich_events(events, state),
          {:ok, committed} <- commit_events(enriched_events, state) do
       Fact.EventPublisher.publish_appended(database_id, committed)
 
@@ -166,29 +170,29 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp enrich_events(database_id, {events, pos}) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
-      Enum.map_reduce(events, pos, fn event, pos ->
-        next = pos + 1
+  defp enrich_events(events, %{database_id: database_id, schema: schema, replacements: replacements, position: pos}) do
+    timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
-        event_with_renamed_keys =
-          rename_keys(event, @replacements)
+    Enum.map_reduce(events, pos, fn event, pos ->
+      next = pos + 1
 
-        enriched_event =
-          %{}
-          |> then(&Schema.set_event_data(context, &1, %{}))
-          |> then(&Schema.set_event_id(context, &1, Id.generate(context)))
-          |> then(&Schema.set_event_metadata(context, &1, %{}))
-          |> then(&Schema.set_event_tags(context, &1, []))
-          |> then(&Schema.set_event_store_position(context, &1, next))
-          |> then(&Schema.set_event_store_timestamp(context, &1, timestamp))
-          |> Map.merge(event_with_renamed_keys)
+      event_with_renamed_keys =
+        rename_keys(event, replacements)
 
-        {enriched_event, next}
-      end)
-    end
+      enriched_event =
+        %{
+          schema.event_data => %{},
+          schema.event_id => Event.Id.generate(database_id),
+          schema.event_metadata => %{},
+          schema.event_tags => [],
+          schema.event_store_position => next,
+          schema.event_store_timestamp => timestamp
+        }
+        |> Map.merge(event_with_renamed_keys)
+
+      {enriched_event, next}
+    end)
   end
 
   defp commit_events(events, %{database_id: database_id} = _state) do

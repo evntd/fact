@@ -1,5 +1,4 @@
-defmodule Fact.Genesis.Builder do
-  @moduledoc false
+defmodule Fact.Genesis.Creator do
 
   alias Fact.Genesis.Event.DatabaseCreated
   alias Fact.Event
