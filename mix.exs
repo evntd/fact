@@ -59,16 +59,12 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "guides/introduction/overview.md",
-        "guides/versions/whats-up-with-all-these-versions.md",
         "LICENSE"
       ],
       favicon: "guides/assets/images/turt-16.png",
       groups_for_extras: [
         Introduction: [
           "guides/introduction/overview.md"
-        ],
-        Versions: [
-          "guides/versions/whats-up-with-all-these-versions.md"
         ]
       ],
       groups_for_modules: [
@@ -208,9 +204,11 @@ defmodule Fact.MixProject do
       logo: "guides/assets/images/turt-48.png",
       main: "overview",
       nest_modules_by_prefix: [
+        Fact.Event,
         Fact.IndexCheckpointFile,
         Fact.IndexFile,
         Fact.LedgerFile,
+        Fact.LockFile,
         Fact.RecordFile,
         Fact.Seam,
         Fact.Seam.Decoder,

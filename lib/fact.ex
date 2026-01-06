@@ -396,15 +396,38 @@ defmodule Fact do
     )
   end
 
-  def read(database_id, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do
-    read(database_id, {:query, Fact.QueryItem.to_function(query_items)}, read_opts)
+  @spec subscribe(database_id(), subscribe_source(), subscribe_options()) :: {:ok, pid()}
+  def subscribe(database_id, event_source, options \\ [])
+
+  def subscribe(database_id, :all, options) when is_binary(database_id) and is_list(options) do
+    Fact.CatchUpSubscription.All.start_link([database_id: database_id] ++ options)
   end
 
-  def read(database_id, {:query, query_fun}, read_opts) when is_function(query_fun) do
-    Fact.Database.read_query(database_id, query_fun, read_opts)
+  def subscribe(database_id, {:stream, stream}, options)
+      when is_binary(database_id) and is_binary(stream) and is_list(options) do
+    Fact.CatchUpSubscription.Stream.start_link(
+      [database_id: database_id, stream: stream] ++ options
+    )
   end
 
-  def read(database_id, {:index, indexer_id, index}, read_opts) do
-    Fact.Database.read_index(database_id, indexer_id, index, read_opts)
+  def subscribe(database_id, {:index, indexer_id, index}, options)
+      when is_binary(database_id) and is_tuple(indexer_id) and tuple_size(indexer_id) == 2 and
+             is_binary(index) and
+             is_list(options) do
+    Fact.CatchUpSubscription.Index.start_link(
+      [database_id: database_id, indexer_id: indexer_id, index: index] ++ options
+    )
+  end
+
+  def subscribe(database_id, {:query, %Fact.QueryItem{} = query}, options)
+      when is_binary(database_id) and is_list(options) do
+    subscribe(database_id, {:query, List.wrap(query)}, options)
+  end
+
+  def subscribe(database_id, {:query, [%Fact.QueryItem{} | _] = query_items}, options)
+      when is_binary(database_id) and is_list(query_items) and is_list(options) do
+    Fact.CatchUpSubscription.Query.start_link(
+      [database_id: database_id, query_items: query_items] ++ options
+    )
   end
 end

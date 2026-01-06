@@ -169,7 +169,7 @@ defmodule Mix.Tasks.Fact.Create do
     not_directory: "the path must be a directory",
     not_empty_directory: "the path must be an empty directory"
   }
-  
+
   @quotes [
     "Append or append not. There is no delete.",
     "Turtle Power!",
@@ -230,7 +230,7 @@ defmodule Mix.Tasks.Fact.Create do
           ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project()[:version]} (#{Fact.MixProject.project()[:codename]})  
 
              🐢 #{Enum.random(@quotes)}
-    
+
     """)
   end
 
