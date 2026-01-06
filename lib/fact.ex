@@ -3,6 +3,143 @@ defmodule Fact do
   Fact is an event sourcing database, an event store.
   """
 
+  @typedoc """
+  A unique identifier for a Fact database.
+    
+  It is used as the primary handle for all database operations. Many 
+  Fact subsystems use this identifier to retrieve the database context 
+  in order to perform file and storage operations.
+  """
+  @type database_id :: uuid_v4_base32_uppercase_sans_padding()
+
+  @typedoc """
+  A map containing all the event details.
+  """
+  @type event :: map()
+
+  @typedoc """
+  A consumer defined, domain specific id for a stream of events.
+
+  An event stream represents a logical partition within the ledger which
+  is used to relate events for downstream system capabilities. The default 
+  consistency boundary for persisting Domain-Driven Design (DDD) Aggregate Roots.
+  """
+  @type event_stream_id :: no_whitespace_string()
+
+  @typedoc """
+  A string that contains no whitespace characters of any kind, including 
+  spaces, tabs, newlines, and non-displayable control characters.
+  """
+  @type no_whitespace_string :: String.t()
+
+  @typedoc """
+  A string whose internal structure is opaque to consumers.
+    
+  Opaque strings should be treated as identifiers or tokens whose format 
+  is not meaningful outside the system. Do not make assumptions about their
+  contents or structure.
+  """
+  @type opaque_string :: String.t()
+
+  @typedoc """
+  Specifies the maximum number of items to return from a read operation.
+  """
+  @type read_count_option :: :all | non_neg_integer()
+
+  @typedoc """
+  Specifies the direction in which events are read from an event source.
+  """
+  @type read_direction_option :: :forward | :backward
+
+  @typedoc """
+  The position at which a read operation begins.
+  """
+  @type read_position_option :: :start | :end | non_neg_integer()
+
+  @typedoc """
+  Options for customizing a read operation from an event source.
+  """
+  @type read_option ::
+          {:count, read_count_option()}
+          | {:direction, read_direction_option()}
+          | {:eager, boolean()}
+          | {:position, read_position_option()}
+          | {:result, read_result_option()}
+
+  @typedoc """
+  A keyword list of options customizing a read operation.
+
+  Each option is a `read_option()`. Defaults are applied for any options not specified.
+  """
+  @type read_options :: list(read_option())
+
+  @typedoc """
+  Represents the possible values when reading events from a query source.
+  """
+  @type read_query_source ::
+          :all
+          | :none
+          | Fact.Query.t()
+          | Fact.QueryItem.t()
+          | [Fact.QueryItem.t()]
+
+  @typedoc """
+  An enumerable collection (`List` or `Stream`) containing the values returned by the read operation.
+  """
+  @type read_result ::
+          Enumerable.t(event())
+          | Enumerable.t(record())
+          | Enumerable.t(record_id())
+
+  @typedoc """
+  Specifies the element type returned by the read operation.
+  """
+  @type read_result_option :: :event | :record | :record_id
+
+  @typedoc """
+  Represents the source from which events are read.
+  """
+  @type read_source ::
+          :none
+          | :all
+          | {:stream, event_stream_id()}
+          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index()}
+          | {:query, read_query_source()}
+
+  @typedoc """
+  A persisted event paired with its unique identifier.
+  """
+  @type record :: {record_id(), event()}
+
+  @typedoc """
+  An opaque string that uniquely identifies a persisted event.
+
+  The actual value and format depend on the configured `Fact.RecordFile.Name`.
+  """
+  @type record_id :: opaque_string()
+
+  @type subscribe_option ::
+          {:subscriber, pid()}
+          | {:position, read_position_option()}
+
+  @type subscribe_options :: list(subscribe_option)
+
+  @typedoc """
+  Represents the event sources that a process may subscribe to for notifications. 
+  """
+  @type subscribe_source ::
+          :all
+          | {:stream, event_stream_id()}
+          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index()}
+          | {:query, Fact.QueryItem.t() | [Fact.QueryItem.t()]}
+
+  @typedoc """
+  An RFC-4122 UUID v4 encoded in Base32, using only uppercase characters. 
+  The encoding contains no padding characters (`=`). This defines the 
+  expected format; it does not perform validation at runtime.
+  """
+  @type uuid_v4_base32_uppercase_sans_padding :: String.t()
+
   def open(path) do
     {:ok, _pid} =
       case Process.whereis(Fact.Supervisor) do
@@ -101,60 +238,162 @@ defmodule Fact do
   end
 
   @doc """
-  Read events from the event store in a variety of different ways.
+  Read from an event source.
 
-    * `:all` — reads from the global ledger index in event-store order.
-    * an event stream — reads events belonging to a specific stream.
-    * one or more `%Fact.EventQuery{}` structs — executes the query engine and streams results.
+  ## Event Sources
 
-  All read operations return a lazy `Stream` of `{record_id, event_record}` tuples, allowing callers
-  to process large event sets efficiently without loading them fully into memory.
+  Like most event stores, you can read from the global stream, or an individual event stream. 
+  Fact provides a few more options...
+
+    * `:none` - the empty stream  
+
+    * `:all` - the all stream (a.k.a. the global stream; a.k.a. the ledger)
+
+    * `{:stream, stream_id}` - an individual event stream
+
+    * `{:index, indexer_id, index}` - an event index 
+
+    * `{:query, query_items}` - an event query
 
   ## Options
-
-  The following options are accepted for all read strategies:
     
-    * `:direction` — traversal direction (default: `:forward`)
-      * `:forward` — increasing positions
-      * `:backward` — decreasing positions
+  You may provide a keyword list with the following options to craft the results to fit your need.
+  If any of the options are not specified, sensible defaults will be provided.
+    
+  ### direction:
+    
+    * `:forward` **(default)** - events are read in increasing position order (e.g. 1, 2, 3, ...)
+    * `:backward` - events are read in decreasing position order (e.g. 100, 99, 98, ...)
 
-    * `:position` - The position to begin reading relative to the event source.
-      * `:start` - begin at the start position.
-      * `:end` - begin at the last position.
-      * integer - starting position, when reading `:forward` this is exclusive, when reading `:backward`
-        it is inclusive.
+  > #### Note {: .info}
+  >
+  > Positions will not always increase or decrease by 1, it totally depends on the event source.
 
+  ### position:
+    
+  Set the position to begin reading the event source.
 
-    * `:count` — maximum number of events to return (default: all)
-      * `:all` - read all the events
-      * integer - a non-negative value
+    * `:start` **(default)** - the position immediately **before the first item** in the event source
+    * `:end` - the position immediately **after the last item** in the event source
+    * Or a non-negative integer representing the absolute position within the source
 
-  The reader validates these options and raises a `Fact.DatabaseError` on invalid values.
+  > #### A note on specific positions {: .info}
+  >
+  > The meaning of the integer position is specific to the event source.
+  > 
+  >   * For streams, it refers to the stream position.
+  >   * Other event sources store position (i.e. the global stream position)
+
+  > #### A reminder when reading from the end {: .tip}
+  >
+  > Starting reads from the end is typically only used when **reading backwards**, or subscribing to a live source. 
+  > So if you're unexpectedly getting no results, double-check your direction and position options.
+  >
+  > I've made these mistake many a time...🤦
+  >   
+  >   * reading forward from the end
+  >   * reading backward from the start 
+
+  ### count:
+    
+  Control the maximum size of the result set.
+    
+    * `:all` **(default)** - reads everything in the event source
+    * Or a non-negative integer. 
+
+  > #### You've been warned 🤠 🧑‍🚒 {: .warning}
+  >
+  > This option is super useful if you don't want to return a bazillion events to a consumer,
+  > spiking I/O ops, slowing response times, and generally clogging up the pipes. 
+  > 
+  > But this is one area where the default value will happily allow you to shoot yourself in the foot.
+
+  ### result:
+    
+  Control the shape of the elements in result set.
+        
+    * `:event` **(default)** - each element is a map containing the event details. 
+    * `:record` - each element is a 2-tuple `{record_id, event}` containing both the record id and the event.
+    * `:record_id` - each element is the record id of the event.
+
+  > #### Event schemas are ...kind of... configurable {: .info}  
+  > 
+  > When using `:event` or `record`, the exact "shape" of the event depends on the configured schema.
+  >
+  > See the `Fact.Seam.EventSchema.Registry` for all the available schemas.
+
+  > #### What's a record id??? {: .info}
+  >
+  > Fact separates the concepts of an **event id** and a **record id**. The record id is the actual 
+  > name of file on disk where the event is stored. This could be the same as the event id, and by 
+  > default it is... but it really depends on how the `Fact.RecordFile.Name` has been configured.
+
+  ### eager:
+
+  Controls if the result set will be enumerated or lazy.
+    
+    * `true` **(default)** - The internal `Stream` is enumerated and a `List` is returned.
+    * `false` - The result is returned as `Stream`
+
+  > #### Fool me once, shame on, shame on you. Fool me ... you can't get fooled again {: .warning} 
+  >  
+  > If the event source being read has many events, and `:count` is `:all`, it would be
+  > quite wise 🧙‍♂️ to set this to **false**.  Nearly all the internal components of Fact 
+  > use lazy reads, this is really just meant as a convenience so you don't have to 
+  > remember to `|> Enum.to_list()`.
+
   """
-  @spec read(Fact.Types.database_id(), Fact.Types.read_event_source(), Fact.Types.read_options()) ::
-          Enumerable.t(Fact.Types.event_record())
-  def read(database_id, event_source, opts \\ [])
+  @spec read(database_id(), read_source(), read_options()) :: read_result()
+  def read(database_id, event_source, options \\ [])
 
-  def read(_context, :none, _read_opts), do: Stream.concat([])
-
-  def read(database_id, :all, read_opts) do
-    Fact.Database.read_ledger(database_id, read_opts)
+  def read(database_id, :none, options) when is_binary(database_id) and is_list(options) do
+    Stream.concat([])
   end
 
-  def read(database_id, {:stream, event_stream}, read_opts) when is_binary(event_stream) do
-    read(database_id, {:index, {Fact.EventStreamIndexer, nil}, event_stream}, read_opts)
+  def read(database_id, :all, options) when is_binary(database_id) and is_list(options) do
+    Fact.Database.read_ledger(database_id, Keyword.put_new(options, :eager, true))
   end
 
-  def read(database_id, {:query, :all}, read_opts) do
-    read(database_id, :all, read_opts)
+  def read(database_id, {:stream, event_stream}, options)
+      when is_binary(database_id) and is_binary(event_stream) and is_list(options) do
+    read(database_id, {:index, {Fact.EventStreamIndexer, nil}, event_stream}, options)
   end
 
-  def read(database_id, {:query, :none}, read_opts) do
-    read(database_id, :none, read_opts)
+  def read(database_id, {:query, :all}, options)
+      when is_binary(database_id) and is_list(options) do
+    read(database_id, :all, options)
   end
 
-  def read(database_id, {:query, %Fact.QueryItem{} = query}, read_opts) do
-    read(database_id, {:query, Fact.QueryItem.to_function(query)}, read_opts)
+  def read(database_id, {:query, :none}, options)
+      when is_binary(database_id) and is_list(options) do
+    read(database_id, :none, options)
+  end
+
+  def read(database_id, {:query, %Fact.QueryItem{} = query}, options)
+      when is_binary(database_id) and is_list(options) do
+    read(database_id, {:query, Fact.QueryItem.to_function(query)}, options)
+  end
+
+  def read(database_id, {:query, [%Fact.QueryItem{} | _] = query_items}, options)
+      when is_binary(database_id) and is_list(query_items) and is_list(options) do
+    read(database_id, {:query, Fact.QueryItem.to_function(query_items)}, options)
+  end
+
+  def read(database_id, {:query, query_fun}, options)
+      when is_binary(database_id) and is_function(query_fun) and is_list(options) do
+    Fact.Database.read_query(database_id, query_fun, Keyword.put_new(options, :eager, true))
+  end
+
+  def read(database_id, {:index, indexer_id, index}, options)
+      when is_binary(database_id) and is_tuple(indexer_id) and tuple_size(indexer_id) == 2 and
+             is_binary(index) and
+             is_list(options) do
+    Fact.Database.read_index(
+      database_id,
+      indexer_id,
+      index,
+      Keyword.put_new(options, :eager, true)
+    )
   end
 
   def read(database_id, {:query, [%Fact.QueryItem{} | _] = query_items}, read_opts) do

@@ -41,12 +41,12 @@ defmodule Fact.Database do
   end
 
   def read_index(database_id, indexer_id, index, read_opts) do
-    map_read_results = to_result_type(database_id, Keyword.get(read_opts, :result_type, :event))
+    map_read_results = to_result(database_id, read_opts)
     map_read_results.(Fact.IndexFile.read(database_id, indexer_id, index, read_opts))
   end
 
   def read_ledger(database_id, read_opts) do
-    map_read_results = to_result_type(database_id, Keyword.get(read_opts, :result_type, :event))
+    map_read_results = to_result(database_id, read_opts)
     map_read_results.(Fact.LedgerFile.read(database_id, read_opts))
   end
 
@@ -58,7 +58,7 @@ defmodule Fact.Database do
       Fact.LedgerFile.read(database_id, read_ledger_opts)
       |> Stream.filter(&predicate.(&1))
 
-    map_read_results = to_result_type(database_id, Keyword.get(read_opts, :result_type, :event))
+    map_read_results = to_result(database_id, read_opts)
 
     case Keyword.get(maybe_count, :count, :all) do
       :all ->
@@ -102,17 +102,24 @@ defmodule Fact.Database do
     Phoenix.PubSub.subscribe(Fact.Registry.pubsub(database_id), @topic)
   end
 
-  defp to_result_type(database_id, result_type) do
-    case result_type do
-      :event ->
-        &Stream.map(&1, fn record_id -> elem(Fact.RecordFile.read(database_id, record_id), 1) end)
+  defp to_result(database_id, options) do
+    shape =
+      case Keyword.get(options, :result, :event) do
+        :event ->
+          &Stream.map(&1, fn record_id ->
+            elem(Fact.RecordFile.read(database_id, record_id), 1)
+          end)
 
-      :record ->
-        &Stream.map(&1, fn record_id -> Fact.RecordFile.read(database_id, record_id) end)
+        :record ->
+          &Stream.map(&1, fn record_id -> Fact.RecordFile.read(database_id, record_id) end)
 
-      :record_id ->
-        & &1
-    end
+        :record_id ->
+          & &1
+      end
+
+    if Keyword.get(options, :eager, false),
+      do: fn stream -> shape.(stream) |> Enum.to_list() end,
+      else: shape
   end
 
   @impl true

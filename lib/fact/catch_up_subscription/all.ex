@@ -23,7 +23,7 @@ defmodule Fact.CatchUpSubscription.All do
 
   @impl true
   def replay(%{database_id: database_id, schema: schema}, from_pos, to_pos, deliver_fun) do
-    Fact.Database.read_ledger(database_id, position: from_pos, result_type: :record)
+    Fact.Database.read_ledger(database_id, position: from_pos, result: :record)
     |> Stream.take_while(fn {_, event} ->
       event[schema.event_store_position] <= to_pos
     end)

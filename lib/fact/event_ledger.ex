@@ -145,7 +145,7 @@ defmodule Fact.EventLedger do
          %{database_id: database_id, schema: schema} = _state,
          {query, expected_pos}
        ) do
-    Fact.Database.read_query(database_id, query, position: expected_pos, result_type: :record)
+    Fact.Database.read_query(database_id, query, position: expected_pos, result: :record)
     |> Stream.take(-1)
     |> Enum.at(0)
     |> case do

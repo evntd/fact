@@ -40,7 +40,7 @@ defmodule Fact.CatchUpSubscription.Stream do
       ) do
     Fact.Database.read_index(database_id, {Fact.EventStreamIndexer, nil}, stream,
       position: from_pos,
-      result_type: :record
+      result: :record
     )
     |> Stream.take_while(fn {_, event} ->
       event[schema.event_stream_position] <= to_pos
