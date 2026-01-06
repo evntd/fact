@@ -15,15 +15,15 @@ defmodule Fact.Seam.EventSchema.Adapter do
       alias Fact.Context
 
       @key unquote(context_key)
-      
+
       def get(database, options \\ [])
-      
+
       def get(database_id, options) when is_binary(database_id) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           get(context, options)
         end
       end
-      
+
       def get(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :get, [[{:__context__, context} | options]])
       end

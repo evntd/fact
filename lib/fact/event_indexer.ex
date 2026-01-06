@@ -279,6 +279,7 @@ defmodule Fact.EventIndexer do
       @spec rebuild_index(Fact.EventIndexer.t()) :: Fact.Types.read_position()
       defp rebuild_index(%{database_id: database_id, indexer_id: indexer_id} = state) do
         checkpoint = Fact.IndexCheckpointFile.read(database_id, indexer_id)
+
         Fact.LedgerFile.read(database_id, position: checkpoint)
         |> Stream.map(&Fact.RecordFile.read(database_id, &1))
         |> Enum.reduce(checkpoint, fn record, _acc ->

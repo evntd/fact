@@ -57,7 +57,12 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
-  def replay(%{database_id: database_id, query_fun: query_fun, schema: schema}, from_pos, to_pos, deliver_fun) do
+  def replay(
+        %{database_id: database_id, query_fun: query_fun, schema: schema},
+        from_pos,
+        to_pos,
+        deliver_fun
+      ) do
     Fact.Database.read_query(database_id, query_fun, position: from_pos, result_type: :record)
     |> Stream.take_while(fn {_, event} ->
       event[schema.event_store_position] <= to_pos

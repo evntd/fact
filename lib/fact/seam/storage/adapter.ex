@@ -16,20 +16,20 @@ defmodule Fact.Seam.Storage.Adapter do
       @key :storage
 
       def path(database, options \\ [])
-      
-      def path(database_id, options) when is_binary(database_id)  do
+
+      def path(database_id, options) when is_binary(database_id) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           path(context, options)
         end
       end
-      
+
       def path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :path, [[{:__context__, context} | options]])
       end
 
       def records_path(database, options \\ [])
 
-      def records_path(database_id, options) when is_binary(database_id)  do
+      def records_path(database_id, options) when is_binary(database_id) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           records_path(context, options)
         end
@@ -41,7 +41,7 @@ defmodule Fact.Seam.Storage.Adapter do
 
       def indices_path(database, options \\ [])
 
-      def indices_path(database_id, options) when is_binary(database_id)  do
+      def indices_path(database_id, options) when is_binary(database_id) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           indices_path(context, options)
         end

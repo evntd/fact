@@ -78,7 +78,7 @@ defmodule Fact.IndexFile do
       write(context, indexer, index, record_ids)
     end
   end
-  
+
   def write(%Context{} = context, indexer, index, record_ids) do
     with {:ok, path} <- path(context, indexer, index),
          {:ok, encoded} <- Encoder.encode(context, record_ids),

@@ -142,7 +142,7 @@ defmodule Fact.MixProject do
         Process: [
           Fact.Bootstrapper,
           Fact.DatabaseSupervisor,
-          Fact.Lock,          
+          Fact.Lock,
           Fact.Supervisor
         ],
         "Pub/Sub": [

@@ -4,7 +4,7 @@ defmodule Fact.Seam.EventSchema.Standard.V1 do
     version: 1
 
   defstruct []
-  
+
   @impl true
   def get(%__MODULE__{}, opts) when is_list(opts) do
     %{
@@ -19,5 +19,4 @@ defmodule Fact.Seam.EventSchema.Standard.V1 do
       event_stream_position: "stream_position"
     }
   end
-
 end

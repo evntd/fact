@@ -7,9 +7,8 @@ defmodule Fact.Genesis.Creator do
   def evolve(:initial_state, %DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
          :ok <- init_storage(context) do
-      
       schema = Event.Schema.get(context)
-      
+
       genesis =
         %{
           schema.event_type => to_string(event.__struct__),

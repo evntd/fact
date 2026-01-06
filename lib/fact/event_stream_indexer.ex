@@ -3,7 +3,7 @@ defmodule Fact.EventStreamIndexer do
   Index events by their event stream if specified.
   """
   use Fact.EventIndexer
-  
+
   alias Fact.Event.Schema
 
   @doc """
@@ -52,7 +52,9 @@ defmodule Fact.EventStreamIndexer do
   @spec last_stream_position(Fact.Context.t(), Fact.Types.event_stream()) :: non_neg_integer()
   def last_stream_position(database_id, event_stream) do
     unless(
-      is_nil(event = Fact.IndexFile.read_last_event(database_id, {__MODULE__, nil}, event_stream)),
+      is_nil(
+        event = Fact.IndexFile.read_last_event(database_id, {__MODULE__, nil}, event_stream)
+      ),
       do: event[Schema.get(database_id).event_stream_position],
       else: 0
     )

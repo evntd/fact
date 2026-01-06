@@ -469,7 +469,9 @@ defmodule Fact.Query do
         fn database_id ->
           matching_events =
             event_types
-            |> Stream.flat_map(&Fact.IndexFile.read(database_id, {Fact.EventTypeIndexer, nil}, &1))
+            |> Stream.flat_map(
+              &Fact.IndexFile.read(database_id, {Fact.EventTypeIndexer, nil}, &1)
+            )
             |> Enum.into(MapSet.new())
 
           fn event_id ->

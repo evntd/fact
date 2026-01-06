@@ -2,7 +2,7 @@ defmodule Fact.Database do
   use GenServer
 
   require Logger
-  
+
   alias Fact.Event.Schema
 
   defstruct [
@@ -25,7 +25,8 @@ defmodule Fact.Database do
   end
 
   def last_position(database_id) do
-    with stream <-Fact.LedgerFile.read(database_id, direction: :backward, position: :end, count: 1),
+    with stream <-
+           Fact.LedgerFile.read(database_id, direction: :backward, position: :end, count: 1),
          event <- Fact.RecordFile.read_event(database_id, stream |> Enum.at(0)) do
       event[Schema.get(database_id).event_store_position]
     end

@@ -38,7 +38,10 @@ defmodule Fact.EventPublisher do
   end
 
   @impl true
-  def handle_cast({:publish_appended, record_ids}, %{database_id: database_id, schema: schema} = state) do
+  def handle_cast(
+        {:publish_appended, record_ids},
+        %{database_id: database_id, schema: schema} = state
+      ) do
     pubsub = Fact.Registry.pubsub(database_id)
 
     Enum.each(record_ids, fn record_id ->

@@ -13,7 +13,7 @@ defmodule Fact.CatchUpSubscription do
   defmacro __using__(_opts) do
     quote do
       use GenServer
-      
+
       @behaviour Fact.CatchUpSubscription
 
       @impl true
