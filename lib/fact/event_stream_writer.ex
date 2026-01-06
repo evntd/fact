@@ -4,7 +4,7 @@ defmodule Fact.EventStreamWriter do
   It ensures that events are appended in order, enriched with stream metadata, and committed atomically.
   """
   use GenServer
-  
+
   require Logger
 
   @idle_timeout :timer.minutes(1)
@@ -98,21 +98,13 @@ defmodule Fact.EventStreamWriter do
   def init(opts) do
     database_id = Keyword.fetch!(opts, :database_id)
     event_stream = Keyword.fetch!(opts, :event_stream)
-    
-    schema = 
-      with {:ok, context} <- Fact.Registry.get_context(database_id) do
-        %{
-          event_stream_id: Fact.Event.Schema.event_stream_id(context),
-          event_stream_position: Fact.Event.Schema.event_stream_position(context)
-        }
-      end
 
     state = %__MODULE__{
       database_id: database_id,
       event_stream: event_stream,
       last_pos: 0,
       idle_timer: schedule_idle_timeout(),
-      schema: schema
+      schema: Fact.Event.Schema.get(database_id)
     }
 
     {:ok, state, {:continue, :load_position}}
@@ -131,7 +123,12 @@ defmodule Fact.EventStreamWriter do
   def handle_call(
         {:commit, events, expect},
         _from,
-        %{database_id: database_id, event_stream: event_stream, last_pos: last_pos, schema: schema} = state
+        %{
+          database_id: database_id,
+          event_stream: event_stream,
+          last_pos: last_pos,
+          schema: schema
+        } = state
       ) do
     cancel_idle_timeout(state.idle_timer)
     idle_timer = schedule_idle_timeout()
@@ -148,8 +145,8 @@ defmodule Fact.EventStreamWriter do
 
           enriched_event =
             Map.merge(event, %{
-              schema[:event_stream_id] => event_stream,
-              schema[:event_stream_position] => next_pos
+              schema.event_stream_id => event_stream,
+              schema.event_stream_position => next_pos
             })
 
           {enriched_event, next_pos}

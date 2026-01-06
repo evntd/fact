@@ -149,7 +149,7 @@ defmodule Fact.Query do
   """
   @spec from_all() :: t()
   def from_all() do
-    fn _context ->
+    fn _database_id ->
       fn _event_id ->
         true
       end
@@ -234,20 +234,20 @@ defmodule Fact.Query do
 
   def from_data(data) when is_list(data) do
     fun =
-      fn context ->
+      fn database_id ->
         matching_events =
           data
           |> Enum.group_by(fn {k, _} -> k end, fn {_, v} -> v end)
           |> Enum.reduce_while(:first, fn {key, values}, acc ->
             {:ok, indexer_id} =
-              Fact.Database.ensure_indexer(context.database_id, Fact.EventDataIndexer,
+              Fact.Database.ensure_indexer(database_id, Fact.EventDataIndexer,
                 key: to_string(key)
               )
 
             ids =
               values
               |> Enum.flat_map(fn value ->
-                case Fact.IndexFile.read(context, indexer_id, value) do
+                case Fact.IndexFile.read(database_id, indexer_id, value) do
                   {:error, _} -> []
                   streamable -> Enum.to_list(streamable)
                 end
@@ -311,7 +311,7 @@ defmodule Fact.Query do
   """
   @spec from_none() :: t()
   def from_none() do
-    fn _context ->
+    fn _database_id ->
       fn _event_id ->
         false
       end
@@ -382,11 +382,11 @@ defmodule Fact.Query do
       event_tags = Enum.uniq(tags)
 
       fun =
-        fn context ->
+        fn database_id ->
           matching_events =
             Enum.reduce(event_tags, :first, fn tag, acc ->
               matches_tag =
-                Fact.IndexFile.read(context, {Fact.EventTagsIndexer, nil}, tag)
+                Fact.IndexFile.read(database_id, {Fact.EventTagsIndexer, nil}, tag)
                 |> Enum.into(MapSet.new())
 
               case acc do
@@ -466,10 +466,10 @@ defmodule Fact.Query do
       event_types = Enum.uniq(types)
 
       fun =
-        fn context ->
+        fn database_id ->
           matching_events =
             event_types
-            |> Stream.flat_map(&Fact.IndexFile.read(context, {Fact.EventTypeIndexer, nil}, &1))
+            |> Stream.flat_map(&Fact.IndexFile.read(database_id, {Fact.EventTypeIndexer, nil}, &1))
             |> Enum.into(MapSet.new())
 
           fn event_id ->

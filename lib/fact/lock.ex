@@ -41,35 +41,33 @@ defmodule Fact.Lock do
   Acquire a lock for the instance in the specified mode.
   """
   def acquire(database_id, mode) when mode in @modes do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      socket_path = Path.join(Storage.locks_path(context), "lock.sock")
-      if stale_socket?(socket_path), do: File.rm(socket_path)
+    socket_path = Path.join(Storage.locks_path(database_id), "lock.sock")
+    if stale_socket?(socket_path), do: File.rm(socket_path)
 
-      case :gen_tcp.listen(0, [:binary, active: false, ip: {:local, socket_path}]) do
-        {:ok, socket} ->
-          metadata = %{
-            mode: mode,
-            os_pid: System.pid(),
-            vm_pid: Kernel.inspect(self()),
-            node: node(),
-            locked_at: DateTime.utc_now() |> DateTime.to_iso8601()
-          }
+    case :gen_tcp.listen(0, [:binary, active: false, ip: {:local, socket_path}]) do
+      {:ok, socket} ->
+        metadata = %{
+          mode: mode,
+          os_pid: System.pid(),
+          vm_pid: Kernel.inspect(self()),
+          node: node(),
+          locked_at: DateTime.utc_now() |> DateTime.to_iso8601()
+        }
 
-          :ok = LockFile.write(context, metadata)
+        :ok = LockFile.write(database_id, metadata)
 
-          {:ok,
-           %__MODULE__{
-             mode: mode,
-             socket: socket,
-             socket_path: socket_path
-           }}
+        {:ok,
+         %__MODULE__{
+           mode: mode,
+           socket: socket,
+           socket_path: socket_path
+         }}
 
-        {:error, :eaddrinuse} ->
-          {:error, {:locked, LockFile.read(context)}}
+      {:error, :eaddrinuse} ->
+        {:error, {:locked, LockFile.read(database_id)}}
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -80,12 +78,10 @@ defmodule Fact.Lock do
   """
   @spec release(Fact.Types.database_id(), t()) :: :ok
   def release(database_id, %__MODULE__{socket: socket, socket_path: socket_path}) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      :gen_tcp.close(socket)
-      File.rm(socket_path)
-      LockFile.delete(context)
-      :ok
-    end
+    :gen_tcp.close(socket)
+    File.rm(socket_path)
+    LockFile.delete(database_id)
+    :ok
   end
 
   defp stale_socket?(path) do

@@ -46,8 +46,9 @@ defmodule Fact.IndexCheckpointFile do
       }
   end
 
-  def ensure_exists(%Context{} = context, indexer) do
-    with {:ok, path} <- path(context, indexer),
+  def ensure_exists(database_id, indexer) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, path} <- path(context, indexer),
          :ok = File.mkdir_p(Path.dirname(path)) do
       unless File.exists?(path),
         do: File.write(path, "0"),
@@ -55,8 +56,9 @@ defmodule Fact.IndexCheckpointFile do
     end
   end
 
-  def read(%Context{} = context, indexer) do
-    with {:ok, path} <- path(context, indexer),
+  def read(database_id, indexer) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, path} <- path(context, indexer),
          {:ok, encoded} <- read_single(context, path),
          {:ok, decoded} <- Decoder.decode(context, encoded) do
       decoded
@@ -65,8 +67,9 @@ defmodule Fact.IndexCheckpointFile do
     end
   end
 
-  def write(%Context{} = context, indexer, position) do
-    with {:ok, path} <- path(context, indexer),
+  def write(database_id, indexer, position) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, path} <- path(context, indexer),
          {:ok, encoded} = Encoder.encode(context, position),
          :ok <- Writer.write(context, path, encoded) do
       :ok

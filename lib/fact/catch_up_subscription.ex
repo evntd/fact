@@ -13,6 +13,7 @@ defmodule Fact.CatchUpSubscription do
   defmacro __using__(_opts) do
     quote do
       use GenServer
+      
       @behaviour Fact.CatchUpSubscription
 
       @impl true
@@ -24,7 +25,8 @@ defmodule Fact.CatchUpSubscription do
           position: position,
           high_water_mark: nil,
           mode: :init,
-          buffer: :gb_trees.empty()
+          buffer: :gb_trees.empty(),
+          schema: Fact.Event.Schema.get(database_id)
         }
 
         custom_state = __MODULE__.on_init(state)
@@ -36,10 +38,8 @@ defmodule Fact.CatchUpSubscription do
       def on_init(state), do: state
 
       @impl true
-      def get_position(%{database_id: database_id} = _state, event) do
-        with {:ok, context} <- Fact.Registry.get_context(database_id) do
-          Fact.Event.Schema.get_event_store_position(context, event)
-        end
+      def get_position(%{database_id: database_id, schema: schema} = _state, event) do
+        event[schema.event_store_position]
       end
 
       defoverridable on_init: 1, get_position: 2

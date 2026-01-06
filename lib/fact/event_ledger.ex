@@ -1,6 +1,6 @@
 defmodule Fact.EventLedger do
   use GenServer
-  
+
   alias Fact.Event
 
   require Logger
@@ -25,8 +25,6 @@ defmodule Fact.EventLedger do
 
   @type write_ledger_error ::
           {:error, {:ledger_write_failed, File.posix()}}
-
-  
 
   defstruct [:database_id, :schema, :replacements, position: 0]
 
@@ -88,7 +86,7 @@ defmodule Fact.EventLedger do
   @impl true
   def init(database_id) do
     schema = Event.Schema.get(database_id)
-      
+
     replacements = %{
       data: schema.event_data,
       id: schema.event_id,
@@ -96,7 +94,7 @@ defmodule Fact.EventLedger do
       tags: schema.event_tags,
       type: schema.event_type
     }
-    
+
     state = %__MODULE__{
       database_id: database_id,
       position: Fact.Database.last_position(database_id),
@@ -143,7 +141,10 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp check_query_condition(%{database_id: database_id, schema: schema} = _state, {query, expected_pos}) do
+  defp check_query_condition(
+         %{database_id: database_id, schema: schema} = _state,
+         {query, expected_pos}
+       ) do
     Fact.Database.read_query(database_id, query, position: expected_pos, result_type: :record)
     |> Stream.take(-1)
     |> Enum.at(0)
@@ -170,8 +171,12 @@ defmodule Fact.EventLedger do
     end
   end
 
-
-  defp enrich_events(events, %{database_id: database_id, schema: schema, replacements: replacements, position: pos}) do
+  defp enrich_events(events, %{
+         database_id: database_id,
+         schema: schema,
+         replacements: replacements,
+         position: pos
+       }) do
     timestamp = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
 
     Enum.map_reduce(events, pos, fn event, pos ->
@@ -196,9 +201,8 @@ defmodule Fact.EventLedger do
   end
 
   defp commit_events(events, %{database_id: database_id} = _state) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id),
-         {:ok, written_records} <- Fact.RecordFile.write(context, events) do
-      Fact.LedgerFile.write(context, written_records)
+    with {:ok, written_records} <- Fact.RecordFile.write(database_id, events) do
+      Fact.LedgerFile.write(database_id, written_records)
     end
   end
 

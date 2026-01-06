@@ -30,31 +30,30 @@ defmodule Fact.EventPublisher do
     database_id = Keyword.fetch!(opts, :database_id)
 
     state = %{
-      database_id: database_id
+      database_id: database_id,
+      schema: Fact.Event.Schema.get(database_id)
     }
 
     {:ok, state}
   end
 
   @impl true
-  def handle_cast({:publish_appended, record_ids}, %{database_id: database_id} = state) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      pubsub = Fact.Registry.pubsub(database_id)
+  def handle_cast({:publish_appended, record_ids}, %{database_id: database_id, schema: schema} = state) do
+    pubsub = Fact.Registry.pubsub(database_id)
 
-      Enum.each(record_ids, fn record_id ->
-        {^record_id, event} = record = Fact.Database.read_record(database_id, record_id)
-        message = {:appended, record}
-        Phoenix.PubSub.broadcast(pubsub, @all_events, message)
+    Enum.each(record_ids, fn record_id ->
+      {^record_id, event} = record = Fact.Database.read_record(database_id, record_id)
+      message = {:appended, record}
+      Phoenix.PubSub.broadcast(pubsub, @all_events, message)
 
-        case Fact.Event.Schema.get_event_stream_id(context, event) do
-          nil ->
-            :ok
+      case event[schema.event_stream_id] do
+        nil ->
+          :ok
 
-          stream ->
-            Phoenix.PubSub.broadcast(pubsub, stream, message)
-        end
-      end)
-    end
+        stream ->
+          Phoenix.PubSub.broadcast(pubsub, stream, message)
+      end
+    end)
 
     {:noreply, state}
   end

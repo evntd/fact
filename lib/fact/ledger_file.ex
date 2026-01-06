@@ -46,8 +46,9 @@ defmodule Fact.LedgerFile do
       }
   end
 
-  def read(%Context{} = context, opts \\ []) when is_list(opts) do
-    with {:ok, path} <- path(context),
+  def read(database_id, opts \\ []) when is_list(opts) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, path} <- path(context),
          {:ok, stream} <- Reader.read(context, path, Keyword.take(opts, [:direction, :position])) do
       decoded_stream =
         stream
@@ -60,6 +61,12 @@ defmodule Fact.LedgerFile do
         n when is_integer(n) ->
           decoded_stream |> Stream.take(n)
       end
+    end
+  end
+
+  def write(database_id, record_ids) when is_binary(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      write(context, record_ids)
     end
   end
 

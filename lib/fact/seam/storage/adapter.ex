@@ -15,23 +15,63 @@ defmodule Fact.Seam.Storage.Adapter do
 
       @key :storage
 
-      def path(%Context{@key => instance} = context, options \\ []) do
+      def path(database, options \\ [])
+      
+      def path(database_id, options) when is_binary(database_id)  do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          path(context, options)
+        end
+      end
+      
+      def path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :path, [[{:__context__, context} | options]])
       end
 
-      def records_path(%Context{@key => instance} = context, options \\ []) do
+      def records_path(database, options \\ [])
+
+      def records_path(database_id, options) when is_binary(database_id)  do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          records_path(context, options)
+        end
+      end
+
+      def records_path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :records_path, [[{:__context__, context} | options]])
       end
 
-      def indices_path(%Context{@key => instance} = context, options \\ []) do
+      def indices_path(database, options \\ [])
+
+      def indices_path(database_id, options) when is_binary(database_id)  do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          indices_path(context, options)
+        end
+      end
+
+      def indices_path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :indices_path, [[{:__context__, context} | options]])
       end
 
-      def ledger_path(%Context{@key => instance} = context, options \\ []) do
+      def ledger_path(database, options \\ [])
+
+      def ledger_path(database_id, options) when is_binary(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          ledger_path(context, options)
+        end
+      end
+
+      def ledger_path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :ledger_path, [[{:__context__, context} | options]])
       end
 
-      def locks_path(%Context{@key => instance} = context, options \\ []) do
+      def locks_path(database, options \\ [])
+
+      def locks_path(database_id, options) when is_binary(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          locks_path(context, options)
+        end
+      end
+
+      def locks_path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :locks_path, [[{:__context__, context} | options]])
       end
     end

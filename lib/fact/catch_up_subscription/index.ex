@@ -25,28 +25,24 @@ defmodule Fact.CatchUpSubscription.Index do
 
   @impl true
   def high_water_mark(%{database_id: database_id, source: {:index, indexer_id, _index}}) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      Fact.IndexCheckpointFile.read(context, indexer_id)
-    end
+    Fact.IndexCheckpointFile.read(database_id, indexer_id)
   end
 
   @impl true
   def replay(
-        %{database_id: database_id, source: {:index, indexer_id, index}},
+        %{database_id: database_id, schema: schema, source: {:index, indexer_id, index}},
         from_pos,
         to_pos,
         deliver_fun
       ) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      Fact.Database.read_index(database_id, indexer_id, index,
-        position: from_pos,
-        result_type: :record
-      )
-      |> Stream.take_while(fn {_, event} ->
-        Fact.Event.Schema.get_event_store_position(context, event) <= to_pos
-      end)
-      |> Enum.each(&deliver_fun.(&1))
-    end
+    Fact.Database.read_index(database_id, indexer_id, index,
+      position: from_pos,
+      result_type: :record
+    )
+    |> Stream.take_while(fn {_, event} ->
+      event[schema.event_store_position] <= to_pos
+    end)
+    |> Enum.each(&deliver_fun.(&1))
   end
 
   @impl true

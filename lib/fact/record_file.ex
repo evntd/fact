@@ -57,23 +57,29 @@ defmodule Fact.RecordFile do
       }
   end
 
-  def read(%Context{} = context, record_id) do
-    with {:ok, record_path} <- path(context, record_id),
+  def read(database_id, record_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, record_path} <- path(context, record_id),
          {:ok, encoded_record} <- read_single(context, record_path),
          {:ok, record} <- Decoder.decode(context, encoded_record) do
       {record_id, record}
     end
   end
 
-  def read_event(%Context{} = context, record_id) do
-    with {^record_id, record} <- read(context, record_id) do
-      record
-    end
+  def read_event(database_id, record_id) do
+    {^record_id, record} = read(database_id, record_id)
+    record
   end
 
   defp read_single(%Context{} = context, path) do
     with {:ok, stream} <- Reader.read(context, path, []) do
       {:ok, stream |> Enum.at(0)}
+    end
+  end
+
+  def write(database_id, records) when is_binary(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      write(context, records)
     end
   end
 

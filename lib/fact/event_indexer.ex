@@ -239,11 +239,9 @@ defmodule Fact.EventIndexer do
       @impl true
       @doc false
       def init(%{database_id: database_id, indexer_id: indexer_id} = state) do
-        with {:ok, context} <- Fact.Registry.get_context(database_id) do
-          :ok = Fact.IndexCheckpointFile.ensure_exists(context, indexer_id)
-          :ok = Fact.EventPublisher.subscribe(database_id, :all)
-          {:ok, state, {:continue, :rebuild_and_join}}
-        end
+        :ok = Fact.IndexCheckpointFile.ensure_exists(database_id, indexer_id)
+        :ok = Fact.EventPublisher.subscribe(database_id, :all)
+        {:ok, state, {:continue, :rebuild_and_join}}
       end
 
       @impl true
@@ -280,16 +278,13 @@ defmodule Fact.EventIndexer do
 
       @spec rebuild_index(Fact.EventIndexer.t()) :: Fact.Types.read_position()
       defp rebuild_index(%{database_id: database_id, indexer_id: indexer_id} = state) do
-        with {:ok, context} <- Fact.Registry.get_context(database_id) do
-          checkpoint = Fact.IndexCheckpointFile.read(context, indexer_id)
-
-          Fact.LedgerFile.read(context, position: checkpoint)
-          |> Stream.map(&Fact.RecordFile.read(context, &1))
-          |> Enum.reduce(checkpoint, fn record, _acc ->
-            {:ok, result} = append_index(record, state)
-            result.position
-          end)
-        end
+        checkpoint = Fact.IndexCheckpointFile.read(database_id, indexer_id)
+        Fact.LedgerFile.read(database_id, position: checkpoint)
+        |> Stream.map(&Fact.RecordFile.read(database_id, &1))
+        |> Enum.reduce(checkpoint, fn record, _acc ->
+          {:ok, result} = append_index(record, state)
+          result.position
+        end)
       end
 
       @spec append_index(Fact.Types.record(), Fact.EventIndexer.t()) ::
@@ -302,27 +297,25 @@ defmodule Fact.EventIndexer do
                indexer_opts: indexer_opts
              } = state
            ) do
-        with {:ok, context} <- Fact.Registry.get_context(database_id) do
-          index_values =
-            index_event(event, indexer_opts)
-            |> List.wrap()
+        index_values =
+          index_event(event, indexer_opts)
+          |> List.wrap()
 
-          Enum.each(index_values, fn index ->
-            Fact.IndexFile.write(context, indexer_id, index, record_id)
-          end)
+        Enum.each(index_values, fn index ->
+          Fact.IndexFile.write(database_id, indexer_id, index, record_id)
+        end)
 
-          Fact.IndexCheckpointFile.write(context, indexer_id, position)
+        Fact.IndexCheckpointFile.write(database_id, indexer_id, position)
 
-          index_result = %{
-            position: position,
-            record_id: record_id,
-            index_values: index_values
-          }
+        index_result = %{
+          position: position,
+          record_id: record_id,
+          index_values: index_values
+        }
 
-          publish_indexed(state, index_result)
+        publish_indexed(state, index_result)
 
-          {:ok, index_result}
-        end
+        {:ok, index_result}
       end
 
       @spec publish_indexed(Fact.EventIndexer.t(), Fact.EventIndexer.index_result()) ::

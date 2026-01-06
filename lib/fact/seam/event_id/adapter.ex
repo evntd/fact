@@ -17,12 +17,14 @@ defmodule Fact.Seam.EventId.Adapter do
       @key unquote(context_key)
 
       def generate(database, opts \\ [])
+
       def generate(database_id, opts) when is_binary(database_id) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           generate(context, opts)
         end
       end
-      def generate(%Context{@key => instance} = context, opts) do 
+
+      def generate(%Context{@key => instance} = context, opts) do
         __seam_call__(instance, :generate, [[{:__context__, context} | opts]])
       end
     end

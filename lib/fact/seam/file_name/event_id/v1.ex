@@ -3,13 +3,13 @@ defmodule Fact.Seam.FileName.EventId.V1 do
     family: :event_id,
     version: 1
 
-  alias Fact.Event
+  alias Fact.Event.Schema
 
   defstruct []
 
   @impl true
-  def get(%__MODULE__{}, event_record, opts) do
+  def get(%__MODULE__{}, event, opts) do
     context = Keyword.get(opts, :__context__)
-    {:ok, Event.Schema.get_event_id(context, event_record)}
+    {:ok, event[Schema.get(context).event_id]}
   end
 end

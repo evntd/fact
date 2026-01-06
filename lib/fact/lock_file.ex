@@ -46,14 +46,16 @@ defmodule Fact.LockFile do
       }
   end
 
-  def delete(%Context{} = context) do
-    with {:ok, filepath} <- path(context) do
+  def delete(database_id) when is_binary(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, filepath} <- path(context) do
       File.rm(filepath)
     end
   end
 
-  def read(%Context{} = context) do
-    with {:ok, filepath} <- path(context),
+  def read(database_id) when is_binary(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, filepath} <- path(context),
          {:ok, stream} <- Reader.read(context, filepath, []),
          encoded <- stream |> List.first(),
          {:ok, content} <- Decoder.decode(context, encoded) do
@@ -61,8 +63,9 @@ defmodule Fact.LockFile do
     end
   end
 
-  def write(%Context{} = context, lock_info) do
-    with {:ok, encoded} <- Encoder.encode(context, lock_info),
+  def write(database_id, lock_info) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, encoded} <- Encoder.encode(context, lock_info),
          {:ok, filepath} <- path(context),
          :ok <- Writer.write(context, filepath, encoded) do
       :ok

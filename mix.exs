@@ -75,7 +75,7 @@ defmodule Fact.MixProject do
         Api: [
           Fact,
           Fact.Types
-        ],        
+        ],
         Context: [
           Fact.Context,
           Fact.Event,
@@ -111,6 +111,7 @@ defmodule Fact.MixProject do
           Fact.RecordFile.Name,
           Fact.RecordFile.Reader,
           Fact.RecordFile.Writer,
+          Fact.Registry,
           Fact.Storage
         ],
         Core: [
@@ -141,8 +142,7 @@ defmodule Fact.MixProject do
         Process: [
           Fact.Bootstrapper,
           Fact.DatabaseSupervisor,
-          Fact.Lock,
-          Fact.Registry,
+          Fact.Lock,          
           Fact.Supervisor
         ],
         "Pub/Sub": [
@@ -196,7 +196,7 @@ defmodule Fact.MixProject do
           Fact.Seam.FileWriter.Standard.V1,
           Fact.Seam.FileWriter.Registry,
           Fact.Seam.Instance,
-          Fact.Seam.Parsers,        
+          Fact.Seam.Parsers,
           Fact.Seam.Registry,
           Fact.Seam.Storage,
           Fact.Seam.Storage.Adapter,
@@ -212,7 +212,7 @@ defmodule Fact.MixProject do
         Fact.IndexFile,
         Fact.LedgerFile,
         Fact.RecordFile,
-        Fact.Seam,        
+        Fact.Seam,
         Fact.Seam.Decoder,
         Fact.Seam.Encoder,
         Fact.Seam.EventId,

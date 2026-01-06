@@ -29,7 +29,6 @@ defmodule Fact.CatchUpSubscription.Query do
 
   @impl true
   def on_init(state) do
-    {:ok, context} = Fact.Registry.get_context(state.database_id)
     {:query, query_items} = state.source
     query_fun = Fact.QueryItem.to_function(query_items)
     sources = Fact.QueryItem.sources(query_items)
@@ -39,15 +38,14 @@ defmodule Fact.CatchUpSubscription.Query do
       |> Enum.map(&elem(&1, 1))
       |> MapSet.new()
       |> Map.new(fn k ->
-        pos = Fact.IndexCheckpointFile.read(context, k)
+        pos = Fact.IndexCheckpointFile.read(state.database_id, k)
         {k, %{high_water_mark: pos, indexed: pos}}
       end)
 
     Map.merge(state, %{
       indexers: indexers,
       sources: sources,
-      query_fun: query_fun,
-      match_fun: query_fun.(context)
+      query_fun: query_fun
     })
   end
 
@@ -59,14 +57,12 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
-  def replay(%{database_id: database_id, query_fun: query_fun}, from_pos, to_pos, deliver_fun) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      Fact.Database.read_query(database_id, query_fun, position: from_pos, result_type: :record)
-      |> Stream.take_while(fn {_, event} ->
-        Fact.Event.Schema.get_event_store_position(context, event) <= to_pos
-      end)
-      |> Enum.each(&deliver_fun.(&1))
-    end
+  def replay(%{database_id: database_id, query_fun: query_fun, schema: schema}, from_pos, to_pos, deliver_fun) do
+    Fact.Database.read_query(database_id, query_fun, position: from_pos, result_type: :record)
+    |> Stream.take_while(fn {_, event} ->
+      event[schema.event_store_position] <= to_pos
+    end)
+    |> Enum.each(&deliver_fun.(&1))
   end
 
   @impl true
@@ -84,9 +80,7 @@ defmodule Fact.CatchUpSubscription.Query do
     new_state = %{state | indexers: new_indexers}
 
     with true <- Enum.all?(new_indexers, fn {_k, %{indexed: i}} -> i >= position end),
-         {:ok, context} <- Fact.Registry.get_context(database_id),
-         match_fun <- query_fun.(context),
-         true <- match_fun.(record_id) do
+         true <- query_fun.(database_id).(record_id) do
       buffer_or_deliver(Fact.Database.read_record(database_id, record_id), new_state)
     else
       _ ->

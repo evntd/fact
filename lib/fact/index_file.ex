@@ -47,8 +47,9 @@ defmodule Fact.IndexFile do
       }
   end
 
-  def read(%Context{} = context, indexer, index, opts \\ []) when is_list(opts) do
-    with {:ok, path} <- path(context, indexer, index),
+  def read(database_id, indexer, index, opts \\ []) when is_list(opts) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id),
+         {:ok, path} <- path(context, indexer, index),
          {:ok, stream} <- Reader.read(context, path, Keyword.take(opts, [:direction, :position])) do
       decoded_stream =
         stream
@@ -64,12 +65,20 @@ defmodule Fact.IndexFile do
     end
   end
 
-  def read_last_event(%Context{} = context, indexer, index) do
-    read(context, indexer, index, direction: :backward, position: :end, count: 1)
-    |> Stream.map(&Fact.RecordFile.read_event(context, &1))
-    |> Enum.at(0)
+  def read_last_event(database_id, indexer, index) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      read(context, indexer, index, direction: :backward, position: :end, count: 1)
+      |> Stream.map(&Fact.RecordFile.read_event(context, &1))
+      |> Enum.at(0)
+    end
   end
 
+  def write(database_id, indexer, index, record_ids) when is_binary(database_id) do
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      write(context, indexer, index, record_ids)
+    end
+  end
+  
   def write(%Context{} = context, indexer, index, record_ids) do
     with {:ok, path} <- path(context, indexer, index),
          {:ok, encoded} <- Encoder.encode(context, record_ids),
