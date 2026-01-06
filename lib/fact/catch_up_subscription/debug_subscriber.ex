@@ -75,7 +75,7 @@ defmodule Fact.CatchUpSubscription.DebugSubscriber do
   end
 
   @impl true
-  def handle_info({:event_record, record}, state) do
+  def handle_info({:record, record}, state) do
     Logger.info("#{__MODULE__}: #{inspect(elem(record, 1))}")
     {:noreply, state}
   end

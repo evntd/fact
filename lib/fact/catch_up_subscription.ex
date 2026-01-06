@@ -106,7 +106,7 @@ defmodule Fact.CatchUpSubscription do
       end
 
       defp deliver(subscriber, record) do
-        send(subscriber, {:event_record, record})
+        send(subscriber, {:record, record})
       end
     end
   end
