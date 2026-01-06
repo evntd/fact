@@ -74,8 +74,7 @@ defmodule Fact.CatchUpSubscription.Query do
         {:indexed, indexer_id, %{position: position, record_id: record_id}},
         %{database_id: database_id, indexers: indexers, query_fun: query_fun} = state
       ) do
-    
-    new_indexers = 
+    new_indexers =
       update_in(indexers[indexer_id].indexed, fn
         nil -> position
         n when position > n -> position
@@ -83,12 +82,12 @@ defmodule Fact.CatchUpSubscription.Query do
       end)
 
     new_state = %{state | indexers: new_indexers}
-    
+
     with true <- Enum.all?(new_indexers, fn {_k, %{indexed: i}} -> i >= position end),
          {:ok, context} <- Fact.Registry.get_context(database_id),
          match_fun <- query_fun.(context),
          true <- match_fun.(record_id) do
-      buffer_or_deliver(Fact.Database.read_record(database_id, record_id), new_state)      
+      buffer_or_deliver(Fact.Database.read_record(database_id, record_id), new_state)
     else
       _ ->
         {:noreply, new_state}

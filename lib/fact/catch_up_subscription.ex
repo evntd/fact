@@ -36,12 +36,12 @@ defmodule Fact.CatchUpSubscription do
       def on_init(state), do: state
 
       @impl true
-      def get_position(%{database_id: database_id} = _state,  event) do
+      def get_position(%{database_id: database_id} = _state, event) do
         with {:ok, context} <- Fact.Registry.get_context(database_id) do
           Fact.Event.Schema.get_event_store_position(context, event)
         end
       end
-      
+
       defoverridable on_init: 1, get_position: 2
 
       @impl true

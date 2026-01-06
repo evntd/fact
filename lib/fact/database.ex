@@ -190,7 +190,6 @@ defmodule Fact.Database do
         {:noreply, %__MODULE__{state | indexers: new_indexers}}
 
       [{_pid, _}] ->
-
         {waiters, indexers} =
           Map.get_and_update!(indexers, child_spec.id, fn info ->
             waiters = Map.get(info, :waiters, MapSet.new())
