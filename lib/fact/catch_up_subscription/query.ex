@@ -7,8 +7,8 @@ defmodule Fact.CatchUpSubscription.Query do
 
     database_id = Keyword.fetch!(opts, :database_id)
     query_items = Keyword.fetch!(opts, :query_items)
-    subscriber = Keyword.fetch!(opts, :subscriber)
-    position = Keyword.get(opts, :position, 0)
+    subscriber = Keyword.get(opts, :subscriber, self())
+    position = Keyword.get(opts, :position, :start)
 
     GenServer.start_link(
       __MODULE__,

@@ -8,8 +8,8 @@ defmodule Fact.CatchUpSubscription.Index do
     database_id = Keyword.fetch!(opts, :database_id)
     indexer_id = Keyword.fetch!(opts, :indexer_id)
     index = Keyword.fetch!(opts, :index)
-    subscriber = Keyword.fetch!(opts, :subscriber)
-    position = Keyword.get(opts, :position, 0)
+    subscriber = Keyword.get(opts, :subscriber, self())
+    position = Keyword.get(opts, :position, :start)
 
     GenServer.start_link(
       __MODULE__,

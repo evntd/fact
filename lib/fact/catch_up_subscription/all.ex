@@ -5,8 +5,8 @@ defmodule Fact.CatchUpSubscription.All do
     {opts, start_opts} = Keyword.split(options, [:database_id, :subscriber, :position])
 
     database_id = Keyword.fetch!(opts, :database_id)
-    subscriber = Keyword.fetch!(opts, :subscriber)
-    position = Keyword.get(opts, :position, 0)
+    subscriber = Keyword.get(opts, :subscriber, self())
+    position = Keyword.get(opts, :position, :start)
 
     GenServer.start_link(__MODULE__, {database_id, subscriber, :all, position}, start_opts)
   end
