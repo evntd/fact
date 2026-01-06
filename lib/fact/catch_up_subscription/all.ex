@@ -12,24 +12,17 @@ defmodule Fact.CatchUpSubscription.All do
   end
 
   @impl true
-  def subscribe(database_id, :all) do
+  def subscribe(%{database_id: database_id} = _state) do
     Fact.EventPublisher.subscribe(database_id, :all)
   end
 
   @impl true
-  def get_position(database_id, :all, event) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      Fact.Event.Schema.get_event_store_position(context, event)
-    end
-  end
-
-  @impl true
-  def high_water_mark(database_id, :all) do
+  def high_water_mark(%{database_id: database_id}) do
     Fact.Database.last_position(database_id)
   end
 
   @impl true
-  def replay(database_id, :all, from_pos, to_pos, deliver_fun) do
+  def replay(%{database_id: database_id}, from_pos, to_pos, deliver_fun) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       Fact.Database.read_ledger(database_id, position: from_pos, result_type: :record)
       |> Stream.take_while(fn {_, event} ->

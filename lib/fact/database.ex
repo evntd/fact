@@ -146,8 +146,8 @@ defmodule Fact.Database do
 
         {:noreply, %__MODULE__{state | indexers: new_indexers}}
 
-      %{status: :ready, pid: pid} ->
-        {:reply, {:ok, pid}, state}
+      %{status: :ready} ->
+        {:reply, {:ok, child_spec.id}, state}
     end
   end
 
@@ -190,7 +190,17 @@ defmodule Fact.Database do
         {:noreply, %__MODULE__{state | indexers: new_indexers}}
 
       [{_pid, _}] ->
-        {:noreply, state}
+
+        {waiters, indexers} =
+          Map.get_and_update!(indexers, child_spec.id, fn info ->
+            waiters = Map.get(info, :waiters, MapSet.new())
+            {waiters, %{info | status: :ready, waiters: MapSet.new()}}
+          end)
+
+        # notify any process waiting on the indexer to be :ready
+        Enum.each(waiters, &GenServer.reply(&1, {:ok, child_spec.id}))
+
+        {:noreply, %__MODULE__{state | indexers: indexers}}
     end
   end
 

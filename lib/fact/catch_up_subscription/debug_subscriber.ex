@@ -14,6 +14,11 @@ defmodule Fact.CatchUpSubscription.DebugSubscriber do
   def subscribe_index(database_id, indexer_id, index, position \\ 0) do
     GenServer.start_link(__MODULE__, {database_id, {:index, indexer_id, index}, position})
   end
+  
+  def subscribe_query(database_id, query_items, position \\ 0) do
+    GenServer.start_link(__MODULE__, {database_id, {:query, List.wrap(query_items)}, position})
+  end
+  
 
   @impl true
   def init({database_id, source, position}) do
@@ -28,36 +33,44 @@ defmodule Fact.CatchUpSubscription.DebugSubscriber do
 
   @impl true
   def handle_continue(:subscribe, state) do
-    case state.source do
-      :all ->
-        Fact.CatchUpSubscription.All.start_link(
-          database_id: state.database_id,
-          subscriber: self(),
-          position: state.position
-        )
+    subscription = 
+      case state.source do
+        :all ->
+          Fact.CatchUpSubscription.All.start_link(
+            database_id: state.database_id,
+            subscriber: self(),
+            position: state.position
+          )
+  
+        {:stream, stream} ->
+          Fact.CatchUpSubscription.Stream.start_link(
+            database_id: state.database_id,
+            subscriber: self(),
+            stream: stream,
+            position: state.position
+          )
+  
+        {:index, indexer_id, index} ->
+          Fact.CatchUpSubscription.Index.start_link(
+            database_id: state.database_id,
+            subscriber: self(),
+            indexer_id: indexer_id,
+            index: index,
+            position: state.position
+          )
+        {:query, query_items} ->
+          Fact.CatchUpSubscription.Query.start_link(
+            database_id: state.database_id,
+            subscriber: self(),
+            query_items: query_items,
+            position: state.position
+          )
+  
+        _ ->
+          Logger.warning("failed to subscribe")
+      end
 
-      {:stream, stream} ->
-        Fact.CatchUpSubscription.Stream.start_link(
-          database_id: state.database_id,
-          subscriber: self(),
-          stream: stream,
-          position: state.position
-        )
-
-      {:index, indexer_id, index} ->
-        Fact.CatchUpSubscription.Index.start_link(
-          database_id: state.database_id,
-          subscriber: self(),
-          indexer_id: indexer_id,
-          index: index,
-          position: state.position
-        )
-
-      _ ->
-        Logger.warning("failed to subscribe")
-    end
-
-    {:noreply, state}
+    {:noreply, Map.put(state, :sub, subscription)}
   end
 
   @impl true

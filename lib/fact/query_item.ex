@@ -409,6 +409,32 @@ defmodule Fact.QueryItem do
     |> Base.encode16(case: :lower)
   end
 
+  def sources(query_items) when is_list(query_items) do
+    query_items
+    |> Enum.flat_map(&sources(&1))
+    |> MapSet.new()
+    |> MapSet.to_list()
+  end
+
+  def sources(%Fact.QueryItem{tags: tags, types: types, data: data}) do
+    tag_sources =
+      for tag <- tags do
+        {:index, {Fact.EventTagsIndexer, nil}, tag}
+      end
+
+    type_sources =
+      for type <- types do
+        {:index, {Fact.EventTypeIndexer, nil}, type}
+      end
+
+    data_sources =
+      for {key, values} <- data, value <- values do
+        {:index, {Fact.EventDataIndexer, to_string(key)}, value}
+      end
+
+    tag_sources ++ type_sources ++ data_sources
+  end
+
   @doc """
   Converts a query item or list of query items into a query function.
 

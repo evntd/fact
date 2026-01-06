@@ -1,24 +1,19 @@
 defmodule Fact.CatchUpSubscription do
-  @callback subscribe(database_id :: Fact.Types.database_id(), event_source :: term()) :: :ok
-  @callback high_water_mark(database_id :: Fact.Types.database_id(), event_source :: term()) ::
-              Fact.Types.read_position()
+  @callback subscribe(state :: term()) :: :ok
+  @callback high_water_mark(state :: term()) :: Fact.Types.read_position()
   @callback replay(
-              database_id :: Fact.Types.database_id(),
-              event_source :: term(),
+              state :: term(),
               from :: non_neg_integer(),
               to :: non_neg_integer,
               deliver_fun :: (term() -> any())
             ) :: :ok
-  @callback get_position(
-              database_id :: Fact.Types.database_id(),
-              event_source :: term(),
-              message :: term()
-            ) :: non_neg_integer()
+  @callback get_position(state :: term(), message :: term()) :: non_neg_integer()
+  @callback on_init(state :: term()) :: term()
 
   defmacro __using__(_opts) do
     quote do
       use GenServer
-      @behaviour Fact.CatchUpSubscriptionBehaviour
+      @behaviour Fact.CatchUpSubscription
 
       @impl true
       def init({database_id, subscriber, source, position}) do
@@ -32,8 +27,22 @@ defmodule Fact.CatchUpSubscription do
           buffer: :gb_trees.empty()
         }
 
-        {:ok, state, {:continue, :init_mode}}
+        custom_state = __MODULE__.on_init(state)
+
+        {:ok, custom_state, {:continue, :init_mode}}
       end
+
+      @impl true
+      def on_init(state), do: state
+
+      @impl true
+      def get_position(%{database_id: database_id} = _state,  event) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          Fact.Event.Schema.get_event_store_position(context, event)
+        end
+      end
+      
+      defoverridable on_init: 1, get_position: 2
 
       @impl true
       def handle_continue(
@@ -43,9 +52,9 @@ defmodule Fact.CatchUpSubscription do
         Process.monitor(subscriber)
 
         # 1. Subscribe first
-        __MODULE__.subscribe(database_id, source)
+        __MODULE__.subscribe(state)
         # 2. Capture high water mark
-        high_water_mark = __MODULE__.high_water_mark(database_id, source)
+        high_water_mark = __MODULE__.high_water_mark(state)
         # 3. Start replay
         send(self(), :replay)
 
@@ -55,8 +64,7 @@ defmodule Fact.CatchUpSubscription do
       @impl true
       def handle_info(:replay, state) do
         __MODULE__.replay(
-          state.database_id,
-          state.source,
+          state,
           min(state.position, state.high_water_mark),
           state.high_water_mark,
           fn record -> deliver(state.subscriber, record) end
@@ -75,7 +83,7 @@ defmodule Fact.CatchUpSubscription do
       end
 
       defp buffer_or_deliver({_, event} = record, state) do
-        pos = __MODULE__.get_position(state.database_id, state.source, event)
+        pos = __MODULE__.get_position(state, event)
 
         cond do
           pos <= state.high_water_mark ->

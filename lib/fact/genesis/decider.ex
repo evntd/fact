@@ -8,7 +8,6 @@ defmodule Fact.Genesis.Decider do
     with args <- resolve_name_and_path(args),
          :ok <- verify_path(Keyword.get(args, :path)),
          {:ok, configuration} <- build_configuration(args) do
-      
       info = %{
         database_id: generate_database_id(),
         database_name: Keyword.get(args, :name),
@@ -22,7 +21,7 @@ defmodule Fact.Genesis.Decider do
       {:ok, [struct(DatabaseCreated.V1, Map.merge(info, configuration))]}
     end
   end
-  
+
   defp resolve_name_and_path(args) do
     cwd = File.cwd!()
     name = Keyword.get(args, :name)
@@ -33,28 +32,31 @@ defmodule Fact.Genesis.Decider do
         name && is_nil(path) ->
           path = Path.join(cwd, name)
           [name: name, path: path]
+
         path && is_nil(name) ->
           name = Path.expand(path) |> Path.basename()
           [name: name, path: path]
+
         is_nil(name) && is_nil(path) ->
           path = cwd
           name = Path.basename(cwd)
           [name: name, path: path]
+
         true ->
           expanded = Path.expand(path)
-          
+
           last = expanded |> Path.basename()
-          
+
           path =
             if last == name do
               expanded
             else
               Path.join(expanded, name)
             end
-          
+
           [name: name, path: path]
       end
-      
+
     Keyword.merge(args, resolved)
   end
 

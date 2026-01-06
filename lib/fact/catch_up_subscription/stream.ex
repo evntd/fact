@@ -17,24 +17,29 @@ defmodule Fact.CatchUpSubscription.Stream do
   end
 
   @impl true
-  def subscribe(database_id, {:stream, _stream} = source) do
+  def subscribe(%{database_id: database_id, source: {:stream, _stream} = source}) do
     Fact.EventPublisher.subscribe(database_id, source)
   end
 
   @impl true
-  def get_position(database_id, {:stream, _stream} = _source, event) do
+  def get_position(%{database_id: database_id, source: {:stream, _stream}} = _state, event) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       Fact.Event.Schema.get_event_stream_position(context, event)
     end
   end
 
   @impl true
-  def high_water_mark(database_id, {:stream, stream} = _source) do
+  def high_water_mark(%{database_id: database_id, source: {:stream, stream}}) do
     Fact.EventStreamIndexer.last_stream_position(database_id, stream)
   end
 
   @impl true
-  def replay(database_id, {:stream, stream} = _source, from_pos, to_pos, deliver_fun) do
+  def replay(
+        %{database_id: database_id, source: {:stream, stream}},
+        from_pos,
+        to_pos,
+        deliver_fun
+      ) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       Fact.Database.read_index(database_id, {Fact.EventStreamIndexer, nil}, stream,
         position: from_pos,

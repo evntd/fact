@@ -19,26 +19,24 @@ defmodule Fact.CatchUpSubscription.Index do
   end
 
   @impl true
-  def subscribe(database_id, {:index, indexer_id, _index} = _source) do
+  def subscribe(%{database_id: database_id, source: {:index, indexer_id, _index}}) do
     Fact.EventIndexer.subscribe(database_id, indexer_id)
   end
 
   @impl true
-  def get_position(database_id, {:index, _indexer_id, _index} = _source, event) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id) do
-      Fact.Event.Schema.get_event_store_position(context, event)
-    end
-  end
-
-  @impl true
-  def high_water_mark(database_id, {:index, indexer_id, _index} = _source) do
+  def high_water_mark(%{database_id: database_id, source: {:index, indexer_id, _index}}) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       Fact.IndexCheckpointFile.read(context, indexer_id)
     end
   end
 
   @impl true
-  def replay(database_id, {:index, indexer_id, index} = _source, from_pos, to_pos, deliver_fun) do
+  def replay(
+        %{database_id: database_id, source: {:index, indexer_id, index}},
+        from_pos,
+        to_pos,
+        deliver_fun
+      ) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       Fact.Database.read_index(database_id, indexer_id, index,
         position: from_pos,
