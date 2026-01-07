@@ -25,6 +25,24 @@
 - Configurable event schemas<sup>[2](#fn2)</sup>
 - Supported on Elixir 1.13+ and OTP 25+
 
+#### Coming soon...
+
+- User guides
+- Backup task
+- Restore task
+- Data tampering verification task (for CAS)
+
+#### Coming later...
+
+- Proof of scale
+- Full stack example application
+- A network protocol to enable non-BEAM based languages to interop.
+- A gossip protocol to coordinate multiple BEAM nodes
+
+#### Some time in the future...
+
+- Graphical user interface to manage and operate the database (like a pgAdmin or Sql Server Management Studio)
+
 ## Installation
 
 The package can be installed by adding `fact` to your list of dependencies in `mix.exs`:
