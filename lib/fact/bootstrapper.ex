@@ -68,26 +68,30 @@ defmodule Fact.Bootstrapper do
   @impl true
   @doc false
   def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
-    context = load_context(path)
+    with {:ok, context} <- load_context(path) do
+      case Fact.Registry.get_context(context.database_id) do
+        {:ok, _} ->
+          maybe_send(caller, {:database_started, context.database_id})
+          {:stop, :normal, state}
 
-    case Fact.Registry.get_context(context.database_id) do
-      {:ok, _} ->
-        send(caller, {:database_started, context.database_id})
+        {:error, _} ->
+          case start_database(context) do
+            {:ok, _pid} ->
+              maybe_send(caller, {:database_started, context.database_id})
+              {:stop, :normal, state}
+
+            {:error, {:locked, lock_info}} ->
+              maybe_send(caller, {:database_locked, lock_info})
+              {:stop, :normal, state}
+
+            {:error, reason} ->
+              {:stop, reason, state}
+          end
+      end
+    else
+      {:error, reason} ->
+        maybe_send(caller, {:database_error, reason})
         {:stop, :normal, state}
-
-      {:error, _} ->
-        case start_database(context) do
-          {:ok, _pid} ->
-            if is_pid(caller), do: send(caller, {:database_started, context.database_id})
-            {:stop, :normal, state}
-
-          {:error, {:locked, lock_info}} ->
-            if is_pid(caller), do: send(caller, {:database_locked, lock_info})
-            {:stop, :normal, state}
-
-          {:error, reason} ->
-            {:stop, reason, state}
-        end
     end
   end
 
@@ -102,15 +106,25 @@ defmodule Fact.Bootstrapper do
   end
 
   defp load_context(path) do
-    genesis_id =
-      File.stream!(Path.join(path, ".ledger"))
-      |> Enum.take(1)
-      |> List.first()
-      |> String.trim()
+    ledger_file = Path.join(path, ".ledger")
 
-    genesis_path = Path.join([path, "events", genesis_id])
-    {:ok, genesis_json} = File.read(genesis_path)
-    {:ok, genesis_record} = @decode_json.(genesis_json)
-    Fact.Context.from_record(genesis_record)
+    if File.exists?(ledger_file) do
+      genesis_id =
+        File.stream!(ledger_file)
+        |> Enum.take(1)
+        |> List.first()
+        |> String.trim()
+
+      genesis_path = Path.join([path, "events", genesis_id])
+      {:ok, genesis_json} = File.read(genesis_path)
+      {:ok, genesis_record} = @decode_json.(genesis_json)
+      {:ok, Fact.Context.from_record(genesis_record)}
+    else
+      {:error, :database_not_found}
+    end
+  end
+
+  defp maybe_send(caller, message) do
+    if is_pid(caller), do: send(caller, message)
   end
 end

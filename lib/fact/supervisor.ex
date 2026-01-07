@@ -28,6 +28,9 @@ defmodule Fact.Supervisor do
 
         {:database_locked, lock_info} ->
           {:error, :database_locked, lock_info}
+
+        {:database_error, reason} ->
+          {:error, reason}
       after
         3_000 ->
           {:error, :database_failure}
