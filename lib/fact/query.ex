@@ -247,7 +247,7 @@ defmodule Fact.Query do
             ids =
               values
               |> Enum.flat_map(fn value ->
-                case Fact.IndexFile.read(database_id, indexer_id, value) do
+                case Fact.IndexFile.read(database_id, indexer_id, to_string(value)) do
                   {:error, _} -> []
                   streamable -> Enum.to_list(streamable)
                 end
