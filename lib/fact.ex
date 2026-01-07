@@ -1,13 +1,103 @@
 defmodule Fact do
   @moduledoc """
-  Fact is an event sourcing database, an event store.
+  Fact is an **event-sourcing database**, an append-only event store designed to make
+  event-driven systems explicit, observable, and mechanically simple.
+
+  Rather than persisting the resulting state of your system, Fact records the
+  sequence of domain events that led to it. These events form a durable,
+  ordered ledger that serves as the single source of truth for projections,
+  workflows, read models, analytics, and audit requirements.
+
+  ## Core Ideas
+
+  Fact is built around a few intentional concepts:
+
+  * **Events are facts** - they describe something that happened in the domain  
+  * **The ledger is append-only** - state is derived, never mutated in place  
+  * **Streams define static consistency boundaries** - typically aligned with DDD aggregates  
+  * **Queries define dynamic consistency boundaries** - enabling emergent boundaries based
+    on event types, tags, and data-level conditions  
+  * **Storage is transparent** - files on disk, deterministic layouts, no black boxes; easy
+    to inspect and manipulate (but never change) with standard OS tooling such as `grep`,
+    `sed`, `awk`, `jq` and plenty of other command-line utilities.
+
+  The goal is not to be a general-purpose database, but a focused tool for
+  systems that benefit from traceable history, replayable behavior, and explicit
+  domain modeling.
+
+  ## What Fact Provides
+
+  * A **global event ledger** (the ordered history of the entire database)
+  * **Event streams** for optimistic-concurrency-safe aggregate boundaries
+  * **Ledger-level conditional appends** to prevent duplicates and conflicting writes
+  * **Queries and indexes** for building read and processing workflows
+  * **Subscription APIs** for reacting to new events as they are committed
+  * A configurable **event schema**, record format, and identifier strategy
+
+  Fact is intentionally small in surface-area but powerful in composition:
+  everything builds on top of event persistence and deterministic ordering.
+
+  ## Consistency & Concurrency Model
+
+  Fact provides two complementary consistency mechanisms:
+
+  * **Stream expectations** - optimistic concurrency within a single stream  
+  * **Append conditions** - optional duplicate / conflict detection at the ledger level  
+
+  These tools allow you to model invariants where they belong **in the domain**, 
+  rather than inside storage mechanics.
+
+  ## Durability, Ordering, and Guarantees
+
+  * Events are written **atomically and in order**
+  * Positions are **stable and monotonic within their scope**
+  * Reads are deterministic and replayable
+
+  However, Fact does not promise distributed consensus, global locks, or
+  cross-process transactional semantics. It is currently designed for single-writer
+  durability with cooperative correctness enforced by the application model.
+
+  ## Configuration & Event Shape
+
+  The structure of an event record is defined by `Fact.Event.Schema`, including:
+
+  * field names for type, data, metadata, and tags  
+  * storage keys for positions, timestamps, and stream attributes  
+  * identifier and encoding strategies
+
+  Events are represented as plain maps before being persisted and enriched with
+  system metadata at commit-time.
     
+  ## When to Use Fact
+
+  Fact works best when:
+
+  * history matters more than just current state
+  * debugging and auditability are important
+  * systems benefit from replay and projection
+  * domain events are a first-class modeling tool
+
+  Fact excels when behavior is temporal and state is derived.
+
+  ## Getting Started
+
+  Typical workflow:
+
+  1. Create and open a database
+  2. Append events to streams or the ledger
+  3. Read from streams, queries, or indexes
+  4. Build projections and workflows from subscriptions
+
+  See the documentation for `append/4`, `append_stream/5`, `read/3`,
+  and `subscribe/3` for operational details.    
 
   > #### Here there be 🐉🐉 {: .warning} 
   > 
   > Elixir's type system isn't as strict as say F#. So I've done my best to describe the types, their 
   > format, and encoding. Many of these are not enforced, and supplying other types may compile but 
-  > produce errors or unexpected behavior. It'll just work if you use it like I intended 😉.
+  > produce errors or unexpected behavior. 
+  >
+  > Just use the system as I intended, and it'll just work 😉.
   """
 
   @typedoc """
