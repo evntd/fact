@@ -20,18 +20,10 @@ defmodule Fact.EventLedger do
 
   @type t :: %__MODULE__{
           database_id: Fact.database_id(),
-          position: Fact.event_position()
+          position: Fact.event_position(),
+          schema: Fact.event_record_schema(),
+          replacements: map()
         }
-
-  @type commit_opts :: [condition: query_condition] | [] | nil
-
-  @type commit_success :: {:ok, Fact.event_position()}
-
-  @type query_condition ::
-          Fact.EventQuery.t()
-          | [Fact.EventQuery.t()]
-          | {Fact.EventQuery.t(), Fact.event_position()}
-          | {[Fact.EventQuery.t()], Fact.event_position()}
 
   @type write_events_error ::
           {:error, {:event_write_failed, [{File.posix(), Fact.record_id()}]}}
@@ -51,24 +43,78 @@ defmodule Fact.EventLedger do
 
   @spec commit(
           Fact.database_id(),
-          Fact.event() | [Fact.event(), ...],
-          Fact.Query.t(),
-          Fact.event_position(),
+          Fact.event() | [Fact.event()],
+          Fact.append_condition(),
           keyword()
         ) :: {:ok, Fact.event_position()} | {:error, term()}
-  def commit(database_id, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
+  def commit(database_id, events, append_condition \\ nil, options \\ [])
 
-  def commit(database_id, events, nil, after_position, opts),
-    do: commit(database_id, events, Fact.Query.from_none(), after_position, opts)
-
-  # TODO: Rework signatures to handle conversion of Fact.QueryItem to Fact.Query  
-
-  def commit(database_id, event, fail_if_match, after_position, opts)
-      when is_map(event) and not is_list(event) do
-    commit(database_id, [event], fail_if_match, after_position, opts)
+  def commit(database_id, events, nil, options)
+      when is_binary(database_id) and is_list(options) do
+    commit(database_id, List.wrap(events), Fact.Query.from_none(), 0, options)
   end
 
-  def commit(database_id, events, fail_if_match, after_position, opts) do
+  def commit(database_id, events, %Fact.QueryItem{} = append_condition, options)
+      when is_binary(database_id) and is_list(options) do
+    commit(
+      database_id,
+      List.wrap(events),
+      Fact.QueryItem.to_function(append_condition),
+      0,
+      options
+    )
+  end
+
+  def commit(database_id, events, [%Fact.QueryItem{} | _] = append_condition, options)
+      when is_binary(database_id) and is_list(options) do
+    commit(
+      database_id,
+      List.wrap(events),
+      Fact.QueryItem.to_function(append_condition),
+      0,
+      options
+    )
+  end
+
+  def commit(database_id, events, append_condition, options)
+      when is_binary(database_id) and is_function(append_condition) and is_list(options) do
+    commit(database_id, List.wrap(events), append_condition, 0, options)
+  end
+
+  def commit(database_id, events, {%Fact.QueryItem{} = fail_if_match, after_position}, options)
+      when is_binary(database_id) and is_integer(after_position) and is_list(options) do
+    commit(
+      database_id,
+      List.wrap(events),
+      Fact.QueryItem.to_function(fail_if_match),
+      after_position,
+      options
+    )
+  end
+
+  def commit(
+        database_id,
+        events,
+        {[%Fact.QueryItem{} | _] = fail_if_match, after_position},
+        options
+      )
+      when is_binary(database_id) and is_integer(after_position) and is_list(options) do
+    commit(
+      database_id,
+      List.wrap(events),
+      Fact.QueryItem.to_function(fail_if_match),
+      after_position,
+      options
+    )
+  end
+
+  def commit(database_id, events, {fail_if_match, after_position}, options)
+      when is_binary(database_id) and is_function(fail_if_match) and is_integer(after_position) and
+             is_list(options) do
+    commit(database_id, List.wrap(events), fail_if_match, after_position, options)
+  end
+
+  defp commit(database_id, events, fail_if_match, after_position, opts) do
     cond do
       not is_list(events) ->
         {:error, :invalid_event_list}

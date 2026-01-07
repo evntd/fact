@@ -11,6 +11,40 @@ defmodule Fact do
   """
 
   @typedoc """
+  A condition that **must not** be satisfied in order for an append operation to succeed.
+    
+  An `t:Fact.append_condition/0` allows you to express causal or state-dependent constraints
+  using queries against the event ledger. If the condition evaluates as a match, the append 
+  is rejected.
+    
+  When `nil`, no conditional check is performed. The events are always appended.
+    
+  When a `t:fail_if_match/0` value is provided, the append function will fail if the 
+  query matches any events already present in the ledger.
+    
+  When a `{fail_if_match, after_position}` tuple is provided, the append function will 
+  fail if the query matches any events present in the ledger found after the specified position.
+  """
+  @type append_condition ::
+          nil | fail_if_match() | {fail_if_match(), after_position :: non_neg_integer()}
+
+  @typedoc """
+  A condition that fails the append operation when matching events are found.
+    
+  May be expressed as a `t:Fact.Query.t/0`, a single `t:Fact.QueryItem.t/0`, or a list
+  of `t:Fact.QueryItem.t/0`. All forms represent a predicate function evaluated against
+  events committed to the ledger.
+  """
+  @type fail_if_match :: Fact.Query.t() | Fact.QueryItem.t() | [Fact.QueryItem.t()]
+
+  @typedoc """
+  Options for `append/5`.
+    
+    * `:timeout` **(default: 5000)** - the maximum time (in milliseconds) to wait for the append operation to compile.
+  """
+  @type append_options :: [timeout: timeout()]
+
+  @typedoc """
   Provides optimistic concurrency control when appending to event streams.
   """
   @type append_stream_expectation() :: non_neg_integer() | :any | :none | :exists
@@ -235,18 +269,16 @@ defmodule Fact do
   @spec append(
           Fact.database_id(),
           Fact.event() | [Fact.event(), ...],
-          Fact.Query.t(),
-          Fact.event_position(),
-          keyword()
+          Fact.append_condition(),
+          Fact.append_options()
         ) :: {:ok, Fact.event_position()} | {:error, term()}
   def append(
         database_id,
         events,
-        fail_if_match \\ nil,
-        after_position \\ 0,
+        append_condition \\ nil,
         opts \\ []
       ) do
-    Fact.EventLedger.commit(database_id, events, fail_if_match, after_position, opts)
+    Fact.EventLedger.commit(database_id, events, append_condition, opts)
   end
 
   @doc """
