@@ -69,15 +69,18 @@ defmodule Fact do
   Represents an event before being written to the event store.
 
   At minimum, it must define a `:type` key.  
+
   It may also include:
-    * `:id` - a UUID string
     * `:data` - a map of custom data
     * `:metadata` - a map of custom data about the data
     * `:tags` - a list of custom identifiers to aid in defining context boundaries
+
+  > #### Event ids are system defined {: .info}
+  >
+  > Apologies, event ids are system generated at this time.
   """
   @type event :: %{
           required(:type) => event_type,
-          optional(:id) => event_id,
           optional(:data) => event_data,
           optional(:metadata) => event_metadata,
           optional(:tags) => event_tags
