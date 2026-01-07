@@ -22,6 +22,17 @@ defmodule Fact.Bootstrapper do
 
   @type options :: list(option)
 
+  cond do
+    Code.ensure_loaded?(Elixir.JSON) ->
+      @decode_json &JSON.decode/1
+
+    Code.ensure_loaded?(Jason) ->
+      @decode_json &Jason.decode/1
+
+    true ->
+      @decode_json fn _ -> {:error, :no_json_library_available} end
+  end
+
   @spec child_spec(options()) :: Supervisor.child_spec()
   def child_spec(opts) do
     path = Keyword.fetch!(opts, :path)
@@ -81,16 +92,7 @@ defmodule Fact.Bootstrapper do
 
     genesis_path = Path.join([path, "events", genesis_id])
     {:ok, genesis_json} = File.read(genesis_path)
-
-    {:ok, genesis_record} =
-      cond do
-        Code.ensure_loaded?(Elixir.JSON) ->
-          Elixir.JSON.decode(genesis_json)
-
-        Code.ensure_loaded?(Jason) ->
-          Jason.decode(genesis_json)
-      end
-
+    {:ok, genesis_record} = @decode_json.(genesis_json)
     Fact.Context.from_record(genesis_record)
   end
 end
