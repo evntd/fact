@@ -90,10 +90,15 @@ defmodule Fact.LockFile do
   end
 
   def read(database_id) when is_binary(database_id) do
-    with {:ok, context} <- Fact.Registry.get_context(database_id),
-         {:ok, filepath} <- path(context),
+    with {:ok, context} <- Fact.Registry.get_context(database_id) do
+      read(context)
+    end
+  end
+
+  def read(%Context{} = context) do
+    with {:ok, filepath} <- path(context),
          {:ok, stream} <- Reader.read(context, filepath, []),
-         encoded <- stream |> List.first(),
+         encoded <- stream |> Enum.at(0),
          {:ok, content} <- Decoder.decode(context, encoded) do
       content
     end

@@ -70,16 +70,34 @@ defmodule Fact.Bootstrapper do
   def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
     context = load_context(path)
 
-    with {:ok, _pid} <-
-           Supervisor.start_child(Fact.Supervisor, {Fact.DatabaseSupervisor, [context: context]}) do
-      if is_pid(caller) do
+    case Fact.Registry.get_context(context.database_id) do
+      {:ok, _} ->
         send(caller, {:database_started, context.database_id})
-      end
+        {:stop, :normal, state}
 
-      {:stop, :normal, state}
-    else
-      {:error, reason} ->
-        {:stop, reason, state}
+      {:error, _} ->
+        case start_database(context) do
+          {:ok, _pid} ->
+            if is_pid(caller), do: send(caller, {:database_started, context.database_id})
+            {:stop, :normal, state}
+
+          {:error, {:locked, lock_info}} ->
+            if is_pid(caller), do: send(caller, {:database_locked, lock_info})
+            {:stop, :normal, state}
+
+          {:error, reason} ->
+            {:stop, reason, state}
+        end
+    end
+  end
+
+  defp start_database(context) do
+    case Fact.Lock.status(context) do
+      {:ok, :unlocked} ->
+        Supervisor.start_child(Fact.Supervisor, {Fact.DatabaseSupervisor, [context: context]})
+
+      {:ok, lock_info} ->
+        {:error, {:locked, lock_info}}
     end
   end
 

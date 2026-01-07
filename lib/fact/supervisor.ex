@@ -25,6 +25,9 @@ defmodule Fact.Supervisor do
       receive do
         {:database_started, database_id} ->
           {:ok, database_id}
+
+        {:database_locked, lock_info} ->
+          {:error, :database_locked, lock_info}
       after
         3_000 ->
           {:error, :database_failure}

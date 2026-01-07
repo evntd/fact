@@ -291,6 +291,9 @@ defmodule Fact.Database do
 
         {:ok, state}
 
+      {:error, {:locked, lock_info}} ->
+        {:stop, {:locked, lock_info}}
+
       {:error, reason} ->
         {:stop, reason}
     end

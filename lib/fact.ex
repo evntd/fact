@@ -220,19 +220,6 @@ defmodule Fact do
   """
   @type uuid_v4_base32_uppercase_sans_padding :: String.t()
 
-  def open(path) do
-    {:ok, _pid} =
-      case Process.whereis(Fact.Supervisor) do
-        nil ->
-          Fact.Supervisor.start_link([])
-
-        pid ->
-          {:ok, pid}
-      end
-
-    Fact.Supervisor.start_database(path)
-  end
-
   @spec append(
           Fact.database_id(),
           Fact.event() | [Fact.event(), ...],
@@ -315,6 +302,54 @@ defmodule Fact do
         opts \\ []
       ) do
     Fact.EventStreamWriter.commit(database_id, events, event_stream, expected_position, opts)
+  end
+
+  @doc """
+  Initializes a Fact database at the given filesystem path.
+    
+  This function ensures that the `Fact.Supervisor` is running and then starts the database 
+  process corresponding to the given path. Once opened, you can use the return database id
+  as a handle for appending events, reading and subscribing to event sources.
+    
+  ## Examples
+    
+    Opens a new database.
+    
+      iex> {:ok, db} = Fact.open("data/turtles")
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+    
+    Subsequent calls to the same path return the same database id...with the same BEAM.
+    
+      iex> {:ok, db2} = Fact.open("data/turtles")
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+    
+    Keep that database running and fire up another instance of iex, and try opening the 
+    database again. You'll get a database locked error similar to the following: 
+
+      iex> Fact.open("data/turtles")
+      {:error, :database_locked,
+       %{
+         "locked_at" => "2026-01-07T06:18:57.669109Z",
+         "mode" => "run",
+         "node" => "nonode@nohost",
+         "os_pid" => "933078",
+         "vm_pid" => "#PID<0.232.0>"
+       }}
+      
+    
+  """
+  @spec open(Path.t()) :: {:ok, database_id()} | {:error, term()}
+  def open(path) do
+    {:ok, _pid} =
+      case Process.whereis(Fact.Supervisor) do
+        nil ->
+          Fact.Supervisor.start_link([])
+
+        pid ->
+          {:ok, pid}
+      end
+
+    Fact.Supervisor.start_database(path)
   end
 
   @doc """

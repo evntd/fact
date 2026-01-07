@@ -98,4 +98,19 @@ defmodule Fact.Lock do
       false
     end
   end
+
+  def status(context) do
+    socket_path = Path.join(Storage.locks_path(context), "lock.sock")
+
+    cond do
+      stale_socket?(socket_path) ->
+        {:ok, :unlocked}
+
+      File.exists?(socket_path) ->
+        {:ok, LockFile.read(context)}
+
+      true ->
+        {:ok, :unlocked}
+    end
+  end
 end
