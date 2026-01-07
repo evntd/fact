@@ -11,6 +11,18 @@ defmodule Fact do
   """
 
   @typedoc """
+  Provides optimistic concurrency control when appending to event streams.
+  """
+  @type append_stream_expectation() :: non_neg_integer() | :any | :none | :exists
+
+  @typedoc """
+  Options for `append_stream/5`.
+    
+    * `:timeout` **(default: 5000)** - the maximum time (in milliseconds) to wait for the append operation to compile.
+  """
+  @type append_stream_options :: [timeout: timeout()]
+
+  @typedoc """
   A unique identifier for a Fact database.
     
   It is used as the primary handle for all database operations. Many 
@@ -238,18 +250,31 @@ defmodule Fact do
   end
 
   @doc """
-  Appends one or more events to a stream. This enriches the appended event records with 
-  `stream_id` and `stream_position`.
+  Appends one or more events to a stream.
+    
+  Event streams define a consistency boundary for a set of related events. To 
+  preserve this boundary, Fact, like many event stores uses stream position
+  expectations to provide optimistic concurrency control.
+      
+  When appending to a stream, you may provide an expected position value:
+    
+    * A non negative integer - verifies that the stream is currently at that exact
+      position before appending
+    * `:any` **(default)** - no check is performed, the events are just appended
+    * `:none` - ensures the stream does not yet exist (equivalent to `0`)
+    * `:exists` - ensures the stream already exists (i.e. position ≥ 1)
+    
+  If the expectation is not met, the append is rejected and a 
+  `{:error, %Fact.ConcurrencyError{}}` is returned.
 
-  * `events` is a single event or list of events. 
-  * `event_stream` is a string that uniquely identifies stream.
-  * `event_position` is a non-negative integer which is used to ensure you can only append 
-    to the stream if it is at the exact `stream_position`. 
-
-    You may also provide one of the following values for different behavior.
-      * `:any` - No check is made, any  
-      * `:none` - Ensures the stream does not exist, this is the first append. Same as expected_position = 0.
-      * `:exists` - Ensures the stream already exists, equivalent to expected_position >= 1.
+  On success, each appended event record is enriched with the stream fields as defined 
+  by `:event_stream_id` and `:event_stream_position` of the configured schema 
+  (see `Fact.Event.Schema`). The function returns `{:ok, last_stream_position}`, where
+  the last_stream_position refers to the stream position of the final event written
+  to the stream.
+    
+  It is strongly recommnded that you persis this returned position in your application
+  state and reuse it in subsequent calls to `append_stream/5` to ensure consistency.
 
   ## Examples
     
@@ -278,38 +303,54 @@ defmodule Fact do
 
   Append another event, expecting correct stream position.
     
-      iex> Fact.append_stream(:mydb, %{type: "MySecondEvent"}, "myteststream", 1)
+      iex> Fact.append_stream(db, %{type: "MySecondEvent"}, "myteststream", 1)
       {:ok, 2}
     
-  Append a third event, supplying an incorrect stream position.
+  Append a third event, but provide an invalid expected position.
     
       iex> Fact.append_stream(:mydb, %{type: "MyThirdEvent"}, "myteststream", 1)
       {:error, %Fact.ConcurrencyError{source: "myteststream", actual: 2, expected: 1}}
+
+  Append multiple events to a **new** stream.
+    
+      iex> Fact.append_stream(db, [%{type: "foo"}, %{type: "bar"}, %{type: "baz"}], "foobarbaz-1", :none)
+      {:ok, 3}
+    
+  Expect a stream to not exist, yet it does.
+
+      iex> Fact.append_stream(db, %{type: "foo"}, "foobarbaz-1", :none)
+      {:ok, %Fact.ConcurrencyError{source: "foobarbaz-1", expected: :none, actual: 3}}
+
+  Expect a stream to exist, when it does not exist.
+    
+      iex> Fact.append_stream(db, %{type: "foo"}, "foo-1", :exists)
+      {:ok, %Fact.ConcurrencyError{source: "foo-1", expected: :exists, actual: 0}}
 
   """
   @spec append_stream(
           Fact.database_id(),
           Fact.event() | [Fact.event(), ...],
           Fact.event_stream_id(),
-          Fact.event_position() | :any | :none | :exists,
-          keyword()
+          Fact.append_stream_expectation(),
+          Fact.append_stream_options()
         ) :: {:ok, Fact.event_position()} | {:error, term()}
   def append_stream(
         database_id,
         events,
         event_stream,
         expected_position \\ :any,
-        opts \\ []
+        options \\ []
       ) do
-    Fact.EventStreamWriter.commit(database_id, events, event_stream, expected_position, opts)
+    Fact.EventStreamWriter.commit(database_id, events, event_stream, expected_position, options)
   end
 
   @doc """
   Initializes a Fact database at the given filesystem path.
     
   This function ensures that the `Fact.Supervisor` is running and then starts the database 
-  process corresponding to the given path. Once opened, you can use the return database id
-  as a handle for appending events, reading and subscribing to event sources.
+  supervision tree as a child process. Once the `Fact.DatabaseSupervisor` is running, the
+  database id is returned, and you may use it as a handle for appending events, reading
+  and subscribing to event sources.
     
   ## Examples
     
@@ -323,8 +364,8 @@ defmodule Fact do
       iex> {:ok, db2} = Fact.open("data/turtles")
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
     
-    Keep that database running and fire up another instance of iex, and try opening the 
-    database again. You'll get a database locked error similar to the following: 
+    Keep that database running. Try to open the database again in another instance
+    of IEx. You'll get a database locked error similar to the following: 
 
       iex> Fact.open("data/turtles")
       {:error, :database_locked,
@@ -335,8 +376,13 @@ defmodule Fact do
          "os_pid" => "933078",
          "vm_pid" => "#PID<0.232.0>"
        }}
-      
-    
+
+    Remember to use `mix fact.create -p <path>` to create a database before attempting
+    to open it. 
+
+      iex> Fact.open("does/not/exist")
+      {:error, :database_not_found}
+
   """
   @spec open(Path.t()) :: {:ok, database_id()} | {:error, term()}
   def open(path) do
