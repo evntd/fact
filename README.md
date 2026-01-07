@@ -50,7 +50,7 @@ The package can be installed by adding `fact` to your list of dependencies in `m
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.0.1"}
+    {:fact, "~> 0.1.0"}
   ]
 end
 ```
