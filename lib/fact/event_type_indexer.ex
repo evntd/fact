@@ -36,5 +36,4 @@ defmodule Fact.EventTypeIndexer do
   """
   @impl true
   def index_event(schema, event, _opts), do: event[schema.event_type]
-  
 end

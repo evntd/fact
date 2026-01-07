@@ -183,7 +183,13 @@ defmodule Mix.Tasks.Fact.Create do
     "A thousand troops of Koopas couldn't keep me from you",
     "Stay. Use your skills for good, young warrior",
     "An acorn can only become the mighty oak, not a cherry tree",
-    "Everything is consistent...eventually"
+    "Everything is consistent...eventually",
+    "\e]8;;https://xkcd.com/327/\e\\Little Bobby Tables' got nothing on me\e]8;;\e\\",
+    "\e]8;;https://www.amazon.com/Complete-Joy-Homebrewing-Fourth-Revised/dp/0062215752\e\\Relax, don't worry, have a homebrew\e]8;;\e\\",
+    "\e]8;;https://xkcd.com/889/\e\\I'm a turtle\e]8;;\e\\",
+    "\e]8;;https://www.youtube.com/watch?v=u7Hd6ZzKgBM\e\\Soft and crunchy\e]8;;\e\\",
+    "This will be a piece of cake. Or event better: a slice of pizza!",
+    "Forgiveness is divine, but never pay full price for late pizza"
   ]
 
   @impl true
@@ -229,30 +235,37 @@ defmodule Mix.Tasks.Fact.Create do
           ██║     ██║  ██║╚██████╗    ██║   
           ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project()[:version]} (#{Fact.MixProject.project()[:codename]})  
 
-             🐢 #{Enum.random(@quotes)}
-
     """)
   end
 
   defp display_results(event, path) do
     Mix.shell().info("""
-        Event sourcing database created, you're ready to rock!!! 🤘
-
+      
+       🐢 "#{Enum.random(@quotes)}"
+      
       ================================================================  
           ID: #{event.database_id}
         NAME: #{event.database_name}
         PATH: #{Path.absname(path)}
-      ================================================================    
+      ================================================================
+      
+       Try it out...
+
+        $ iex -S mix
+        iex> {:ok, db} = Fact.open("#{path}")
+        iex> Fact.read(db, :all)
+
+      ================================================================
     """)
   end
 
   defp display_next_steps() do
     Mix.shell().info("""
-        Next Steps:
+       Next Steps:
         
           📖 \e]8;;#{Fact.MixProject.project()[:docs][:canonical]}\e\\Read the documentation\e]8;;\e\\ at #{Fact.MixProject.project()[:docs][:canonical]}
-          🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\ 
-          🍺 \e]8;;https://www.amazon.com/Complete-Joy-Homebrewing-Fourth-Revised/dp/0062215752\e\\Relax, don't worry, have a homebrew\e]8;;\e\\
+          🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\
+          🫆  \e]8;;https://eventmodeling.org\e\\Design and deliver better systems with Event Modeling\e]8;;\e\\
     """)
   end
 end

@@ -12,12 +12,12 @@ defmodule Fact.EventStreamsByCategoryIndexer do
   use Fact.EventIndexer
 
   @typedoc """
-  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type option :: {:separator, String.t()} | Fact.EventIndexer.indexer_option()
 
   @typedoc """
-  Custom options passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  Custom options passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type options :: [option()]
 

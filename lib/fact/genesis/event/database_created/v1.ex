@@ -55,7 +55,7 @@ defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
         }
 
   @type t :: %__MODULE__{
-          database_id: Fact.Types.database_id(),
+          database_id: Fact.database_id(),
           database_name: String.t(),
           elixir_version: String.t(),
           erts_version: String.t(),

@@ -1,4 +1,12 @@
 defmodule Fact.CatchUpSubscription.Query do
+  @moduledoc """
+  Catch-up subscription for event queries.
+
+  This subscription replays and streams events that match a set of
+  `t:Fact.QueryItem.t/0` query items. It coordinates with the underlying
+  indexers to ensure only relevant events are delivered.
+  """
+
   use Fact.CatchUpSubscription
 
   def start_link(options) do
@@ -18,6 +26,7 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
+  @doc false
   def subscribe(%{database_id: database_id, indexers: indexers}) do
     indexers
     |> Map.keys()
@@ -28,6 +37,7 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
+  @doc false
   def on_init(state) do
     {:query, query_items} = state.source
     query_fun = Fact.QueryItem.to_function(query_items)
@@ -50,6 +60,7 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
+  @doc false
   def high_water_mark(%{indexers: indexers}) do
     Map.values(indexers)
     |> Enum.map(&Map.get(&1, :high_water_mark))
@@ -57,6 +68,7 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
+  @doc false
   def replay(
         %{database_id: database_id, query_fun: query_fun, schema: schema},
         from_pos,
@@ -71,6 +83,7 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
+  @doc false
   def handle_info(
         {:indexed, indexer_id, %{position: position, record_id: record_id}},
         %{database_id: database_id, indexers: indexers, query_fun: query_fun} = state
@@ -94,6 +107,7 @@ defmodule Fact.CatchUpSubscription.Query do
   end
 
   @impl true
+  @doc false
   def handle_info({:indexer_ready, _indexer_id, _checkpoint}, state) do
     {:noreply, state}
   end

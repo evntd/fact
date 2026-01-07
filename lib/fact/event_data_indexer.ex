@@ -5,12 +5,12 @@ defmodule Fact.EventDataIndexer do
   use Fact.EventIndexer
 
   @typedoc """
-  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type option :: {:indexer_key, String.t()} | Fact.EventIndexer.indexer_option()
 
   @typedoc """
-  Custom options passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  Custom options passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type options :: [option()]
 
@@ -55,6 +55,7 @@ defmodule Fact.EventDataIndexer do
   def index_event(schema, event, opts) do
     event_data = event[schema.event_data]
     indexer_key = Keyword.get(opts, :indexer_key)
+
     unless is_nil(value = Map.get(event_data, indexer_key)) do
       to_string(value)
     end

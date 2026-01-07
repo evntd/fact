@@ -22,7 +22,7 @@ defmodule Fact.Query do
   @typedoc """
   A query is function which takes a database context and returns an event_id predicate function. 
   """
-  @type t :: (Fact.Context.t() -> (Fact.Types.event_id() -> boolean()))
+  @type t :: (Fact.database_id() -> (Fact.record_id() -> boolean()))
 
   @doc """
   This combines multiple queries using logical boolean operations returning a new query as a tuple.
@@ -106,8 +106,8 @@ defmodule Fact.Query do
       Fact.Query.from("StudentSubscribedToCourse", "course:c1", student_id: "s1")
   """
   @spec from(
-          Fact.Types.event_type() | [Fact.Types.event_type(), ...],
-          Fact.Types.event_tag() | [Fact.Types.event_tag(), ...],
+          Fact.event_type() | [Fact.event_type(), ...],
+          Fact.event_tag() | [Fact.event_tag(), ...],
           keyword()
         ) :: {:ok, t()} | {:error, term()}
   def from(types \\ [], tags \\ [], data \\ [])
@@ -373,7 +373,7 @@ defmodule Fact.Query do
         }                                                                                                                                                                                                                                                                                                                 
       ]
   """
-  @spec from_tags(Fact.Types.event_tag() | [Fact.Types.event_tag(), ...]) ::
+  @spec from_tags(Fact.event_tag() | [Fact.event_tag(), ...]) ::
           {:ok, t()} | {:error, term()}
   def from_tags([]), do: {:error, :empty_tag_list}
 
@@ -415,7 +415,7 @@ defmodule Fact.Query do
     
   Raises `ArgumentError` if any supplied event tag is not a string.
   """
-  @spec from_tags!(Fact.Types.event_tag() | [Fact.Types.event_tag(), ...]) :: t()
+  @spec from_tags!(Fact.event_tag() | [Fact.event_tag(), ...]) :: t()
   def from_tags!(tags) do
     case from_tags(tags) do
       {:ok, query} ->
@@ -457,7 +457,7 @@ defmodule Fact.Query do
         }                                                                                                                                                                                                                                                                                                                 
       ]
   """
-  @spec from_types(Fact.Types.event_type() | [Fact.Types.event_type(), ...]) ::
+  @spec from_types(Fact.event_type() | [Fact.event_type(), ...]) ::
           {:ok, t()} | {:error, term()}
   def from_types([]), do: {:error, :empty_type_list}
 
@@ -494,7 +494,7 @@ defmodule Fact.Query do
     
   Raises `ArgumentError` if any supplied event type is not a string.
   """
-  @spec from_types!(Fact.Types.event_type() | [Fact.Types.event_type(), ...]) :: t()
+  @spec from_types!(Fact.event_type() | [Fact.event_type(), ...]) :: t()
   def from_types!(types) do
     case from_types(types) do
       {:ok, query} ->

@@ -1,7 +1,7 @@
 defmodule Fact.EventPublisher do
   use GenServer
 
-  @type appended_message :: {:appended, Fact.Types.record()}
+  @type appended_message :: {:appended, Fact.record()}
 
   @all_events "*"
 

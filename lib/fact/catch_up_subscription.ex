@@ -1,13 +1,40 @@
 defmodule Fact.CatchUpSubscription do
+  @moduledoc """
+  Behaviour and helper implementation for catch-up subscriptions.
+
+  A catch-up subscription replays historical events from a source up to the
+  current high-water mark, delivers them to a subscriber, and then switches
+  into live mode to stream new events as they arrive.
+
+  This module defines the callback contract and provides a `__using__/1`
+  macro that implements the common GenServer lifecycle:
+
+    • `:init` phase — the subscriber is monitored and the implementation
+      subscribes to the event source.
+
+    • The high-water mark is read and a replay is performed from the
+      starting position up to that point.
+
+    • Any events that arrive during replay are buffered and delivered
+      after replay completes.
+
+    • When catch-up finishes, the subscriber receives `:caught_up` and the
+      subscription transitions to live mode.
+
+  Implementations provide the mechanics for subscription and replay by
+  defining the required callbacks, while optional hooks allow customization
+  of state and position handling.
+  """
+
   @callback subscribe(state :: term()) :: :ok
-  @callback high_water_mark(state :: term()) :: Fact.Types.read_position()
+  @callback high_water_mark(state :: term()) :: Fact.event_position()
   @callback replay(
               state :: term(),
-              from :: non_neg_integer(),
-              to :: non_neg_integer,
+              from :: Fact.read_position_option(),
+              to :: Fact.event_position(),
               deliver_fun :: (term() -> any())
             ) :: :ok
-  @callback get_position(state :: term(), message :: term()) :: non_neg_integer()
+  @callback get_position(state :: term(), message :: term()) :: Fact.event_position()
   @callback on_init(state :: term()) :: term()
 
   defmacro __using__(_opts) do

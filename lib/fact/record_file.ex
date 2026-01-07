@@ -62,7 +62,7 @@ defmodule Fact.RecordFile do
       read(context, record_id)
     end
   end
-  
+
   def read(%Context{} = context, record_id) do
     with {:ok, record_path} <- path(context, record_id),
          {:ok, encoded_record} <- read_single(context, record_path),
@@ -75,6 +75,7 @@ defmodule Fact.RecordFile do
     {^record_id, record} = read(database_id, record_id)
     record
   end
+
   def read_event(%Context{} = context, record_id) do
     {^record_id, record} = read(context, record_id)
     record

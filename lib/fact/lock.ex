@@ -35,7 +35,7 @@ defmodule Fact.Lock do
 
   @modes [:run, :restore, :create]
 
-  @spec acquire(Fact.Types.database_id(), mode()) ::
+  @spec acquire(Fact.database_id(), mode()) ::
           {:ok, t()} | {:error, {:locked, lock_metadata()}} | {:error, term()}
   @doc """
   Acquire a lock for the instance in the specified mode.
@@ -76,7 +76,7 @@ defmodule Fact.Lock do
     
   Closes the socket, deletes the socket file, and deletes the metadata file.
   """
-  @spec release(Fact.Types.database_id(), t()) :: :ok
+  @spec release(Fact.database_id(), t()) :: :ok
   def release(database_id, %__MODULE__{socket: socket, socket_path: socket_path}) do
     :gen_tcp.close(socket)
     File.rm(socket_path)

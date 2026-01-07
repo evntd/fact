@@ -37,12 +37,12 @@ defmodule Fact.EventStreamWriter do
   end
 
   @spec commit(
-          Fact.Types.database_id(),
-          Fact.Types.event() | [Fact.Types.event(), ...],
-          Fact.Types.event_stream(),
-          Fact.Types.event_position() | :any | :none | :exists,
+          Fact.database_id(),
+          Fact.event() | [Fact.event(), ...],
+          Fact.event_stream_id(),
+          Fact.event_position() | :any | :none | :exists,
           keyword()
-        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+        ) :: {:ok, Fact.event_position()} | {:error, term()}
   def commit(database_id, events, event_stream, expected_position \\ :any, opts \\ [])
 
   def commit(database_id, event, event_stream, expected_position, opts)

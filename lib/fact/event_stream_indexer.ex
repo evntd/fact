@@ -45,9 +45,9 @@ defmodule Fact.EventStreamIndexer do
   Utility method to determine the last position within an event stream. 
   Returns `0` if the event stream does not exist.
     
-  This is similar to `Fact.Storage.last_store_position/1`, but for a streams.
+  This is similar to `Fact.Database.last_position/1`, but for a stream.
   """
-  @spec last_stream_position(Fact.Context.t(), Fact.Types.event_stream()) :: non_neg_integer()
+  @spec last_stream_position(Fact.database_id(), Fact.event_stream_id()) :: Fact.event_position()
   def last_stream_position(database_id, event_stream) do
     unless(
       is_nil(

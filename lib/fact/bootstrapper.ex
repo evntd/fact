@@ -1,8 +1,28 @@
 defmodule Fact.Bootstrapper do
+  @moduledoc """
+  Boots a Fact database from disk.
+
+  The bootstrapper read the **genesis event** (see `Fact.Genesis.Event.DatabaseCreated.V1`) from 
+  the specified path, builds a `Fact.Context`, and starts the database under a `Fact.DatabaseSupervisor`.
+
+  On success, the database is started and the bootstrapping process stops normally.
+  If a `caller` PID is provided in the options, it will receive:
+
+    * `{:database_started, database_id}`
+
+  This process is temporary and is intended to run during startup.
+  """
   use GenServer
 
   require Logger
 
+  @type option ::
+          {:path, Path.t()}
+          | {:caller, pid()}
+
+  @type options :: list(option)
+
+  @spec child_spec(options()) :: Supervisor.child_spec()
   def child_spec(opts) do
     path = Keyword.fetch!(opts, :path)
 
@@ -13,6 +33,7 @@ defmodule Fact.Bootstrapper do
     }
   end
 
+  @spec start_link(options()) :: GenServer.on_start()
   def start_link(opts) do
     with {:ok, path} <- Keyword.fetch(opts, :path) do
       arg = %{
@@ -28,11 +49,13 @@ defmodule Fact.Bootstrapper do
   end
 
   @impl true
+  @doc false
   def init(args) do
     {:ok, args, {:continue, :bootstrap}}
   end
 
   @impl true
+  @doc false
   def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
     context = load_context(path)
 

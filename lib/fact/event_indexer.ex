@@ -4,7 +4,7 @@ defmodule Fact.EventIndexer do
 
   `Fact.EventIndexer` defines the callbacks and GenServer scaffolding shared by all event indexers in the `Fact` storage
   system. An indexer listens for new events and extracts zero, one, or many values from each even it processes. For each
-  extracted value, the indexer create or appends to a file, recording the event's `t:Fact.Types.record_id/0`.
+  extracted value, the indexer create or appends to a file, recording the event's `t:Fact.record_id/0`.
     
   Indexers are just event projections, that filter the event ledger, and produce keyed, ordered sets of events.
     
@@ -15,7 +15,7 @@ defmodule Fact.EventIndexer do
 
   ## Behaviour
 
-  An indexer must implement the `c:index_event/2` callback, which extracts values from the supplied event.
+  An indexer must implement the `c:index_event/3` callback, which extracts values from the supplied event.
 
   The `__using__/1` macro injects the full GenServer implementation that:
 
@@ -58,19 +58,19 @@ defmodule Fact.EventIndexer do
   @typedoc """
   The values that can be return by a `c:Fact.EventIndexer.index_event` callback function.
   """
-  @type index_event_result :: Fact.Type.index_value() | list(Fact.Type.index_value()) | nil
+  @type index_event_result :: index_value() | list(index_value()) | nil
 
   @typedoc """
   This describes the results of the indexing process.
   """
   @type index_result :: %{
-          required(:position) => Fact.Types.event_position(),
-          required(:record_id) => Fact.Types.record_id(),
+          required(:position) => Fact.event_position(),
+          required(:record_id) => Fact.record_id(),
           required(:index_values) => list(index_value())
         }
 
   @typedoc """
-  The message that is published immediately after an indexer processes a `t:Fact.Types.record/0`.
+  The message that is published immediately after an indexer processes a `t:Fact.record/0`.
   """
   @type indexed_message ::
           {:indexed, indexer_id(), index_result()}
@@ -84,12 +84,12 @@ defmodule Fact.EventIndexer do
   This is additional metadata for a specific `t:Fact.EventIndexer.indexer_id/0`.
     
   At the time of writing, only `Fact.EventDataIndexer` uses an `t:Fact.EventIndexer.indexer_key/0`, because there can be 
-  multiple processes running, each indexing a different key within an `t:Fact.Types.event_data/0`
+  multiple processes running, each indexing a different key within an `t:Fact.event_data/0`
   """
   @type indexer_key() :: String.t()
 
   @typedoc """
-  The value produced by an `t:Fact.EventIndexer.indexer_id/0` when indexing an `t:Fact.Types.event_record/0`. 
+  The value produced by an `t:Fact.EventIndexer.indexer_id/0` when indexing an `t:Fact.event_record/0`. 
   """
   @type index_value() :: String.t()
 
@@ -111,7 +111,7 @@ defmodule Fact.EventIndexer do
           | {indexer_module(), indexer_key()}
 
   @typedoc """
-  Option values passed to the `c:Fact.EventIndexer.index_event/2` callback function to control the indexing of
+  Option values passed to the `c:Fact.EventIndexer.index_event/3` callback function to control the indexing of
   of records.
   """
   @type indexer_option() ::
@@ -119,13 +119,13 @@ defmodule Fact.EventIndexer do
           | indexer_custom_option()
 
   @typedoc """
-  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function to control the indexing 
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function to control the indexing 
   of records.
   """
   @type indexer_custom_option() :: {atom(), term()}
 
   @typedoc """
-  Options passed to the `c:Fact.EventIndexer.index_event/2` callback function to control the indexing of records.
+  Options passed to the `c:Fact.EventIndexer.index_event/3` callback function to control the indexing of records.
   """
   @type indexer_options() :: [indexer_option()]
 
@@ -146,16 +146,21 @@ defmodule Fact.EventIndexer do
   The state structure used by indexers in the `GenServer` callback functions. 
   """
   @type t :: %{
-          required(:context) => Fact.Context.t(),
+          required(:database_id) => Fact.database_id(),
           required(:indexer) => Fact.EventIndexer.indexer_id(),
           required(:indexer_opts) => Fact.EventIndexer.indexer_options(),
-          required(:checkpoint) => Fact.Types.read_position()
+          required(:checkpoint) => Fact.event_position(),
+          required(:schema) => Fact.event_record_schema()
         }
 
   @doc """
   Called when an event needs to be indexed. 
   """
-  @callback index_event(schema :: Fact.event_schema(), event :: Fact.event(), indexer_options()) ::
+  @callback index_event(
+              schema :: Fact.event_record_schema(),
+              event :: Fact.event(),
+              indexer_options()
+            ) ::
               index_event_result()
 
   @doc """
@@ -163,10 +168,10 @@ defmodule Fact.EventIndexer do
     
   ## Messages
     
-    * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.Types.event_record/0` is processed 
+    * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.event_record/0` is processed 
     regardless of whether the event is included within the index.
   """
-  @spec subscribe(Fact.Types.database_id(), indexer_id()) :: :ok
+  @spec subscribe(Fact.database_id(), indexer_id()) :: :ok
   def subscribe(database_id, indexer) do
     Phoenix.PubSub.subscribe(Fact.Registry.pubsub(database_id), topic(indexer))
   end
@@ -296,12 +301,11 @@ defmodule Fact.EventIndexer do
                database_id: database_id,
                indexer_id: indexer_id,
                indexer_opts: indexer_opts,
-               schema: schema,
+               schema: schema
              } = state
            ) do
-        
         position = event[schema.event_store_position]
-        
+
         index_values =
           index_event(schema, event, indexer_opts)
           |> List.wrap()

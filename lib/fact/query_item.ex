@@ -210,7 +210,7 @@ defmodule Fact.QueryItem do
       iex> Fact.QueryItem.tags([:not_a_tag])
       ** (ArgumentError) invalid event tag
   """
-  @spec tags(t(), Fact.Types.event_tag() | nonempty_list(Fact.Types.event_tag())) :: t()
+  @spec tags(t(), Fact.event_tag() | nonempty_list(Fact.event_tag())) :: t()
   def tags(query_item \\ %__MODULE__{}, tags)
 
   def tags(query_item, tag) when is_binary(tag) do
@@ -263,7 +263,7 @@ defmodule Fact.QueryItem do
       iex> Fact.QueryItem.types([:not_a_type])
       ** (ArgumentError) invalid event type
   """
-  @spec types(t(), Fact.Types.event_type() | nonempty_list(Fact.Types.event_type())) :: t()
+  @spec types(t(), Fact.event_type() | nonempty_list(Fact.event_type())) :: t()
   def types(query_item \\ %__MODULE__{}, types)
 
   def types(query_item, type) when is_binary(type) do

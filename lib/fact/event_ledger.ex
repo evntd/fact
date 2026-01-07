@@ -6,29 +6,29 @@ defmodule Fact.EventLedger do
   require Logger
 
   @type t :: %__MODULE__{
-          database_id: Types.database_id(),
-          position: non_neg_integer()
+          database_id: Fact.database_id(),
+          position: Fact.event_position()
         }
 
   @type commit_opts :: [condition: query_condition] | [] | nil
 
-  @type commit_success :: {:ok, Fact.Types.event_position()}
+  @type commit_success :: {:ok, Fact.event_position()}
 
   @type query_condition ::
           Fact.EventQuery.t()
           | [Fact.EventQuery.t()]
-          | {Fact.EventQuery.t(), Fact.Types.event_position()}
-          | {[Fact.EventQuery.t()], Fact.Types.event_position()}
+          | {Fact.EventQuery.t(), Fact.event_position()}
+          | {[Fact.EventQuery.t()], Fact.event_position()}
 
   @type write_events_error ::
-          {:error, {:event_write_failed, [{File.posix(), Fact.Types.record_id()}]}}
+          {:error, {:event_write_failed, [{File.posix(), Fact.record_id()}]}}
 
   @type write_ledger_error ::
           {:error, {:ledger_write_failed, File.posix()}}
 
   defstruct [:database_id, :schema, :replacements, position: 0]
 
-  @spec start_link([database_id: Fact.Types.database_id()] | []) ::
+  @spec start_link([database_id: Fact.database_id()] | []) ::
           {:ok, pid()} | {:error, term()}
   def start_link(opts) do
     {ledger_opts, genserver_opts} = Keyword.split(opts, [:database_id])
@@ -37,12 +37,12 @@ defmodule Fact.EventLedger do
   end
 
   @spec commit(
-          Fact.Types.database_id(),
-          Fact.Types.event() | [Fact.Types.event(), ...],
+          Fact.database_id(),
+          Fact.event() | [Fact.event(), ...],
           Fact.Query.t(),
-          Fact.Types.event_position(),
+          Fact.event_position(),
           keyword()
-        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+        ) :: {:ok, Fact.event_position()} | {:error, term()}
   def commit(database_id, events, fail_if_match \\ nil, after_position \\ 0, opts \\ [])
 
   def commit(database_id, events, nil, after_position, opts),

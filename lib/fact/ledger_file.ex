@@ -45,15 +45,15 @@ defmodule Fact.LedgerFile do
         }
       }
   end
-  
+
   def read(database, opts \\ [])
 
-  def read(database_id, opts) when is_binary(database_id) and  is_list(opts) do
+  def read(database_id, opts) when is_binary(database_id) and is_list(opts) do
     with {:ok, context} <- Fact.Registry.get_context(database_id) do
       read(context, opts)
     end
   end
-  
+
   def read(%Context{} = context, opts) when is_list(opts) do
     with {:ok, path} <- path(context),
          {:ok, stream} <- Reader.read(context, path, Keyword.take(opts, [:direction, :position])) do

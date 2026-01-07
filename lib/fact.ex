@@ -13,9 +13,66 @@ defmodule Fact do
   @type database_id :: uuid_v4_base32_uppercase_sans_padding()
 
   @typedoc """
+  Represents an event before being written to the event store.
+
+  At minimum, it must define a `:type` key.  
+  It may also include:
+    * `:id` - a UUID string
+    * `:data` - a map of custom data
+    * `:metadata` - a map of custom data about the data
+    * `:tags` - a list of custom identifiers to aid in defining context boundaries
+  """
+  @type event :: %{
+          required(:type) => event_type,
+          optional(:id) => event_id,
+          optional(:data) => event_data,
+          optional(:metadata) => event_metadata,
+          optional(:tags) => event_tags
+        }
+
+  @typedoc """
+  Consumer defined map of data specific to the `t:Fact.event_type/0`.
+  """
+  @type event_data :: map()
+
+  @typedoc """
+  The unique identifier for an event.
+  The actual value depends on the configuration of `Fact.Event.Id`.
+  """
+  @type event_id :: opaque_string()
+
+  @typedoc """
+  Consumer defined map of metadata, specific to the system which produced the event.
+  """
+  @type event_metadata :: map()
+
+  @typedoc """
+  A number indicating the location of the event within the ledger or an event stream. 
+  """
+  @type event_position :: pos_integer()
+
+  @typedoc """
   A map containing all the event details.
   """
-  @type event :: map()
+  @type event_record :: map()
+
+  @typedoc """
+  A schema definition describing the field names used in a `t:Fact.event/0`.
+    
+  Each key in this map represents a logical event attribute, and its value is the
+  string key under which that attribute is stored in the event map.
+  """
+  @type event_record_schema :: %{
+          required(:event_data) => String.t(),
+          required(:event_id) => String.t(),
+          required(:event_metadata) => String.t(),
+          required(:event_tags) => String.t(),
+          required(:event_type) => String.t(),
+          required(:event_store_position) => String.t(),
+          required(:event_store_timestamp) => String.t(),
+          required(:event_stream_id) => String.t(),
+          required(:event_stream_position) => String.t()
+        }
 
   @typedoc """
   A consumer defined, domain specific id for a stream of events.
@@ -25,6 +82,22 @@ defmodule Fact do
   consistency boundary for persisting Domain-Driven Design (DDD) Aggregate Roots.
   """
   @type event_stream_id :: no_whitespace_string()
+
+  @typedoc """
+  A consumer defined, domain-specific metadata for an event, allowing for custom logical partitioning. Similar in
+  concept to a `t:Fact.event_stream_id/0`, however events may define many tags. These and `t:Fact.event_type/0`
+  are used to define `Fact.Query`s and provide the foundation for dynamic consistency boundaries.
+  """
+  @type event_tag :: no_whitespace_string()
+
+  @type event_tags :: list(event_tag())
+
+  @typedoc """
+  A consumer defined, domain-specific name for an event. 
+
+  It is recommended they are named in the past-tense, and describe a fact that is important to capture for the domain. 
+  """
+  @type event_type :: no_whitespace_string()
 
   @typedoc """
   A string that contains no whitespace characters of any kind, including 
@@ -87,7 +160,7 @@ defmodule Fact do
   An enumerable collection (`List` or `Stream`) containing the values returned by the read operation.
   """
   @type read_result ::
-          Enumerable.t(event())
+          Enumerable.t(event_record())
           | Enumerable.t(record())
           | Enumerable.t(record_id())
 
@@ -103,13 +176,13 @@ defmodule Fact do
           :none
           | :all
           | {:stream, event_stream_id()}
-          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index()}
+          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index_value()}
           | {:query, read_query_source()}
 
   @typedoc """
   A persisted event paired with its unique identifier.
   """
-  @type record :: {record_id(), event()}
+  @type record :: {record_id(), event_record()}
 
   @typedoc """
   An opaque string that uniquely identifies a persisted event.
@@ -130,7 +203,7 @@ defmodule Fact do
   @type subscribe_source ::
           :all
           | {:stream, event_stream_id()}
-          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index()}
+          | {:index, Fact.EventIndexer.indexer_id(), Fact.EventIndexer.index_value()}
           | {:query, Fact.QueryItem.t() | [Fact.QueryItem.t()]}
 
   @typedoc """
@@ -154,12 +227,12 @@ defmodule Fact do
   end
 
   @spec append(
-          Fact.Types.database_id(),
-          Fact.Types.event() | [Fact.Types.event(), ...],
+          Fact.database_id(),
+          Fact.event() | [Fact.event(), ...],
           Fact.Query.t(),
-          Fact.Types.event_position(),
+          Fact.event_position(),
           keyword()
-        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+        ) :: {:ok, Fact.event_position()} | {:error, term()}
   def append(
         database_id,
         events,
@@ -221,12 +294,12 @@ defmodule Fact do
 
   """
   @spec append_stream(
-          Fact.Types.database_id(),
-          Fact.Types.event() | [Fact.Types.event(), ...],
-          Fact.Types.event_stream(),
-          Fact.Types.event_position() | :any | :none | :exists,
+          Fact.database_id(),
+          Fact.event() | [Fact.event(), ...],
+          Fact.event_stream_id(),
+          Fact.event_position() | :any | :none | :exists,
           keyword()
-        ) :: {:ok, Fact.Types.event_position()} | {:error, term()}
+        ) :: {:ok, Fact.event_position()} | {:error, term()}
   def append_stream(
         database_id,
         events,
@@ -341,7 +414,6 @@ defmodule Fact do
   > quite wise 🧙‍♂️ to set this to **false**.  Nearly all the internal components of Fact 
   > use lazy reads, this is really just meant as a convenience so you don't have to 
   > remember to `|> Enum.to_list()`.
-
   """
   @spec read(database_id(), read_source(), read_options()) :: read_result()
   def read(database_id, event_source, options \\ [])
@@ -396,6 +468,55 @@ defmodule Fact do
     )
   end
 
+  @doc """
+  Subscribe a process to an event source.
+    
+  A subscription streams new events to the subscriber process as they are appended to the event store.
+  The subscriber process receives one message per event in the form:
+    
+    * `{:record, record}` - where record is a 2-tuple `{record_id, event_record}` (see `t:Fact.record()`)
+
+  The subscription begins by replaying events from the specified source, starting at the configured position.
+  Once all historical events have been delivered, the processes receives a `:caught_up` message and the subscription
+  shifts into **live mode**, where it waits for and delivers new events as they arrive.
+    
+  ## Event Sources
+
+  Subscriptions support most of the same sources as `read/3`, with a few exceptions. 
+
+  Subscribing to the empty stream (i.e. `:none`) would create a very lonely `Fact.CatchUpSubscription` process
+  that never delivers any messages, and I don't believe that would be useful. If you have a legitimate use case,
+  please make your case. It would be straightforward to implement and support.
+
+  Subscribing to query sources requires `t:Fact.QueryItem.t/0`; a `t:Fact.Query.t/0` won't work here. 
+  A `t:Fact.Query.t/0` is just a function, and that function depends on data produced by a combination 
+  of the `Fact.EventTypeIndexer`, `Fact.EventTagsIndexer`, and any number of `Fact.EventDataIndexer` processes. 
+  A `t:Fact.QueryItem.t/0` contains the metadata needed to subscribe to the correct indexers so the subscription
+  and coordinate when events become "visible" to the subscriber.
+    
+  Could a `t:Fact.Query.t/0` be decompiled back into an AST so we could reconstruct that information? Probably! But
+  for now, I'd rather spend my time building other things. If you're like my good buddy Tim and love spelunking through
+  abstract syntax trees, I'll happily take your pull request. 
+
+  ## Options
+
+  ### position:
+    
+  Set the position to begin reading the event source.
+
+    * `:start` **(default)** - the position immediately **before the first item** in the event source
+    * `:end` - the position immediately **after the last item** in the event source
+    * Or a non-negative integer representing the absolute position within the source
+
+  > #### Live mode only {: .tip}
+  >
+  > If you're not interested in past events, set `position: :end` to move directly into live mode.
+
+
+  ### subscriber:
+    
+  Specifies the PID of the process that will receive subscription message. Defaults to `self()`.
+  """
   @spec subscribe(database_id(), subscribe_source(), subscribe_options()) :: {:ok, pid()}
   def subscribe(database_id, event_source, options \\ [])
 

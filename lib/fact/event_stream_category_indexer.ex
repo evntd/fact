@@ -6,12 +6,17 @@ defmodule Fact.EventStreamCategoryIndexer do
   use Fact.EventIndexer
 
   @typedoc """
-  Custom option values passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  The id for a Fact.EventStreamCategoryIndexer.
+  """
+  @type id :: {Fact.EventStreamCategoryIndexer, nil}
+
+  @typedoc """
+  Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type option :: {:separator, String.t()} | Fact.EventIndexer.indexer_option()
 
   @typedoc """
-  Custom options passed to the `c:Fact.EventIndexer.index_event/2` callback function.
+  Custom options passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type options :: [option()]
 
@@ -58,7 +63,7 @@ defmodule Fact.EventStreamCategoryIndexer do
   def index_event(schema, event, opts) do
     unless is_nil(stream = event[schema.event_stream_id]) do
       separator = Keyword.get(opts, :separator, @default_separator)
-      stream |> String.split(separator, parts: 2) |> List.first()  
+      stream |> String.split(separator, parts: 2) |> List.first()
     end
   end
 end

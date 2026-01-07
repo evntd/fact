@@ -1,4 +1,13 @@
 defmodule Fact.CatchUpSubscription.Stream do
+  @moduledoc """
+  Catch-up subscription for a single event stream.
+
+  This subscription replays and streams events from a specific event
+  stream in the database, starting from the configured position and
+  delivering them to the subscriber. Once caught up, it continues streaming
+  new events as they are appended to the stream.
+  """
+
   use Fact.CatchUpSubscription
 
   def start_link(options) do
@@ -17,21 +26,25 @@ defmodule Fact.CatchUpSubscription.Stream do
   end
 
   @impl true
+  @doc false
   def subscribe(%{database_id: database_id, source: {:stream, _stream} = source}) do
     Fact.EventPublisher.subscribe(database_id, source)
   end
 
   @impl true
+  @doc false
   def get_position(%{schema: schema, source: {:stream, _stream}} = _state, event) do
     event[schema.event_stream_position]
   end
 
   @impl true
+  @doc false
   def high_water_mark(%{database_id: database_id, source: {:stream, stream}}) do
     Fact.EventStreamIndexer.last_stream_position(database_id, stream)
   end
 
   @impl true
+  @doc false
   def replay(
         %{database_id: database_id, schema: schema, source: {:stream, stream}},
         from_pos,
@@ -49,6 +62,7 @@ defmodule Fact.CatchUpSubscription.Stream do
   end
 
   @impl true
+  @doc false
   def handle_info({:appended, record}, state) do
     buffer_or_deliver(record, state)
   end

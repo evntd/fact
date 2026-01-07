@@ -16,10 +16,13 @@
     - Subscribe to specific event streams or all events in the event store
     - [Optimistic concurrency control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control)
 - Compliant with the [Dynamic Consistency Boundary specification](https://dcb.events/specification/)
+- **Read events from built-in indexes and custom queries.**
+- **Subscribe to built-in indexes and custom queries.**
 - Just-in-time indexing for event data queries.
+- "Pseudo-WORM" storage<sup>[1](#fn1)</sup>
 - Supports multiple instances for siloed isolation in multi-tenancy setups
 - Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage)
-- Backup store contents to compressed file
+- Configurable event schemas<sup>[2](#fn2)</sup>
 - Supported on Elixir 1.13+ and OTP 25+
 
 ## Installation
@@ -74,3 +77,10 @@ iex> Fact.read(db, {:stream, "turtle-1"}) |> Enum.to_list()
 ]
 ```
 
+### 🦶🎶
+
+<small id="fn1">1 - Its "pseudo-WORM" because immutability is enforced at the filesystem level by marking events
+as read-only. This prevents modification during normal operation, but does not provide hardware-level or regulatory WORM
+enforcement.</small>
+
+<small id="fn2">2 - The groundwork has been laid, but still requires work in system genesis and bootstrapping.</small>

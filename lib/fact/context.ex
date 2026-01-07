@@ -1,4 +1,16 @@
 defmodule Fact.Context do
+  @moduledoc """
+  The context for a Fact database.
+
+  A `Fact.Context` holds all the configuration, file handlers, encoders/decoders,
+  and metadata necessary to operate a database instance. It provides a central
+  place to access:
+
+    * Database identity and versioning information
+    * Event and record schemas
+    * File and storage handlers for ledgers, records, indexes, checkpoints, and locks
+  """
+
   alias Fact.Event
   alias Fact.IndexCheckpointFile
   alias Fact.IndexFile

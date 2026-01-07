@@ -1,4 +1,10 @@
 defmodule Fact.CatchUpSubscription.Index do
+  @moduledoc """
+  Catch-up subscription for a single index value.
+
+  This subscription replays and streams events that appear in the given index,
+  starting from the configured position and continuing in live mode once caught up.
+  """
   use Fact.CatchUpSubscription
 
   def start_link(options) do
@@ -19,16 +25,19 @@ defmodule Fact.CatchUpSubscription.Index do
   end
 
   @impl true
+  @doc false
   def subscribe(%{database_id: database_id, source: {:index, indexer_id, _index}}) do
     Fact.EventIndexer.subscribe(database_id, indexer_id)
   end
 
   @impl true
+  @doc false
   def high_water_mark(%{database_id: database_id, source: {:index, indexer_id, _index}}) do
     Fact.IndexCheckpointFile.read(database_id, indexer_id)
   end
 
   @impl true
+  @doc false
   def replay(
         %{database_id: database_id, schema: schema, source: {:index, indexer_id, index}},
         from_pos,
@@ -46,6 +55,7 @@ defmodule Fact.CatchUpSubscription.Index do
   end
 
   @impl true
+  @doc false
   def handle_info({:indexed, indexer_id, info}, %{source: {:index, indexer_id, index}} = state) do
     if index in info.index_values do
       record = Fact.Database.read_record(state.database_id, info.record_id)
@@ -56,6 +66,7 @@ defmodule Fact.CatchUpSubscription.Index do
   end
 
   @impl true
+  @doc false
   def handle_info({:indexer_ready, _indexer_id, _checkpoint}, state) do
     {:noreply, state}
   end
