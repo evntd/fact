@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.0.1-alpha.1"
+  @version "0.0.1-beta.1"
   @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
@@ -69,8 +69,7 @@ defmodule Fact.MixProject do
       ],
       groups_for_modules: [
         Api: [
-          Fact,
-          Fact.Types
+          Fact
         ],
         Context: [
           Fact.Context,
@@ -201,7 +200,7 @@ defmodule Fact.MixProject do
       ],
       language: "en",
       logo: "guides/assets/images/turt-48.png",
-      main: "overview",
+      main: Fact,
       nest_modules_by_prefix: [
         Fact.Event,
         Fact.Genesis,

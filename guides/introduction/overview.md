@@ -1,3 +1,3 @@
 # Overview
 
-This will be an overview of Fact.
+This will be coming really soon. I promise. For now check out the `Fact` module documentation.

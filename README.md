@@ -4,9 +4,9 @@
   <img alt="logo" src=".github/assets/logo.png" width="424">
 </div>
 
-## About
+## A 🥾
 
-*Fact* is an **Elixir library** that provides a file system based event store database.
+**Fact** is an **Elixir library** that provides a file system based event store database.
 
 ## Features
 
