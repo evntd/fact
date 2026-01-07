@@ -1,20 +1,42 @@
 defmodule Fact.LedgerFile do
+  @moduledoc """
+  Domain-specific module that encapsulates configurable adapters for 
+  working with ledger file.
+    
+  This provides helper functions to make it easier than directly working 
+  with the adapters and `Fact.Context` modules. 
+  """
   alias Fact.Context
   alias Fact.Storage
 
   defmodule Decoder do
+    @moduledoc """
+    Adapter for decoding the contents of ledger file.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Decoder.Raw.V1`.
+    """
     use Fact.Seam.Decoder.Adapter,
       context: :ledger_file_decoder,
       allowed_impls: [{:raw, 1}]
   end
 
   defmodule Encoder do
+    @moduledoc """
+    Adapter for encoding the contents of ledger file.
+
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Delimited.V1`.
+    """
     use Fact.Seam.Encoder.Adapter,
       context: :ledger_file_encoder,
       allowed_impls: [{:delimited, 1}]
   end
 
   defmodule Name do
+    @moduledoc """
+    Adapter for naming the ledger file within the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Fixed.V1`.
+    """
     use Fact.Seam.FileName.Adapter,
       context: :ledger_file_name,
       allowed_impls: [{:fixed, 1}],
@@ -26,12 +48,25 @@ defmodule Fact.LedgerFile do
   end
 
   defmodule Reader do
+    @moduledoc """
+    Adapter for reading the contents of the ledger file.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileReader.FixedLength.V1`.
+    """
     use Fact.Seam.FileReader.Adapter,
       context: :ledger_file_reader,
       allowed_impls: [{:fixed_length, 1}]
   end
 
   defmodule Writer do
+    @moduledoc """
+    Adapter for writing the contents of ledger file to the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileWriter.Standard.V1`.
+      
+    The ledger file opened for append-only writes using raw file descriptors, and each write is synchronously
+    flushed to disk to ensure durability.
+    """
     use Fact.Seam.FileWriter.Adapter,
       context: :ledger_file_writer,
       fixed_options: %{

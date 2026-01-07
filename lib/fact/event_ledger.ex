@@ -1,4 +1,17 @@
 defmodule Fact.EventLedger do
+  @moduledoc """
+  Manages the event ledger for a Fact database instance, handling all commits,
+  enforcing optimistic concurrency control via position expectations or query conditions.
+
+  `Fact.EventLedger` is a GenServer responsible for:
+    * Writing event record files, and appending to the ledger.
+    * Ensuring events are enriched with metadata, ids, timestamps, and store positions
+    * Publishing appended events via `Fact.EventPublisher`
+    * Tracking the current ledger position and maintaining order.
+
+  It's the Judge Judy of the system.
+  """
+
   use GenServer
 
   alias Fact.Event

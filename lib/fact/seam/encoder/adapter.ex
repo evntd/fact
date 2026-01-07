@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Encoder.Adapter do
+  @moduledoc """
+  Meta module that provides an adapter for calling `Fact.Seam.Encoder` implementations.
+
+  This adapter handles resolution of the encoder instance from a context and
+  forwards the `encode/3` call to the underlying implementation.
+  """
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)

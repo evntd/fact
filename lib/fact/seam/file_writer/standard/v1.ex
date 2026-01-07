@@ -1,4 +1,9 @@
 defmodule Fact.Seam.FileWriter.Standard.V1 do
+  @moduledoc """
+  Standard V1 implementation of `Fact.Seam.FileWriter`.
+
+  Provides configurable file writing with options for access mode, binary mode, exclusive/open flags, raw mode, synchronous writes, and WORM (write-once, read-many) file protection.
+  """
   use Fact.Seam.FileWriter,
     family: :standard,
     version: 1

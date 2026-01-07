@@ -1,4 +1,19 @@
 defmodule Fact.EventPublisher do
+  @moduledoc """
+  The central hub for broadcasting events within a Fact database.
+
+  `Fact.EventPublisher` is a GenServer responsible for publishing newly appended
+  event records to subscribers, either to a specific stream or to the global 
+  `:all` stream. Consumers, catch-up subscriptions, and indexers rely on this 
+  module to receive live notifications of changes in the database.
+
+  ## Features
+    * Subscribing to a specific event stream or all events
+    * Publishing newly appended records to the appropriate topics
+    * Integrates with `Phoenix.PubSub` for low-latency event delivery
+    * Ensures that each record is broadcasted both to the global stream and its
+      specific event stream, if present
+  """
   use GenServer
 
   @type appended_message :: {:appended, Fact.record()}

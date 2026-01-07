@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Encoder.Delimited.V1 do
+  @moduledoc """
+  Delimited encoder implementation for event records.
+
+  Transforms a list of values (or a single binary) into a delimited sequence using the 
+  configured delimiter. Supports `:lf`, `:crlf`, and `:rs` delimiters. Returns `{:ok, iodata}`.
+  """
   use Fact.Seam.Encoder,
     family: :delimited,
     version: 1

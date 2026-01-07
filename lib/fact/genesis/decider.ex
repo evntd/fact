@@ -1,4 +1,22 @@
 defmodule Fact.Genesis.Decider do
+  @moduledoc """
+  Decides which events should be produced in response to Genesis commands.
+
+  The `Fact.Genesis.Decider` is responsible for taking commands related to 
+  database creation (currently only `Fact.Genesis.Command.CreateDatabase.V1`) 
+  and producing the corresponding events (currently only 
+  `Fact.Genesis.Event.DatabaseCreated.V1`) if all validation passes.
+
+  This decider handles:
+    * Resolving the database name and path
+    * Verifying the target directory exists and is empty
+    * Building the full configuration for all components (event ids, schemas, 
+      ledger, index, lock, record, and storage files)
+    * Computing derived values like record filename lengths and reader paddings
+    * Generating unique database IDs and capturing system compatibility 
+      (Elixir, Erlang/OTP, OS, Fact version)
+
+  """
   alias Fact.Genesis.Command.CreateDatabase
   alias Fact.Genesis.Event.DatabaseCreated
 

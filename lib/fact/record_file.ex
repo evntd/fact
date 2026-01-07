@@ -1,20 +1,44 @@
 defmodule Fact.RecordFile do
+  @moduledoc """
+  Domain-specific module that encapsulates configurable adapters for 
+  working with event record files.
+    
+  This provides helper functions to make it easier than directly working 
+  with the adapters and `Fact.Context` modules. 
+  """
   alias Fact.Context
   alias Fact.Storage
 
   defmodule Decoder do
+    @moduledoc """
+    Adapter for decoding the contents of event record files.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Decoder.Json.V1`.
+    """
     use Fact.Seam.Decoder.Adapter,
       context: :record_file_decoder,
       allowed_impls: [{:json, 1}]
   end
 
   defmodule Encoder do
+    @moduledoc """
+    Adapter for encoding the contents of event record files.
+
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Json.V1`.
+    """
     use Fact.Seam.Encoder.Adapter,
       context: :record_file_encoder,
       allowed_impls: [{:json, 1}]
   end
 
   defmodule Name do
+    @moduledoc """
+    Adapter for naming the event records files within the file system.
+      
+    This defaults to using the `Fact.Seam.FileName.EventId.V1` implementation, 
+    but can be configured to use `Fact.Seam.FileName.Hash.V1` which provides 
+    content addressable storage.
+    """
     use Fact.Seam.FileName.Adapter,
       context: :record_file_name,
       allowed_impls: [{:hash, 1}, {:event_id, 1}],
@@ -37,12 +61,26 @@ defmodule Fact.RecordFile do
   end
 
   defmodule Reader do
+    @moduledoc """
+    Adapter for reading the contents of the event record files.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileReader.Full.V1`.
+    """
     use Fact.Seam.FileReader.Adapter,
       context: :record_file_reader,
       allowed_impls: [{:full, 1}]
   end
 
   defmodule Writer do
+    @moduledoc """
+    Adapter for writing the contents of the lock file to the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileWriter.Standard.V1`.
+      
+    Event records are opened in exclusive write mode, written using raw file descriptors, and explicitly
+    synchronized to disk. After the write completes, the file is marked read-only to prevent further 
+    modification.
+    """
     use Fact.Seam.FileWriter.Adapter,
       context: :record_file_writer,
       fixed_options: %{

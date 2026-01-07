@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Decoder.Integer.V1 do
+  @moduledoc """
+  A decoder for integers.
+
+  Converts a binary string representation of an integer into an actual integer.
+  Returns `{:error, {:decode, value}}` if the input cannot be converted.
+  """
   use Fact.Seam.Decoder,
     family: :integer,
     version: 1

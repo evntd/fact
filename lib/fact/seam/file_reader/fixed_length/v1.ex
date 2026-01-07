@@ -1,4 +1,14 @@
 defmodule Fact.Seam.FileReader.FixedLength.V1 do
+  @moduledoc """
+  A `Fact.Seam.FileReader` implementation for fixed-length records.
+
+  Reads a file in chunks of a specified length, optionally skipping padding bytes
+  between records. Supports both forward and backward streaming from a given
+  position (:start, :end, or a specific record index).
+
+  This allows processing large files efficiently without loading the entire file
+  into memory.
+  """
   use Fact.Seam.FileReader,
     family: :fixed_length,
     version: 1

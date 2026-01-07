@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Encoder.Json.V1 do
+  @moduledoc """
+  JSON encoder implementation for event records.
+
+  Encodes the given data to JSON format using either the `JSON` module if available, 
+  or `Jason`. If neither library is present, encoding returns `{:error, :no_json_impl}`.
+  """
   use Fact.Seam.Encoder,
     family: :json,
     version: 1

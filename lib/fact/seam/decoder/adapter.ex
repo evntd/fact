@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Decoder.Adapter do
+  @moduledoc """
+  Meta module providing an adapter for dispatching to decoder implementations.
+
+  Wraps calls to the underlying `Fact.Seam.Decoder` implementations and handles context injection.
+  """
+
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)

@@ -1,20 +1,42 @@
 defmodule Fact.LockFile do
+  @moduledoc """
+  Domain-specific module that encapsulates configurable adapters for 
+  working with lock files.
+    
+  This provides helper functions to make it easier than working with 
+  adapters and `Fact.Context` module.
+  """
   alias Fact.Context
   alias Fact.Storage
 
   defmodule Decoder do
+    @moduledoc """
+    Adapter for decoding the contents of lock file.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Decoder.Json.V1`.
+    """
     use Fact.Seam.Decoder.Adapter,
       context: :lock_file_decoder,
       allowed_impls: [{:json, 1}]
   end
 
   defmodule Encoder do
+    @moduledoc """
+    Adapter for encoding the contents of lock file.
+
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Json.V1`.
+    """
     use Fact.Seam.Encoder.Adapter,
       context: :lock_file_encoder,
       allowed_impls: [{:json, 1}]
   end
 
   defmodule Name do
+    @moduledoc """
+    Adapter for naming the lock file within the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Fixed.V1`.
+    """
     use Fact.Seam.FileName.Adapter,
       context: :lock_file_name,
       allowed_impls: [{:fixed, 1}],
@@ -26,12 +48,26 @@ defmodule Fact.LockFile do
   end
 
   defmodule Reader do
+    @moduledoc """
+    Adapter for reading the contents of the lock file.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileReader.Full.V1`.
+    """
     use Fact.Seam.FileReader.Adapter,
       context: :lock_file_reader,
       allowed_impls: [{:full, 1}]
   end
 
   defmodule Writer do
+    @moduledoc """
+    Adapter for writing the contents of the lock file to the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileWriter.Standard.V1`.
+      
+    The lock file is opened in write mode, overwriting any existing contents. Although the lock file
+    is normally deleted when the lock is released, certain failure scenarios may leave a stale lock
+    file behind. 
+    """
     use Fact.Seam.FileWriter.Adapter,
       context: :lock_file_writer,
       fixed_options: %{

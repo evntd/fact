@@ -1,4 +1,10 @@
 defmodule Fact.Seam.FileName.Adapter do
+  @moduledoc """
+  Meta module providing a `Fact.Seam.Adapter` for file name generation.
+
+  Injects `get/3` into the calling module, dispatching to the configured `Fact.Seam.FileName` implementation
+  for a given context and value.
+  """
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     required_behaviours = Keyword.get(opts, :required_behaviours, nil)

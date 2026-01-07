@@ -1,4 +1,20 @@
 defmodule Fact.Genesis.Event.DatabaseCreated.V1 do
+  @moduledoc """
+  Event representing the creation of a new Fact database.
+
+  This event is emitted by the `Fact.Genesis.Decider` when a valid
+  `Fact.Genesis.Command.CreateDatabase.V1` command has been processed.
+  It records all the configuration needed to bring a new database into existence
+  as a fact, but it **does not itself create the database** on disk.
+
+  This event stores the database identity, system compatibility information
+  (Elixir, Erlang/OTP, OS versions), event adapters, file and index configurations,
+  ledger and lock file details, record handling, and storage configuration.
+
+  The `Fact.Bootstrapper` uses `to_context/1` to convert this event into a 
+  `Fact.Context` suitable for starting a new database instance via the supervision tree.
+  """
+
   alias Fact.Event
   alias Fact.IndexCheckpointFile
   alias Fact.IndexFile

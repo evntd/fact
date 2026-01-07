@@ -1,4 +1,9 @@
 defmodule Fact.Seam.FileWriter.Adapter do
+  @moduledoc """
+  Meta module providing the adapter interface for `Fact.Seam.FileWriter`.
+
+  Handles dispatching calls to the configured file writer implementation for a given context.
+  """
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)

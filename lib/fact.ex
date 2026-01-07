@@ -1,6 +1,13 @@
 defmodule Fact do
   @moduledoc """
   Fact is an event sourcing database, an event store.
+    
+
+  > #### Here there be 🐉🐉 {: .warning} 
+  > 
+  > Elixir's type system isn't as strict as say F#. So I've done my best to describe the types, their 
+  > format, and encoding. Many of these are not enforced, and supplying other types may compile but 
+  > produce errors or unexpected behavior. It'll just work if you use it like I intended 😉.
   """
 
   @typedoc """

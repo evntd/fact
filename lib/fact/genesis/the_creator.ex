@@ -1,4 +1,18 @@
-defmodule Fact.Genesis.Creator do
+defmodule Fact.Genesis.TheCreator do
+  @moduledoc """
+  The divine module that brings a Fact database into existence.  
+
+  `Fact.Genesis.TheCreator` is responsible for taking a `DatabaseCreated.V1` 
+  event and actually creating the on-disk database via `let_there_be_light/1`.
+
+  Responsibilities:
+    * Initialize the storage paths for records and indices
+    * Create necessary directories and a `.gitignore` file
+    * Write the genesis event to the record file
+    * Append the genesis event to the ledger file
+    * Generate event IDs and populate the event schema
+  """
+
   alias Fact.Genesis.Event.DatabaseCreated
   alias Fact.Event
 

@@ -1,4 +1,11 @@
 defmodule Fact.Seam.FileName.Hash.V1 do
+  @moduledoc """
+  A file name implementation that generates a deterministic hashed name.
+
+  This `Fact.Seam.FileName` implementation hashes the given value using a configurable
+  algorithm (e.g., `:sha`, `:md5`, `:sha256`, etc.) and encodes the result in a configurable
+  format (`:base16`, `:base32`, or `:base64url`).
+  """
   use Fact.Seam.FileName,
     family: :hash,
     version: 1

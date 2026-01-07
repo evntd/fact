@@ -1,4 +1,34 @@
 defmodule Fact.Seam.Adapter do
+  @moduledoc """
+  Base behaviour module providing the "glue" between a specific `Seam` and its implementations.
+
+  This module handles:
+
+    * Resolving allowed and default implementations.
+    * Merging default, fixed, and supplied options for a given implementation.
+    * Initializing a seam instance (`Fact.Seam.Instance`) with the correct configuration.
+    * Generic dispatch to the underlying implementation via `__seam_call__/3`.
+
+  ## Responsibilities
+
+  1. **Registry Interaction** – Uses the seam's registry to resolve implementation modules and versions.
+  2. **Option Management** – Combines fixed options, default options, and user-supplied options and normalizes them.
+  3. **Instance Creation** – Produces a `%Fact.Seam.Instance{}` struct that encapsulates the module and its initialized state.
+  4. **Dispatch Helper** – Provides `__seam_call__/3` to call a function on the underlying seam instance cleanly.
+
+  ## Initialization
+
+  * `init/0` – Initializes the default implementation.
+  * `init/2` – Initializes a specific implementation with optional custom options.
+  * `from_config/1` – Initializes a seam instance from a map-based configuration.
+
+  ## Option Normalization
+
+  The adapter ensures that only allowed options for a given implementation are used, 
+  and merges fixed options that cannot be overridden.
+
+  """
+
   alias Fact.Seam.Instance
 
   @callback registry() :: module()

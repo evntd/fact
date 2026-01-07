@@ -1,4 +1,11 @@
 defmodule Fact.Seam.EventId.Adapter do
+  @moduledoc """
+  Meta module providing an adapter for `Fact.Seam.EventId` implementations.
+
+  Provides a unified interface for generating event IDs across different implementations,
+  allowing initialization and delegation via the `Fact.Seam.Adapter` system.
+  """
+
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)

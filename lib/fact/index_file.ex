@@ -1,20 +1,44 @@
 defmodule Fact.IndexFile do
+  @moduledoc """
+  Domain-specific module that encapsulates configurable adapters for 
+  working with index files.
+    
+  This provides helper functions to make it easier than working with 
+  adapters and `Fact.Context` module.
+  """
   alias Fact.Context
   alias Fact.Storage
 
   defmodule Decoder do
+    @moduledoc """
+    Adapter for decoding the contents of index files.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Decoder.Raw.V1`.
+    """
     use Fact.Seam.Decoder.Adapter,
       context: :index_file_decoder,
       allowed_impls: [{:raw, 1}]
   end
 
   defmodule Encoder do
+    @moduledoc """
+    Adapter for encoding the contents of index files.
+
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Delimited.V1`.
+    """
     use Fact.Seam.Encoder.Adapter,
       context: :index_file_encoder,
       allowed_impls: [{:delimited, 1}]
   end
 
   defmodule Name do
+    @moduledoc """
+    Adapter for naming the index files within the file system.
+      
+    This defaults to using the `Fact.Seam.FileName.Raw.V1` implementation, 
+    but can be configured to use `Fact.Seam.FileName.Hash.V1`.
+    """
+
     use Fact.Seam.FileName.Adapter,
       context: :index_file_name,
       allowed_impls: [
@@ -27,12 +51,24 @@ defmodule Fact.IndexFile do
   end
 
   defmodule Reader do
+    @moduledoc """
+    Adapter for reading the contents of index files.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileReader.FixedLength.V1`.
+    """
     use Fact.Seam.FileReader.Adapter,
       context: :index_file_reader,
       allowed_impls: [{:fixed_length, 1}]
   end
 
   defmodule Writer do
+    @moduledoc """
+    Adapter for writing the contents of index files to the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileWriter.Standard.V1`.
+      
+    Index files are opened in append mode, writing new data to the end of the file.
+    """
     use Fact.Seam.FileWriter.Adapter,
       context: :index_file_writer,
       fixed_options: %{

@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Decoder.Json.V1 do
+  @moduledoc """
+  A JSON decoder implementation.
+
+  Supports either the `Elixir.JSON` or `Jason` libraries if available.
+  If neither library is loaded, decoding will return `{:error, :no_json_impl}`.
+  """
   use Fact.Seam.Decoder,
     family: :json,
     version: 1

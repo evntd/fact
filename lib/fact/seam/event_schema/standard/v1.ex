@@ -1,4 +1,11 @@
 defmodule Fact.Seam.EventSchema.Standard.V1 do
+  @moduledoc """
+  Standard `Fact.Seam.EventSchema` implementation. 
+
+  Provides the default mapping of logical event attributes to the string keys
+  used in event records. This schema defines the field names for all events
+  in the standard event store.
+  """
   use Fact.Seam.EventSchema,
     family: :standard,
     version: 1

@@ -1,4 +1,9 @@
 defmodule Fact.Seam.Decoder.Registry do
+  @moduledoc """
+  Registry of available decoder implementations.
+
+  Includes decoders for raw binaries, delimited sequences, integers, and JSON content.
+  """
   use Fact.Seam.Registry,
     impls: [
       Fact.Seam.Decoder.Delimited.V1,

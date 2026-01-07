@@ -2,11 +2,7 @@ defmodule Fact.Types do
   @moduledoc """
   Defines the types which are used to within the package.
     
-  > #### Warning {: .warning} 
-  > 
-  > Elixir's type system isn't as robust as say TypeScript or F#. So I've done my best to describe the types, their 
-  > format, and encoding. Many of these are not enforced, and supplying other types may compile but produce errors or 
-  > unexpected behavior. Here there be 🐉🐉.
+
     
   """
 

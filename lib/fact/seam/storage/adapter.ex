@@ -1,4 +1,26 @@
 defmodule Fact.Seam.Storage.Adapter do
+  @moduledoc """
+  Meta module providing an adapter for accessing storage-related functionality
+  via a `Fact.Seam.Storage` implementation.
+
+  This module is intended to be `use`d by other modules to inject functions
+  that simplify retrieval of paths associated with a database context:
+
+    * `path/2` – the root path for the database storage.
+    * `records_path/2` – path for storing event records.
+    * `indices_path/2` – path for storing index files.
+    * `ledger_path/2` – path for the event ledger.
+    * `locks_path/2` – path for database locks.
+
+  Each function can be called with either a database id (`String.t()`) or a
+  `Fact.Context` containing the configured storage instance. When called with a
+  database ID, the adapter automatically retrieves the corresponding context.
+
+  All operations are delegated to the underlying storage implementation
+  using the configured seam instance. This module primarily provides
+  compile-time injection of these helper functions.
+  """
+
   defmacro __using__(opts) do
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)
     default_impl = Keyword.get(opts, :default_impl, nil)

@@ -96,7 +96,7 @@ defmodule Mix.Tasks.Fact.Create do
   use Mix.Task
 
   alias Fact.Genesis.Command.CreateDatabase
-  alias Fact.Genesis.Creator
+  alias Fact.Genesis.TheCreator
   alias Fact.Genesis.Decider
 
   @switches [
@@ -208,7 +208,7 @@ defmodule Mix.Tasks.Fact.Create do
     state = Decider.initial_state()
 
     with {:ok, [genesis_event]} <- Decider.decide(state, command) do
-      Creator.let_there_be_light(genesis_event)
+      TheCreator.let_there_be_light(genesis_event)
 
       display_banner()
       display_results(genesis_event, Keyword.get(command.args, :path))

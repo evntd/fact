@@ -1,4 +1,10 @@
 defmodule Fact.Seam.Decoder.Delimited.V1 do
+  @moduledoc """
+  A decoder for delimited content.
+
+  Splits a binary string into a list of values based on a configurable delimiter.
+  Returns `{:error, {:decode, value}}` if the input is not a binary.
+  """
   use Fact.Seam.Decoder,
     family: :delimited,
     version: 1

@@ -1,4 +1,21 @@
 defmodule Fact.Database do
+  @moduledoc """
+  Represents a running Fact database instance and orchestrates indexing, event tracking, 
+  and record publishing.
+
+  `Fact.Database` is a GenServer that maintains state about:
+    * The database's ledger position
+    * Active indexers and their progress
+    * Locks for safe concurrent access
+    * The last published position to subscribers
+
+  This module provides:
+    * Reading events, indexes, and the ledger
+    * Ensuring and starting indexers
+    * Tracking indexer progress and publishing indexed positions
+    * High-level coordination of database internals via `Fact.Registry` and `Fact.EventPublisher`
+  """
+
   use GenServer
 
   require Logger

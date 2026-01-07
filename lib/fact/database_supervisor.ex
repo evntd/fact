@@ -1,4 +1,25 @@
 defmodule Fact.DatabaseSupervisor do
+  @moduledoc """
+  Supervises all processes for a single Fact database instance. 🏛️
+
+  `Fact.DatabaseSupervisor` is the top-level supervisor for a database, responsible for:
+
+    * Registering the database in `Fact.Registry`
+    * Supervising per-database registries and PubSub
+    * Starting core database processes:
+      * `Fact.EventPublisher` – broadcasts new events to subscribers
+      * `Fact.Database` – handles indexing, reads, and writes
+      * `Fact.EventLedger` – manages ledger commits and event ordering
+      * Indexers (`Fact.EventStreamIndexer`, `Fact.EventTagsIndexer`, `Fact.EventTypeIndexer`, etc.)
+    * Supervising a dynamic supervisor for stream writers (`Fact.EventStreamWriterSupervisor`)
+
+  Each child process is registered under a database-specific name via `Fact.Registry`,
+  ensuring isolation between multiple database instances.
+
+  This supervisor is automatically started by `Fact.Supervisor` when a database is initialized,
+  and consumers typically interact with the database through higher-level APIs
+  rather than directly starting this supervisor.
+  """
   use Supervisor
 
   def child_spec(opts) do

@@ -1,4 +1,10 @@
 defmodule Fact.Seam.EventId.Uuid.V4 do
+  @moduledoc """
+  `Fact.Seam.EventId` implementation that generates UUID v4 identifiers.
+
+  This module produces unique event IDs using the standard UUID v4 algorithm
+  and formats them as a string without dashes.
+  """
   use Fact.Seam.EventId,
     family: :uuid,
     version: 4

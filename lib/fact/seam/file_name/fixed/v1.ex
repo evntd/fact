@@ -1,4 +1,10 @@
 defmodule Fact.Seam.FileName.Fixed.V1 do
+  @moduledoc """
+  A file name implementation that returns a fixed, preconfigured name.
+
+  This `Fact.Seam.FileName` implementation ignores the value input and always returns
+  the fixed `:name` specified in its configuration.
+  """
   use Fact.Seam.FileName,
     family: :fixed,
     version: 1

@@ -1,20 +1,42 @@
 defmodule Fact.IndexCheckpointFile do
+  @moduledoc """
+  Domain-specific module that encapsulates configurable adapters for 
+  working with index checkpoint files.
+    
+  This provides helper functions to make it easier than directly working 
+  with the adapters and `Fact.Context` modules. 
+  """
   alias Fact.Context
   alias Fact.Storage
 
   defmodule Decoder do
+    @moduledoc """
+    Adapter for decoding the contents of index checkpoint files.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Decoder.Integer.V1`.
+    """
     use Fact.Seam.Decoder.Adapter,
       context: :index_checkpoint_file_decoder,
       allowed_impls: [{:integer, 1}]
   end
 
   defmodule Encoder do
+    @moduledoc """
+    Adapter for encoding the contents of index checkpoint files.
+
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Integer.V1`.
+    """
     use Fact.Seam.Encoder.Adapter,
       context: :index_checkpoint_file_encoder,
       allowed_impls: [{:integer, 1}]
   end
 
   defmodule Name do
+    @moduledoc """
+    Adapter for naming the index checkpoint files within the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.Encoder.Fixed.V1`.
+    """
     use Fact.Seam.FileName.Adapter,
       context: :index_checkpoint_file_name,
       allowed_impls: [{:fixed, 1}],
@@ -26,12 +48,24 @@ defmodule Fact.IndexCheckpointFile do
   end
 
   defmodule Reader do
+    @moduledoc """
+    Adapter for reading the contents of index checkpoint files.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileReader.Full.V1`.
+    """
     use Fact.Seam.FileReader.Adapter,
       context: :index_checkpoint_file_reader,
       allowed_impls: [{:full, 1}]
   end
 
   defmodule Writer do
+    @moduledoc """
+    Adapter for writing the contents of index checkpoint files to the file system.
+      
+    There is currently only a single **allowed** implementation, see `Fact.Seam.FileWriter.Standard.V1`.
+      
+    Index checkpoint files are opened in write mode, overwriting any existing contents. 
+    """
     use Fact.Seam.FileWriter.Adapter,
       context: :index_checkpoint_file_writer,
       fixed_options: %{

@@ -1,4 +1,11 @@
 defmodule Fact.Seam.FileReader.Adapter do
+  @moduledoc """
+  Meta module providing a `Fact.Seam.Adapter` for `Fact.Seam.FileReader` implementations.
+
+  This adapter injects a `read/3` function into the using module that dispatches
+  calls to the configured file reader implementation associated with the given context.
+  """
+
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)

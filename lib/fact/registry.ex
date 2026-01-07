@@ -1,4 +1,30 @@
 defmodule Fact.Registry do
+  @moduledoc """
+  Registry utilities for process discovery and naming within the Fact system.
+
+  `Fact.Registry` provides two related layers of process registration:
+
+    * the global `Fact.Registry`, which tracks running databases and exposes
+      lookup helpers for resolving a database's `Fact.Context` by identifier or name
+    * database-specific registries, one per database instance, which are used
+      for naming and locating processes that belong to that database.
+
+  The global registry stores:
+
+    * the `Fact.Context` for a database under both its `:database_id` and
+      `:database_name`, and
+    * the `:database_id` under the `:database_name`.
+
+  Helper functions such as `get_context/1` and `get_database_id/1` provide
+  convenient access to this information.
+
+  For database-local processes, this module exposes helpers like `registry/1`,
+  `via/2`, and `lookup/2`, which construct or reference the appropriate
+  database-specific `Registry` module for the given `database_id`. It also
+  provides `pubsub/1` and `supervisor/1` to derive the corresponding PubSub
+  and supervisor module names for that database.
+  """
+
   @doc """
   Get the `Fact.Context` for a running database by its `:database_id` or `:database_name`.
   """

@@ -1,4 +1,10 @@
 defmodule Fact.Seam.EventSchema.Adapter do
+  @moduledoc """
+  Meta module providing an adapter for `Fact.Seam.EventSchema`.
+
+  This module injects functions for dispatching calls to a configured `Fact.Seam.EventSchema`
+  implementation, handling database context lookup, and passing options to the selected instance.
+  """
   defmacro __using__(opts) do
     context_key = Keyword.fetch!(opts, :context)
     allowed_impls = Keyword.get(opts, :allowed_impls, nil)

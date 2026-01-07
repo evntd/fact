@@ -119,11 +119,10 @@ defmodule Fact.MixProject do
           Fact.QueryItem
         ],
         Genesis: [
-          Fact.Genesis,
           Fact.Genesis.Command.CreateDatabase.V1,
-          Fact.Genesis.Creator,
           Fact.Genesis.Decider,
-          Fact.Genesis.Event.DatabaseCreated.V1
+          Fact.Genesis.Event.DatabaseCreated.V1,
+          Fact.Genesis.TheCreator
         ],
         Indexing: [
           Fact.EventDataIndexer,
@@ -205,6 +204,7 @@ defmodule Fact.MixProject do
       main: "overview",
       nest_modules_by_prefix: [
         Fact.Event,
+        Fact.Genesis,
         Fact.IndexCheckpointFile,
         Fact.IndexFile,
         Fact.LedgerFile,
