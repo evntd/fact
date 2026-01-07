@@ -266,6 +266,68 @@ defmodule Fact do
   """
   @type uuid_v4_base32_uppercase_sans_padding :: String.t()
 
+  @doc """
+  Appends one or more events to the ledger.
+
+  The ledger represents the full, ordered event history for a database. In
+  addition to standard optimistic concurrency mechanisms at the stream level,
+  Fact also supports conditional appends at the ledger level to help prevent
+  duplicate or conflicting writes.
+
+  These conditions are expressed through the `append_condition` argument.
+
+  When appending, you may provide one of the following:
+
+    * `nil` **(default)** — no condition is applied; the events are always appended
+
+    * a `t:Fact.fail_if_match/0` value — the append will be rejected if the query
+      matches any existing events anywhere in the ledger
+
+    * `{fail_if_match, after_position}` — the append will be rejected if the
+      query matches any events whose position is strictly greater than
+      `after_position`. 
+
+  If the condition is violated, the append is rejected and an error tuple including
+  a `Fact.ConcurrencyError` is returned. 
+
+  On success, each appended event record is enriched with the `:event_id`, 
+  `:event_store_position`, `:event_store_timestamp` fields defined by the configured 
+  event schema. In addition the field keys used to define events (`type`, `data`, 
+  `metatadata` and `tags`) are renamed according to the configured schema. 
+
+  The function returns `{:ok, last_position}`, where `last_position` is the store
+  position of the last appended event.
+
+  ## Examples
+
+  Append without conditions:
+
+      iex> {:ok, pos} = Fact.append(db, %{type: "user_registered", data: %{id: 123}})
+      {:ok, 42}
+    
+  Append a duplicate:
+    
+      iex> {:ok, pos} = Fact.append(db, %{type: "user_registered", data: %{id: 123}})
+      {:ok, 43}
+
+  Prevent a third duplicate using a `fail_if_match` query:
+
+      iex> import Fact.QueryItem
+      iex> fail_if_match = types("user_registered") |> data(id: "123")
+      iex> Fact.append(db, %{type: "user_registered", data: %{id: 123}}, fail_if_match)
+      {:error, %Fact.ConcurrencyError{source: :all, expected: 0, actual: 42}}
+
+  Allow the append only if no matching events exist **after** a given position:
+      
+      iex> Fact.append(db, %{type: "user_registered"}, {fail_if_match, last_pos})
+      {:ok, 44}
+
+    
+  The final example was intentionally contrived; in practice, append conditions are
+  best applied to model explicit business invariants. For deeper guidance and 
+  real-world usage patterns, see the [Dynamic Consistency Boundary](https://dcb.events)
+  website.  
+  """
   @spec append(
           Fact.database_id(),
           Fact.event() | [Fact.event(), ...],
