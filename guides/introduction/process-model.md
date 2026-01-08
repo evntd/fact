@@ -5,7 +5,7 @@ global runtime, each database operates as an independent unit with its own super
 tree (`Fact.DatabaseSupervisor`). This improves fault-tolerance, operational isolation,
 and scalability. A failure in one database does not affect the others.
 
-![Fact Process Model](./assets/process-model.svg)
+![Fact Process Model](/guides/assets/images/process-model.svg)
 
 With each database supervision tree, Fact supervises a core set of GenServer processes:
 
