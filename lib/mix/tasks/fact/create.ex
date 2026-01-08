@@ -233,7 +233,7 @@ defmodule Mix.Tasks.Fact.Create do
           █████╗  ███████║██║         ██║   
           ██╔══╝  ██╔══██║██║         ██║   
           ██║     ██║  ██║╚██████╗    ██║   
-          ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.MixProject.project()[:version]} (#{Fact.MixProject.project()[:codename]})  
+          ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.BuildInfo.version()} (#{Fact.BuildInfo.codename()})  
 
     """)
   end
@@ -263,7 +263,7 @@ defmodule Mix.Tasks.Fact.Create do
     Mix.shell().info("""
        Next Steps:
         
-          📖 \e]8;;#{Fact.MixProject.project()[:docs][:canonical]}\e\\Read the documentation\e]8;;\e\\ at #{Fact.MixProject.project()[:docs][:canonical]}
+          📖 \e]8;;#{Fact.BuildInfo.docs_url()}\e\\Read the documentation\e]8;;\e\\ at #{Fact.BuildInfo.docs_url()}
           🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\
           🫆  \e]8;;https://eventmodeling.org\e\\Design and deliver better systems with Event Modeling\e]8;;\e\\
     """)
