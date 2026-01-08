@@ -94,11 +94,14 @@ defmodule Fact.Database do
     case Supervisor.start_child(Fact.Registry.supervisor(database_id), child_spec) do
       {:ok, child} ->
         {:ok, child}
+
       {:ok, child, _info} ->
         {:ok, child}
+
       {:error, {:already_started, child}} ->
         {:ok, {:already_started, child}}
-      {:error, _} = error->
+
+      {:error, _} = error ->
         error
     end
   end
@@ -149,7 +152,11 @@ defmodule Fact.Database do
   end
 
   @impl true
-  def handle_call({:ensure_indexer, child_spec}, from, %__MODULE__{database_id: database_id, indexers: indexers} = state) do
+  def handle_call(
+        {:ensure_indexer, child_spec},
+        from,
+        %__MODULE__{database_id: database_id, indexers: indexers} = state
+      ) do
     case Map.get(indexers, child_spec.id) do
       # Not started (or not yet observed)
       nil ->
@@ -162,7 +169,7 @@ defmodule Fact.Database do
                 waiters: MapSet.new([from]),
                 position: 0
               })
-              
+
             # Danger town! A GenServer call should typically respond, so the caller
             # isn't blocked, receives a timeout, and crashes. But that is exactly what 
             # I want to have happen here. The intent is to have the indexer module 
@@ -190,24 +197,31 @@ defmodule Fact.Database do
   end
 
   @impl true
-  def handle_call({:start_indexer, child_spec}, _from, %__MODULE__{database_id: database_id} = state) do
-    result = 
+  def handle_call(
+        {:start_indexer, child_spec},
+        _from,
+        %__MODULE__{database_id: database_id} = state
+      ) do
+    result =
       case start_child_indexer(database_id, child_spec) do
         {:ok, _} ->
           :ok
+
         {:error, _} = error ->
           error
       end
-      
+
     {:reply, result, state}
   end
 
   @impl true
-  def handle_cast({:indexer_ready, indexer_id, checkpoint}, %__MODULE__{database_id: database_id} = state) do
-    
+  def handle_cast(
+        {:indexer_ready, indexer_id, checkpoint},
+        %__MODULE__{database_id: database_id} = state
+      ) do
     # start listening for :indexed messages
     Fact.EventIndexer.subscribe(database_id, indexer_id)
-    
+
     # update the books and extract waiters in a single pass
     {waiters, indexers} =
       Map.get_and_update!(state.indexers, indexer_id, fn info ->
