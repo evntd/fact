@@ -59,11 +59,13 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "guides/introduction/overview.md",
+        "guides/introduction/getting-started.md",
         "LICENSE"
       ],
       favicon: "guides/assets/images/turt-16.png",
       groups_for_extras: [
         Introduction: [
+          "guides/introduction/getting-started.md",
           "guides/introduction/overview.md"
         ]
       ],
