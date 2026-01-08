@@ -10,6 +10,7 @@ defmodule Fact.MixProject do
 
   def project do
     [
+      aliases: aliases(),
       app: :fact,
       version: @version,
       codename: @codename,
@@ -26,10 +27,20 @@ defmodule Fact.MixProject do
     ]
   end
 
+  def aliases do
+    [
+      docs: ["docs", &copy_images/1]
+    ]
+  end
+
   def application do
     [
       extra_applications: [:logger]
     ]
+  end
+
+  def copy_images(_) do
+    File.cp!("guides/assets/images/process-model.svg", "doc/assets/process-model.svg")
   end
 
   defp deps do
@@ -58,13 +69,15 @@ defmodule Fact.MixProject do
       cover: "guides/assets/images/epub-cover.png",
       extra_section: "GUIDES",
       extras: [
+        "LICENSE",
         "guides/introduction/overview.md",
-        "LICENSE"
+        "guides/introduction/process-model.md": [title: "Process Model"]
       ],
       favicon: "guides/assets/images/turt-16.png",
       groups_for_extras: [
         Introduction: [
-          "guides/introduction/overview.md"
+          "guides/introduction/overview.md",
+          "guides/introduction/process-model.md"
         ]
       ],
       groups_for_modules: [
