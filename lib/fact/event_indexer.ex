@@ -246,14 +246,18 @@ defmodule Fact.EventIndexer do
       def init(%{database_id: database_id, indexer_id: indexer_id} = state) do
         :ok = Fact.IndexCheckpointFile.ensure_exists(database_id, indexer_id)
         :ok = Fact.EventPublisher.subscribe(database_id, :all)
+        :ok = notify_starting(database_id, indexer_id)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
       @impl true
       @doc false
-      def handle_continue(:rebuild_and_join, %__MODULE__{} = state) do
+      def handle_continue(
+            :rebuild_and_join,
+            %__MODULE__{database_id: database_id, indexer_id: indexer_id} = state
+          ) do
         checkpoint = rebuild_index(state)
-        publish_ready(state, checkpoint)
+        :ok = notify_ready(database_id, indexer_id, checkpoint)
         {:noreply, %{state | checkpoint: checkpoint}}
       end
 
@@ -340,10 +344,16 @@ defmodule Fact.EventIndexer do
         )
       end
 
-      defp publish_ready(%{database_id: database_id, indexer_id: indexer_id} = state, checkpoint) do
-        Phoenix.PubSub.broadcast(
-          Fact.Registry.pubsub(database_id),
-          Fact.EventIndexer.topic(indexer_id),
+      defp notify_starting(database_id, indexer_id) do
+        GenServer.cast(
+          Fact.Registry.via(database_id, Fact.Database),
+          {:indexer_starting, indexer_id, self()}
+        )
+      end
+
+      defp notify_ready(database_id, indexer_id, checkpoint) do
+        GenServer.cast(
+          Fact.Registry.via(database_id, Fact.Database),
           {:indexer_ready, indexer_id, checkpoint}
         )
       end
