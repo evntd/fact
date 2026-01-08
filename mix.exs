@@ -69,9 +69,9 @@ defmodule Fact.MixProject do
       cover: "guides/assets/images/epub-cover.png",
       extra_section: "GUIDES",
       extras: [
-        "LICENSE",
         "guides/introduction/overview.md",
-        "guides/introduction/process-model.md": [title: "Process Model"]
+        "guides/introduction/process-model.md",
+        "LICENSE"
       ],
       favicon: "guides/assets/images/turt-16.png",
       groups_for_extras: [

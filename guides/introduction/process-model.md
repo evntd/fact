@@ -1,3 +1,5 @@
+# Process Model
+
 Fact is designed around a multi-database architecture. Rather than sharing a single
 global runtime, each database operates as an independent unit with its own supervision
 tree (`Fact.DatabaseSupervisor`). This improves fault-tolerance, operational isolation,
