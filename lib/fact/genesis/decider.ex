@@ -121,7 +121,7 @@ defmodule Fact.Genesis.Decider do
   def otp_version(), do: :erlang.system_info(:otp_release) |> to_string()
   def erts_version(), do: :erlang.system_info(:version) |> to_string()
   def elixir_version(), do: System.version()
-  def fact_version(), do: Fact.MixProject.project()[:version]
+  def fact_version(), do: Fact.BuildInfo.version()
 
   @abstractions %{
     event_id: Fact.Event.Id,
