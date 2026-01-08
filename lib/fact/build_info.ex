@@ -11,9 +11,9 @@ defmodule Fact.BuildInfo do
   > 
   > Live and learn! 🍺
   """
-  
+
   @config Mix.Project.config()
-  
+
   @name @config[:name]
   @version @config[:version]
   @codename @config[:codename]
@@ -24,19 +24,19 @@ defmodule Fact.BuildInfo do
   """
   @spec name() :: binary()
   def name, do: @name
-  
+
   @doc """
   The library version.
   """
   @spec version() :: binary()
   def version, do: @version
-  
+
   @doc """
   The release code name.
   """
   @spec codename() :: binary()
   def codename, do: @codename
-  
+
   @doc """
   The canonical url to the documentation.
   """
