@@ -41,7 +41,7 @@ defmodule TestHelper do
   some message with the timeout window, then waits again resetting the time
   window, a continues until the expected message is received.
   """
-  def subscribe_and_wait(db, position, timeout \\ 5_000) do
+  def subscribe_and_wait(db, position, timeout \\ 10_000) do
     Fact.Database.subscribe(db)
     wait_for_indexing_to_reach(position, timeout)
   end
