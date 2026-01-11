@@ -72,6 +72,7 @@ defmodule Fact.MixProject do
         "guides/introduction/overview.md",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
+        "guides/components/seam-architecture.md",
         "LICENSE"
       ],
       favicon: "guides/assets/images/turt-16.png",
@@ -80,6 +81,9 @@ defmodule Fact.MixProject do
           "guides/introduction/getting-started.md",
           "guides/introduction/overview.md",
           "guides/introduction/process-model.md"
+        ],
+        Components: [
+          "guides/components/seam-architecture.md"
         ]
       ],
       groups_for_modules: [
