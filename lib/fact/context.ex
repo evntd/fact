@@ -19,6 +19,44 @@ defmodule Fact.Context do
   alias Fact.RecordFile
   alias Fact.Storage
 
+  @type t :: %__MODULE__{
+          database_id: Fact.database_id(),
+          database_name: Fact.database_name(),
+          elixir_version: binary(),
+          erts_version: binary(),
+          fact_version: binary(),
+          otp_version: binary(),
+          os_version: binary(),
+          event_id: Fact.Seam.Instance.t(),
+          event_schema: Fact.Seam.Instance.t(),
+          index_checkpoint_file_decoder: Fact.Seam.Instance.t(),
+          index_checkpoint_file_encoder: Fact.Seam.Instance.t(),
+          index_checkpoint_file_name: Fact.Seam.Instance.t(),
+          index_checkpoint_file_reader: Fact.Seam.Instance.t(),
+          index_checkpoint_file_writer: Fact.Seam.Instance.t(),
+          index_file_decoder: Fact.Seam.Instance.t(),
+          index_file_encoder: Fact.Seam.Instance.t(),
+          index_file_name: Fact.Seam.Instance.t(),
+          index_file_reader: Fact.Seam.Instance.t(),
+          index_file_writer: Fact.Seam.Instance.t(),
+          ledger_file_decoder: Fact.Seam.Instance.t(),
+          ledger_file_encoder: Fact.Seam.Instance.t(),
+          ledger_file_name: Fact.Seam.Instance.t(),
+          ledger_file_reader: Fact.Seam.Instance.t(),
+          ledger_file_writer: Fact.Seam.Instance.t(),
+          lock_file_decoder: Fact.Seam.Instance.t(),
+          lock_file_encoder: Fact.Seam.Instance.t(),
+          lock_file_name: Fact.Seam.Instance.t(),
+          lock_file_reader: Fact.Seam.Instance.t(),
+          lock_file_writer: Fact.Seam.Instance.t(),
+          record_file_decoder: Fact.Seam.Instance.t(),
+          record_file_encoder: Fact.Seam.Instance.t(),
+          record_file_name: Fact.Seam.Instance.t(),
+          record_file_reader: Fact.Seam.Instance.t(),
+          record_file_writer: Fact.Seam.Instance.t(),
+          storage: Fact.Seam.Instance.t()
+        }
+
   defstruct [
     # Identity
     :database_id,
