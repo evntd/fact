@@ -125,7 +125,6 @@ defmodule Fact.MixProject do
           Fact.RecordFile.Name,
           Fact.RecordFile.Reader,
           Fact.RecordFile.Writer,
-          Fact.Registry,
           Fact.Storage
         ],
         Core: [
@@ -156,6 +155,7 @@ defmodule Fact.MixProject do
           Fact.Bootstrapper,
           Fact.DatabaseSupervisor,
           Fact.Lock,
+          Fact.Registry,
           Fact.Supervisor
         ],
         "Pub/Sub": [

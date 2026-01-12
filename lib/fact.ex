@@ -156,6 +156,11 @@ defmodule Fact do
   @type database_id :: uuid_v4_base32_uppercase_sans_padding()
 
   @typedoc """
+  The user-friendly name of the Fact database. 
+  """
+  @type database_name :: String.t()
+
+  @typedoc """
   Represents an event before being written to the event store.
 
   At minimum, it must define a `:type` key.  
