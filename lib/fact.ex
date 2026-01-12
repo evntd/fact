@@ -694,7 +694,7 @@ defmodule Fact do
   def read(database_id, event_source, options \\ [])
 
   def read(database_id, :none, options) when is_binary(database_id) and is_list(options) do
-    Stream.concat([])
+    Fact.Database.read_none(database_id, Keyword.put_new(options, :eager, true))
   end
 
   def read(database_id, :all, options) when is_binary(database_id) and is_list(options) do
