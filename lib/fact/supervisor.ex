@@ -54,7 +54,7 @@ defmodule Fact.Supervisor do
   If no message is received within 3 seconds, the call fails with `{:error, :database_failure}`
   """
   @doc since: "0.1.0"
-  @spec start_database(Path.t(), timeout()) ::
+  @spec start_database(Path.t()) ::
           {:ok, Fact.database_id()}
           | {:error, :database_locked, Fact.Lock.metadata_record()}
           | {:error, :database_failure}
