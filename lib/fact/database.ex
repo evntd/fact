@@ -66,7 +66,7 @@ defmodule Fact.Database do
     map_read_results = to_result(database_id, read_opts)
     map_read_results.(Fact.LedgerFile.read(database_id, read_opts))
   end
-  
+
   def read_none(database_id, read_opts) do
     map_read_results = to_result(database_id, read_opts)
     map_read_results.(Stream.concat([]))
