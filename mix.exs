@@ -80,6 +80,9 @@ defmodule Fact.MixProject do
           "guides/introduction/getting-started.md",
           "guides/introduction/dedication.md",
           "guides/introduction/process-model.md"
+        ],
+        Components: [
+          "guides/components/seam-architecture.md"
         ]
       ],
       groups_for_modules: [
@@ -121,7 +124,6 @@ defmodule Fact.MixProject do
           Fact.RecordFile.Name,
           Fact.RecordFile.Reader,
           Fact.RecordFile.Writer,
-          Fact.Registry,
           Fact.Storage
         ],
         Core: [
@@ -152,6 +154,7 @@ defmodule Fact.MixProject do
           Fact.Bootstrapper,
           Fact.DatabaseSupervisor,
           Fact.Lock,
+          Fact.Registry,
           Fact.Supervisor
         ],
         "Pub/Sub": [

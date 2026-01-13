@@ -67,6 +67,11 @@ defmodule Fact.Database do
     map_read_results.(Fact.LedgerFile.read(database_id, read_opts))
   end
 
+  def read_none(database_id, read_opts) do
+    map_read_results = to_result(database_id, read_opts)
+    map_read_results.(Stream.concat([]))
+  end
+
   def read_query(database_id, query_fun, read_opts) do
     {maybe_count, read_ledger_opts} = Keyword.split(read_opts, [:count])
     predicate = query_fun.(database_id)
@@ -90,8 +95,20 @@ defmodule Fact.Database do
     Fact.RecordFile.read(database_id, record_id)
   end
 
-  defp start_child_indexer(child_spec) do
-    GenServer.cast(self(), {:start_child_indexer, child_spec})
+  defp start_child_indexer(database_id, child_spec) do
+    case Supervisor.start_child(Fact.Registry.supervisor(database_id), child_spec) do
+      {:ok, child} ->
+        {:ok, child}
+
+      {:ok, child, _info} ->
+        {:ok, child}
+
+      {:error, {:already_started, child}} ->
+        {:ok, {:already_started, child}}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   def start_indexer(database_id, indexer_module, options \\ []) do
@@ -140,21 +157,38 @@ defmodule Fact.Database do
   end
 
   @impl true
-  def handle_call({:ensure_indexer, child_spec}, from, %__MODULE__{indexers: indexers} = state) do
+  def handle_call(
+        {:ensure_indexer, child_spec},
+        from,
+        %__MODULE__{database_id: database_id, indexers: indexers} = state
+      ) do
     case Map.get(indexers, child_spec.id) do
-      # Not started
+      # Not started (or not yet observed)
       nil ->
-        :ok = start_child_indexer(child_spec)
+        case start_child_indexer(database_id, child_spec) do
+          {:ok, child} when is_pid(child) ->
+            new_indexers =
+              Map.put(state.indexers, child_spec.id, %{
+                pid: child,
+                status: :starting,
+                waiters: MapSet.new([from]),
+                position: 0
+              })
 
-        new_indexers =
-          Map.put(state.indexers, child_spec.id, %{
-            pid: nil,
-            status: :starting,
-            waiters: MapSet.new([from]),
-            position: 0
-          })
+            # Danger town! A GenServer call should typically respond, so the caller
+            # isn't blocked, receives a timeout, and crashes. But that is exactly what 
+            # I want to have happen here. The intent is to have the indexer module 
+            # which was just started, to send a :indexer_ready message once it done
+            # "catching up" and then we'll respond to all the calling processes.
+            {:noreply, %__MODULE__{state | indexers: new_indexers}}
 
-        {:noreply, %__MODULE__{state | indexers: new_indexers}}
+          {:ok, {:already_started, _child}} ->
+            # Reality wins. The indexer exists, but wasn't observed yet.
+            {:reply, {:ok, child_spec.id}, state}
+
+          {:error, _} = error ->
+            {:reply, error, state}
+        end
 
       %{status: status, waiters: waiters} = info when status in [:starting, :started] ->
         new_indexers =
@@ -168,55 +202,67 @@ defmodule Fact.Database do
   end
 
   @impl true
-  def handle_call({:start_indexer, child_spec}, _from, %__MODULE__{indexers: indexers} = state) do
-    :ok = start_child_indexer(child_spec)
+  def handle_call(
+        {:start_indexer, child_spec},
+        _from,
+        %__MODULE__{database_id: database_id} = state
+      ) do
+    result =
+      case start_child_indexer(database_id, child_spec) do
+        {:ok, _} ->
+          :ok
 
-    new_indexers =
-      Map.put_new(indexers, child_spec.id, %{
-        pid: nil,
+        {:error, _} = error ->
+          error
+      end
+
+    {:reply, result, state}
+  end
+
+  @impl true
+  def handle_cast(
+        {:indexer_ready, indexer_id, checkpoint},
+        %__MODULE__{database_id: database_id} = state
+      ) do
+    # start listening for :indexed messages
+    Fact.EventIndexer.subscribe(database_id, indexer_id)
+
+    # update the books and extract waiters in a single pass
+    {waiters, indexers} =
+      Map.get_and_update!(state.indexers, indexer_id, fn info ->
+        waiters = Map.get(info, :waiters, MapSet.new())
+        {waiters, %{info | status: :ready, position: checkpoint, waiters: MapSet.new()}}
+      end)
+
+    # reply to all the waiters who are blocked 
+    Enum.each(waiters, &GenServer.reply(&1, {:ok, indexer_id}))
+
+    {:noreply, %__MODULE__{state | indexers: indexers}}
+  end
+
+  @impl true
+  def handle_cast({:indexer_starting, indexer_id, pid}, %__MODULE__{indexers: indexers} = state) do
+    indexer_info =
+      Map.get(indexers, indexer_id, %{
+        pid: pid,
         status: :starting,
         waiters: MapSet.new(),
         position: 0
       })
 
-    {:reply, :ok, %{state | indexers: new_indexers}}
+    new_indexers =
+      Map.put(indexers, indexer_id, %{indexer_info | pid: pid, status: :starting})
+
+    {:noreply, %{state | indexers: new_indexers}}
   end
 
   @impl true
   def handle_cast(
         {:start_child_indexer, child_spec},
-        %__MODULE__{database_id: database_id, indexers: indexers} = state
+        %__MODULE__{database_id: database_id} = state
       ) do
-    case Fact.Registry.lookup(database_id, child_spec.id) do
-      [] ->
-        # subscribe to indexer messages
-        Fact.EventIndexer.subscribe(database_id, child_spec.id)
-
-        # start the indexer
-        {:ok, pid} = Supervisor.start_child(Fact.Registry.supervisor(database_id), child_spec)
-
-        info = %{
-          pid: pid,
-          status: :started,
-          waiters: Map.get(indexers[child_spec.id], :waiters, MapSet.new()),
-          position: 0
-        }
-
-        new_indexers = Map.put(indexers, child_spec.id, info)
-        {:noreply, %__MODULE__{state | indexers: new_indexers}}
-
-      [{_pid, _}] ->
-        {waiters, indexers} =
-          Map.get_and_update!(indexers, child_spec.id, fn info ->
-            waiters = Map.get(info, :waiters, MapSet.new())
-            {waiters, %{info | status: :ready, waiters: MapSet.new()}}
-          end)
-
-        # notify any process waiting on the indexer to be :ready
-        Enum.each(waiters, &GenServer.reply(&1, {:ok, child_spec.id}))
-
-        {:noreply, %__MODULE__{state | indexers: indexers}}
-    end
+    Supervisor.start_child(Fact.Registry.supervisor(database_id), child_spec)
+    {:noreply, state}
   end
 
   @impl true
@@ -256,21 +302,6 @@ defmodule Fact.Database do
     else
       {:noreply, %{state | indexers: new_indexers}}
     end
-  end
-
-  @impl true
-  def handle_info({:indexer_ready, indexer_id, checkpoint}, %__MODULE__{} = state) do
-    # state book keeping, and extract waiting processes
-    {waiters, indexers} =
-      Map.get_and_update!(state.indexers, indexer_id, fn info ->
-        waiters = Map.get(info, :waiters, MapSet.new())
-        {waiters, %{info | status: :ready, position: checkpoint, waiters: MapSet.new()}}
-      end)
-
-    # notify any process waiting on the indexer to be :ready
-    Enum.each(waiters, &GenServer.reply(&1, {:ok, indexer_id}))
-
-    {:noreply, %__MODULE__{state | indexers: indexers}}
   end
 
   @impl true
