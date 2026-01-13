@@ -156,6 +156,11 @@ defmodule Fact do
   @type database_id :: uuid_v4_base32_uppercase_sans_padding()
 
   @typedoc """
+  The user-friendly name of the Fact database. 
+  """
+  @type database_name :: String.t()
+
+  @typedoc """
   Represents an event before being written to the event store.
 
   At minimum, it must define a `:type` key.  
@@ -694,7 +699,7 @@ defmodule Fact do
   def read(database_id, event_source, options \\ [])
 
   def read(database_id, :none, options) when is_binary(database_id) and is_list(options) do
-    Stream.concat([])
+    Fact.Database.read_none(database_id, Keyword.put_new(options, :eager, true))
   end
 
   def read(database_id, :all, options) when is_binary(database_id) and is_list(options) do

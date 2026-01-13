@@ -115,7 +115,7 @@ defmodule Fact.IndexCheckpointFile do
       {:ok,
        Path.join([
          Storage.indices_path(context),
-         to_string(indexer_mod),
+         indexer_mod.indexer_name(),
          to_string(indexer_key),
          checkpoint_file
        ])}

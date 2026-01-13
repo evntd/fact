@@ -4,7 +4,7 @@
 
 ```elixir
 def deps do
-  [{:fact, "~> 0.1.1"}]
+  [{:fact, "~> 0.1.2"}]
 end
 ```
 
@@ -13,7 +13,7 @@ end
 ```elixir
 def deps do
   [
-     {:fact, "~> 0.1.1"},
+     {:fact, "~> 0.1.2"},
      {:jason, "~> 1.4"}
   ]
 end

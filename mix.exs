@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.1.1"
+  @version "0.1.2"
   @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
@@ -69,17 +69,20 @@ defmodule Fact.MixProject do
       cover: "guides/assets/images/epub-cover.png",
       extra_section: "GUIDES",
       extras: [
-        "guides/introduction/overview.md",
+        "LICENSE",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
-        "LICENSE"
+        "guides/introduction/dedication.md": [title: "Dedication"]
       ],
       favicon: "guides/assets/images/turt-16.png",
       groups_for_extras: [
         Introduction: [
           "guides/introduction/getting-started.md",
-          "guides/introduction/overview.md",
+          "guides/introduction/dedication.md",
           "guides/introduction/process-model.md"
+        ],
+        Components: [
+          "guides/components/seam-architecture.md"
         ]
       ],
       groups_for_modules: [
@@ -121,7 +124,6 @@ defmodule Fact.MixProject do
           Fact.RecordFile.Name,
           Fact.RecordFile.Reader,
           Fact.RecordFile.Writer,
-          Fact.Registry,
           Fact.Storage
         ],
         Core: [
@@ -152,6 +154,7 @@ defmodule Fact.MixProject do
           Fact.Bootstrapper,
           Fact.DatabaseSupervisor,
           Fact.Lock,
+          Fact.Registry,
           Fact.Supervisor
         ],
         "Pub/Sub": [

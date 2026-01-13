@@ -4,6 +4,11 @@ defmodule Fact.EventStreamsIndexer do
   """
   use Fact.EventIndexer
 
+  @typedoc """
+  The id for a Fact.EventStreamsIndexer.
+  """
+  @type id :: {Fact.EventStreamsIndexer, nil}
+
   @index "index"
 
   @doc """

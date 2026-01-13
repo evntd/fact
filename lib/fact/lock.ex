@@ -23,7 +23,18 @@ defmodule Fact.Lock do
   alias Fact.Storage
 
   @type mode :: :run | :restore | :create
-  @type lock_metadata :: map()
+  @type metadata :: %{
+          mode: mode(),
+          os_pid: pid(),
+          vm_pid: pid(),
+          node: node(),
+          locked_at: binary()
+        }
+
+  @typedoc """
+  The deserialized representation of `t:Fact.Lock.metadata/0`, with string keys instead of atoms.
+  """
+  @type metadata_record :: map()
 
   @type t :: %__MODULE__{
           mode: mode(),
@@ -36,7 +47,7 @@ defmodule Fact.Lock do
   @modes [:run, :restore, :create]
 
   @spec acquire(Fact.database_id(), mode()) ::
-          {:ok, t()} | {:error, {:locked, lock_metadata()}} | {:error, term()}
+          {:ok, t()} | {:error, {:locked, metadata()}} | {:error, term()}
   @doc """
   Acquire a lock for the instance in the specified mode.
   """

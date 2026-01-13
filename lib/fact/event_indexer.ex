@@ -36,10 +36,10 @@ defmodule Fact.EventIndexer do
         use Fact.EventIndexer
 
         @impl true
-        def index_event(%{@event_data => %{"user_id" => user_id}}, _opts), 
-          do: to_string(user_id)
-        
-        def index_event(_, _), do: nil
+        def index_event(schema, event, _opts) do
+          unless is_nil(user_id = Map.get(event[schema.event_data], "user_id")), 
+            do: to_string(user_id)
+        end 
       end
     
   This would produce an index for every tenant, including all the events which define a `tenant_id` in the event 
@@ -47,22 +47,27 @@ defmodule Fact.EventIndexer do
     
       defmodule YourApp.TenantIndexer do
         use Fact.EventIndexer
-        def index_event(%{@event_metadata => %{"tenant_id" => tenant_id}}, _opts), 
-          do: to_string(tenant_id)
-        
-        def index_event(_, _), do: nil        
+
+        @impl true
+        def index_event(schema, event, _opts) do
+          unless is_nil(tenant_id = Map.get(event[schema.event_metadata], "tenant_id")),
+            do: to_string(tenant_id)          
+        end
       end
 
   """
+  @moduledoc since: "0.1.0"
 
   @typedoc """
   The values that can be return by a `c:Fact.EventIndexer.index_event` callback function.
   """
+  @typedoc since: "0.1.0"
   @type index_event_result :: index_value() | list(index_value()) | nil
 
   @typedoc """
   This describes the results of the indexing process.
   """
+  @typedoc since: "0.1.0"
   @type index_result :: %{
           required(:position) => Fact.event_position(),
           required(:record_id) => Fact.record_id(),
@@ -72,12 +77,14 @@ defmodule Fact.EventIndexer do
   @typedoc """
   The message that is published immediately after an indexer processes a `t:Fact.record/0`.
   """
+  @typedoc since: "0.1.0"
   @type indexed_message ::
           {:indexed, indexer_id(), index_result()}
 
   @typedoc """
   A module that implements the `Fact.EventIndexer` behaviour to index records.
   """
+  @typedoc since: "0.1.0"
   @type indexer_module() :: :atom
 
   @typedoc """
@@ -86,11 +93,13 @@ defmodule Fact.EventIndexer do
   At the time of writing, only `Fact.EventDataIndexer` uses an `t:Fact.EventIndexer.indexer_key/0`, because there can be 
   multiple processes running, each indexing a different key within an `t:Fact.event_data/0`
   """
+  @typedoc since: "0.1.0"
   @type indexer_key() :: String.t()
 
   @typedoc """
   The value produced by an `t:Fact.EventIndexer.indexer_id/0` when indexing an `t:Fact.event_record/0`. 
   """
+  @typedoc since: "0.1.0"
   @type index_value() :: String.t()
 
   @typedoc """
@@ -106,14 +115,22 @@ defmodule Fact.EventIndexer do
     * `Fact.EventTagsIndexer`
     * `Fact.EventTypeIndexer`
   """
+  @typedoc since: "0.1.2"
   @type indexer_id() ::
-          indexer_module()
+          Fact.EventDataIndexer.id()
+          | Fact.EventStreamCategoryIndexer.id()
+          | Fact.EventStreamIndexer.id()
+          | Fact.EventStreamsByCategoryIndexer.id()
+          | Fact.EventStreamsIndexer.id()
+          | Fact.EventTagsIndexer.id()
+          | Fact.EventTypeIndexer.id()
           | {indexer_module(), indexer_key()}
 
   @typedoc """
   Option values passed to the `c:Fact.EventIndexer.index_event/3` callback function to control the indexing of
   of records.
   """
+  @typedoc since: "0.1.0"
   @type indexer_option() ::
           {:indexer_key, indexer_key()}
           | indexer_custom_option()
@@ -122,29 +139,28 @@ defmodule Fact.EventIndexer do
   Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function to control the indexing 
   of records.
   """
+  @typedoc since: "0.1.0"
   @type indexer_custom_option() :: {atom(), term()}
 
   @typedoc """
   Options passed to the `c:Fact.EventIndexer.index_event/3` callback function to control the indexing of records.
   """
+  @typedoc since: "0.1.0"
   @type indexer_options() :: [indexer_option()]
 
   @typedoc """
-  Option values used by the `start_link/2` functions for indexer modules.
+  Option values used by the `start_link/1` functions for indexer modules.
   """
-  @type start_option ::
-          {:indexer_id, indexer_id()}
-          | {:indexer_opts, indexer_options()}
-          | GenServer.option()
-
-  @typedoc """
-  Options used by the `start_link/2` functions for indexer modules. 
-  """
-  @type start_options :: [start_option()]
+  @typedoc since: "0.1.0"
+  @type option ::
+          {:database_id, Fact.database_id()}
+          | {:id, indexer_id()}
+          | {:options, indexer_options()}
 
   @typedoc """
   The state structure used by indexers in the `GenServer` callback functions. 
   """
+  @typedoc since: "0.1.0"
   @type t :: %{
           required(:database_id) => Fact.database_id(),
           required(:indexer) => Fact.EventIndexer.indexer_id(),
@@ -156,6 +172,7 @@ defmodule Fact.EventIndexer do
   @doc """
   Called when an event needs to be indexed. 
   """
+  @typedoc since: "0.1.0"
   @callback index_event(
               schema :: Fact.event_record_schema(),
               event :: Fact.event(),
@@ -171,6 +188,7 @@ defmodule Fact.EventIndexer do
     * `t:Fact.EventIndexer.indexed_message/0` - published whenever any `t:Fact.event_record/0` is processed 
     regardless of whether the event is included within the index.
   """
+  @doc since: "0.1.0"
   @spec subscribe(Fact.database_id(), indexer_id()) :: :ok
   def subscribe(database_id, indexer) do
     Phoenix.PubSub.subscribe(Fact.Registry.pubsub(database_id), topic(indexer))
@@ -179,6 +197,7 @@ defmodule Fact.EventIndexer do
   @doc """
   Gets the name of the topic where the indexer publishes messages. 
   """
+  @doc since: "0.1.0"
   @spec topic(indexer_id()) :: String.t()
   def topic(indexer) do
     case indexer do
@@ -190,7 +209,36 @@ defmodule Fact.EventIndexer do
     end
   end
 
-  defmacro __using__(_opts \\ []) do
+  @doc """
+  Injects the GenServer implementation and behavior for an event indexer.
+
+  This macro provides the complete GenServer scaffolding needed to build an event indexer,
+  including initialization, index rebuilding from history, subscription to live events,
+  and index updates as new events arrive.
+    
+  ### Options
+    
+    * `:name` - The filesystem name for the indexer's directory. When not provided, it
+    is derived automatically from the module name by taking the last segment, converting
+    it to snake case and removing the `_indexer` suffix.
+
+  ### Requires
+    
+  Modules using this macro must implement the `c:index_event/3` callback to define how events are indexed.
+  """
+  @doc since: "0.1.2"
+  defmacro __using__(opts \\ []) do
+    caller_module = __CALLER__.module
+
+    derived_name =
+      caller_module
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+      |> String.replace_suffix("_indexer", "")
+
+    indexer_name = Keyword.get(opts, :name, derived_name)
+
     quote do
       @behaviour Fact.EventIndexer
 
@@ -221,8 +269,18 @@ defmodule Fact.EventIndexer do
       end
 
       @doc """
+      Gets the friendly name for the indexer.
+        
+      This is included in the file path where index files are stored on disk.
+      """
+      @doc since: "0.1.2"
+      @spec indexer_name() :: String.t()
+      def indexer_name(), do: unquote(indexer_name)
+
+      @doc """
       Starts the indexer process.
       """
+      @spec start_link([Fact.EventIndexer.option()]) :: GenServer.on_start()
       def start_link(opts \\ []) do
         {indexer_opts, start_opts} = Keyword.split(opts, [:database_id, :id, :options])
 
@@ -246,14 +304,18 @@ defmodule Fact.EventIndexer do
       def init(%{database_id: database_id, indexer_id: indexer_id} = state) do
         :ok = Fact.IndexCheckpointFile.ensure_exists(database_id, indexer_id)
         :ok = Fact.EventPublisher.subscribe(database_id, :all)
+        :ok = notify_starting(database_id, indexer_id)
         {:ok, state, {:continue, :rebuild_and_join}}
       end
 
       @impl true
       @doc false
-      def handle_continue(:rebuild_and_join, %__MODULE__{} = state) do
+      def handle_continue(
+            :rebuild_and_join,
+            %__MODULE__{database_id: database_id, indexer_id: indexer_id} = state
+          ) do
         checkpoint = rebuild_index(state)
-        publish_ready(state, checkpoint)
+        :ok = notify_ready(database_id, indexer_id, checkpoint)
         {:noreply, %{state | checkpoint: checkpoint}}
       end
 
@@ -340,10 +402,16 @@ defmodule Fact.EventIndexer do
         )
       end
 
-      defp publish_ready(%{database_id: database_id, indexer_id: indexer_id} = state, checkpoint) do
-        Phoenix.PubSub.broadcast(
-          Fact.Registry.pubsub(database_id),
-          Fact.EventIndexer.topic(indexer_id),
+      defp notify_starting(database_id, indexer_id) do
+        GenServer.cast(
+          Fact.Registry.via(database_id, Fact.Database),
+          {:indexer_starting, indexer_id, self()}
+        )
+      end
+
+      defp notify_ready(database_id, indexer_id, checkpoint) do
+        GenServer.cast(
+          Fact.Registry.via(database_id, Fact.Database),
           {:indexer_ready, indexer_id, checkpoint}
         )
       end
