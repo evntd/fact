@@ -6,6 +6,11 @@ defmodule Fact.EventStreamIndexer do
 
   alias Fact.Event.Schema
 
+  @typedoc """
+  The id for a Fact.EventStreamIndexer.
+  """
+  @type id :: {Fact.EventStreamIndexer, nil}
+
   @doc """
   Extracts the stream name of the event.
     
