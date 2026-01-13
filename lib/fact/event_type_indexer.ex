@@ -4,6 +4,11 @@ defmodule Fact.EventTypeIndexer do
   """
   use Fact.EventIndexer
 
+  @typedoc """
+  The id for a Fact.EventTypeIndexer.
+  """
+  @type id :: {Fact.EventTypeIndexer, nil}
+
   @doc """
   Extracts the type of the event.
     

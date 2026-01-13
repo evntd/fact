@@ -31,6 +31,7 @@
 - Backup task
 - Restore task
 - Data tampering verification task (for CAS)
+- Custom Indexers
 
 #### Coming later...
 

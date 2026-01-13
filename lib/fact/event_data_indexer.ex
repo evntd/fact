@@ -5,6 +5,11 @@ defmodule Fact.EventDataIndexer do
   use Fact.EventIndexer
 
   @typedoc """
+  The id for a Fact.EventDataIndexer.
+  """
+  @type id :: {Fact.EventDataIndexer, Fact.EventIndexer.indexer_key()}
+
+  @typedoc """
   Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
   @type option :: {:indexer_key, String.t()} | Fact.EventIndexer.indexer_option()

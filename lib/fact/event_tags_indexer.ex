@@ -5,6 +5,11 @@ defmodule Fact.EventTagsIndexer do
 
   use Fact.EventIndexer
 
+  @typedoc """
+  The id for a Fact.EventTagsIndexer.
+  """
+  @type id :: {Fact.EventTagsIndexer, nil}
+
   @doc """
   Extracts the tags defined on the event.
 

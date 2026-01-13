@@ -135,7 +135,7 @@ defmodule Fact.IndexFile do
       {:ok,
        Path.join([
          Storage.indices_path(context),
-         to_string(indexer_mod),
+         indexer_mod.indexer_name(),
          to_string(indexer_key),
          index_file
        ])}
