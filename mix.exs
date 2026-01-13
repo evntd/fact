@@ -69,17 +69,16 @@ defmodule Fact.MixProject do
       cover: "guides/assets/images/epub-cover.png",
       extra_section: "GUIDES",
       extras: [
-        "guides/introduction/overview.md",
+        "LICENSE",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
-        "guides/components/seam-architecture.md",
-        "LICENSE"
+        "guides/introduction/dedication.md": [title: "Dedication"]
       ],
       favicon: "guides/assets/images/turt-16.png",
       groups_for_extras: [
         Introduction: [
           "guides/introduction/getting-started.md",
-          "guides/introduction/overview.md",
+          "guides/introduction/dedication.md",
           "guides/introduction/process-model.md"
         ],
         Components: [
