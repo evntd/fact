@@ -190,7 +190,18 @@ defmodule Fact.EventIndexer do
     end
   end
 
-  defmacro __using__(_opts \\ []) do
+  defmacro __using__(opts \\ []) do
+    caller_module = __CALLER__.module
+
+    derived_name =
+      caller_module
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+      |> String.replace_suffix("_indexer", "")
+
+    indexer_name = Keyword.get(opts, :name, derived_name)
+
     quote do
       @behaviour Fact.EventIndexer
 
@@ -219,6 +230,15 @@ defmodule Fact.EventIndexer do
              ]}
         }
       end
+
+      @doc """
+      Gets the friendly name for the indexer.
+        
+      This is included in the file path where index files are stored on disk.
+      """
+      @doc since: "0.1.2"
+      @spec indexer_name() :: String.t()
+      def indexer_name(), do: unquote(indexer_name)
 
       @doc """
       Starts the indexer process.
