@@ -34,7 +34,17 @@
 
 #### Coming later...
 
+- Telemetry
+- Merkle Mountain Range
+    - inclusion proofs, this event exists in the ledger at position N.
+    - doesn't prevent tampering, but proves it did or didn't happen
+    - Needs one of these 🤔:
+        - signed checkpoints
+        - cross-system anchoring
+        - client-held receipts
 - Proof of scale
+    - Target: 1M events per day, <= 86.4 ms per write
+    - Honestly not trying to build for global scale, if that's what you need use Axon or Kurrent
 - Full stack example application
 - A network protocol to enable non-BEAM based languages to interop.
 - A gossip protocol to coordinate multiple BEAM nodes
