@@ -32,10 +32,23 @@ defmodule Fact.Seam.Storage.Standard.V1 do
   end
 
   @impl true
+  def initialize_storage(%__MODULE__{path: path} = this, opts) do
+    IO.puts(path)
+
+    with :ok <- File.mkdir_p(path),
+         :ok <- File.mkdir_p(records_path(this, nil, opts)),
+         :ok <- File.mkdir_p(indices_path(this, opts)),
+         :ok <- File.write(Path.join(path, ".gitignore"), "*") do
+      :ok
+    end
+  end
+
+  @impl true
   def path(%__MODULE__{path: path}, _opts), do: path
 
   @impl true
-  def records_path(%__MODULE__{path: path}, _opts), do: Path.join(path, "events")
+  def records_path(%__MODULE__{path: path}, record_id, _opts),
+    do: Path.join([path, "events", record_id || ""])
 
   @impl true
   def indices_path(%__MODULE__{path: path}, _opts), do: Path.join(path, "indices")

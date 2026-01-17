@@ -15,10 +15,11 @@ defmodule Fact.Genesis.TheCreator do
 
   alias Fact.Genesis.Event.DatabaseCreated
   alias Fact.Event
+  alias Fact.Storage
 
   def let_there_be_light(%DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
-         :ok <- init_storage(context) do
+         :ok <- Storage.initialize_storage(context) do
       schema = Event.Schema.get(context)
 
       genesis =
@@ -35,18 +36,6 @@ defmodule Fact.Genesis.TheCreator do
       {:ok, record_id} = Fact.RecordFile.write(context, genesis)
       {:ok, ^record_id} = Fact.LedgerFile.write(context, record_id)
 
-      :ok
-    end
-  end
-
-  defp init_storage(%Fact.Context{} = context) do
-    with path <- Fact.Storage.path(context),
-         :ok <- File.mkdir_p(path),
-         :ok <- File.write(Path.join(path, ".gitignore"), "*"),
-         records_path <- Fact.Storage.records_path(context),
-         :ok <- File.mkdir_p(records_path),
-         indices_path <- Fact.Storage.indices_path(context),
-         :ok <- File.mkdir_p(indices_path) do
       :ok
     end
   end

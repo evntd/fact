@@ -10,7 +10,7 @@ defmodule Fact.Seam.Storage do
   ## Responsibilities
 
     * `path/2` – Returns the root path of the database.
-    * `records_path/2` – Returns the path where event records are stored.
+    * `records_path/3` – Returns the path where event records are stored, or the path to a specific record.
     * `indices_path/2` – Returns the path where index files are stored.
     * `ledger_path/2` – Returns the path for the event ledger file(s).
     * `locks_path/2` – Returns the path for lock files used for database concurrency.
@@ -24,8 +24,11 @@ defmodule Fact.Seam.Storage do
 
   use Fact.Seam
 
+  @callback initialize_storage(t(), opts :: keyword()) :: :ok | {:error, term()}
+
   @callback path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
-  @callback records_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+  @callback records_path(t(), record_id :: String.t(), opts :: keyword()) ::
+              Path.t() | {:error, term()}
   @callback indices_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
   @callback ledger_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
   @callback locks_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
