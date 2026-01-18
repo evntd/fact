@@ -200,9 +200,7 @@ defmodule Fact.BootstrapFile do
         storage: event.storage
       })
 
-    path = Path.join(path, Name.get(this))
-
-    Writer.write(this, path, bootstrap_record)
+    Writer.write(this, Path.join(path, Name.get(this)), bootstrap_record)
   end
 
   defp get_bootstrap_write_context() do
