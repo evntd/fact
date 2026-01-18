@@ -21,6 +21,7 @@ defmodule Fact.Event do
     There is currently only a single implementation, see `Fact.Seam.EventSchema.Standard.V1`.
     """
     use Fact.Seam.EventSchema.Adapter,
-      context: :event_schema
+      context: :event_schema,
+      default_impl: {:standard, 1}
   end
 end
