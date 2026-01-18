@@ -33,13 +33,11 @@ defmodule Fact.Seam.Storage.Standard.V1 do
 
   @impl true
   def initialize_storage(%__MODULE__{path: path} = this, opts) do
-    IO.puts(path)
-
     with :ok <- File.mkdir_p(path),
          :ok <- File.mkdir_p(records_path(this, nil, opts)),
          :ok <- File.mkdir_p(indices_path(this, opts)),
          :ok <- File.write(Path.join(path, ".gitignore"), "*") do
-      :ok
+      {:ok, path}
     end
   end
 

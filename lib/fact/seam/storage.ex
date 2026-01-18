@@ -24,7 +24,7 @@ defmodule Fact.Seam.Storage do
 
   use Fact.Seam
 
-  @callback initialize_storage(t(), opts :: keyword()) :: :ok | {:error, term()}
+  @callback initialize_storage(t(), opts :: keyword()) :: {:ok, Path.t()} | {:error, term()}
 
   @callback path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
   @callback records_path(t(), record_id :: String.t(), opts :: keyword()) ::

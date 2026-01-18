@@ -19,7 +19,7 @@ defmodule Fact.Genesis.TheCreator do
 
   def let_there_be_light(%DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
-         :ok <- Storage.initialize_storage(context) do
+         {:ok, path} <- Storage.initialize_storage(context) do
       schema = Event.Schema.get(context)
 
       genesis =
