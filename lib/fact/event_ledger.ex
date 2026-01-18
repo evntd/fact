@@ -1,16 +1,15 @@
 defmodule Fact.EventLedger do
   @moduledoc """
-  Manages the event ledger for a Fact database instance, handling all commits,
-  enforcing optimistic concurrency control via position expectations or query conditions.
+  This is the Judge Judy of the system, it manages the event ledger for a Fact database instance, 
+  handling all commits, enforcing optimistic concurrency control via append conditions.
 
   `Fact.EventLedger` is a GenServer responsible for:
-    * Writing event record files, and appending to the ledger.
+    * Writing event record files, and appending to the ledger
     * Ensuring events are enriched with metadata, ids, timestamps, and store positions
     * Publishing appended events via `Fact.EventPublisher`
-    * Tracking the current ledger position and maintaining order.
-
-  It's the Judge Judy of the system.
+    * Tracking the current ledger position and maintaining order
   """
+  @moduledoc since: "0.1.0"
 
   use GenServer
 
@@ -18,6 +17,7 @@ defmodule Fact.EventLedger do
 
   require Logger
 
+  @typedoc false
   @type t :: %__MODULE__{
           database_id: Fact.database_id(),
           position: Fact.event_position(),
@@ -25,33 +25,62 @@ defmodule Fact.EventLedger do
           replacements: map()
         }
 
+  @typedoc """
+  Defines the options that can be specified when committing.
+    
+    * `:timeout` (default: 5000) - specifies how long the caller should wait for the commit operation to complete in milliseconds 
+  """
+  @typedoc since: "0.1.0"
+  @type commit_option :: {:timeout, timeout()}
+
+  @typedoc """
+  Defines the options for starting a `Fact.EventLedger`.
+  """
+  @typedoc since: "0.1.0"
+  @type option :: {:database_id, Fact.database_id()}
+
+  @typedoc false
   @type write_events_error ::
           {:error, {:event_write_failed, [{File.posix(), Fact.record_id()}]}}
 
+  @typedoc false
   @type write_ledger_error ::
           {:error, {:ledger_write_failed, File.posix()}}
 
   defstruct [:database_id, :schema, :replacements, position: 0]
 
-  @spec start_link([database_id: Fact.database_id()] | []) ::
-          {:ok, pid()} | {:error, term()}
+  @doc """
+  Starts the event ledger process.
+  """
+  @doc since: "0.1.0"
+  @spec start_link([option()]) :: {:ok, pid()} | {:error, term()}
   def start_link(opts) do
     {ledger_opts, genserver_opts} = Keyword.split(opts, [:database_id])
     database_id = Keyword.fetch!(ledger_opts, :database_id)
     GenServer.start_link(__MODULE__, database_id, genserver_opts)
   end
 
+  @doc """
+  Commits an event or set of events.
+
+  Each event is enriched with additional metadata, including a timestamp, and assigning a store position.
+  Events are then written to the configured storage and a reference to the event is appended to the ledger file.
+
+  If the commit operation is successful, an `{:appended, {record_id, event}}` message will be published by the 
+  `Fact.EventPublisher` for each event that was written.
+  """
+  @doc since: "0.2.0"
   @spec commit(
           Fact.database_id(),
           Fact.event() | [Fact.event()],
-          Fact.append_condition(),
-          keyword()
+          Fact.append_condition() | nil,
+          [commit_option()]
         ) :: {:ok, Fact.event_position()} | {:error, term()}
   def commit(database_id, events, append_condition \\ nil, options \\ [])
 
   def commit(database_id, events, nil, options)
       when is_binary(database_id) and is_list(options) do
-    commit(database_id, List.wrap(events), Fact.Query.from_none(), 0, options)
+    commit(database_id, List.wrap(events), nil, 0, options)
   end
 
   def commit(database_id, events, %Fact.QueryItem{} = append_condition, options)
@@ -125,9 +154,6 @@ defmodule Fact.EventLedger do
       not Enum.all?(events, &is_map_key(&1, :type)) ->
         {:error, :missing_event_type}
 
-      not is_function(fail_if_match, 1) ->
-        {:error, :invalid_fail_if_match_query}
-
       not (is_integer(after_position) and after_position >= 0) ->
         {:error, :invalid_after_position}
 
@@ -142,6 +168,7 @@ defmodule Fact.EventLedger do
     end
   end
 
+  @doc false
   @impl true
   def init(database_id) do
     schema = Event.Schema.get(database_id)
@@ -164,6 +191,7 @@ defmodule Fact.EventLedger do
     {:ok, state}
   end
 
+  @doc false
   @impl true
   def handle_call({:commit, events, commit_opts}, _from, state) do
     with {:ok, end_pos} <- conditional_commit(events, Keyword.get(commit_opts, :condition), state) do
@@ -198,6 +226,10 @@ defmodule Fact.EventLedger do
     with :ok <- check_query_condition(state, condition) do
       do_commit(events, state)
     end
+  end
+
+  defp check_query_condition(%{} = _state, {nil, _pos}) do
+    :ok
   end
 
   defp check_query_condition(
