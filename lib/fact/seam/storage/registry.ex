@@ -21,5 +21,8 @@ defmodule Fact.Seam.Storage.Registry do
       * `Fact.Seam.Storage.Standard.V1`
   """
   use Fact.Seam.Registry,
-    impls: [Fact.Seam.Storage.Standard.V1]
+    impls: [
+      Fact.Seam.Storage.Standard.V1,
+      Fact.Seam.Storage.Standard.V2
+    ]
 end
