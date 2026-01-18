@@ -65,7 +65,7 @@ defmodule Fact.EventLedger do
 
   Each event is enriched with additional metadata, including a timestamp, and assigning a store position.
   Events are then written to the configured storage and a reference to the event is appended to the ledger file.
-  
+
   If the commit operation is successful, an `{:appended, {record_id, event}}` message will be published by the 
   `Fact.EventPublisher` for each event that was written.
   """
