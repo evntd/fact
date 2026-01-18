@@ -51,7 +51,7 @@ defmodule Fact.EventLedger do
 
   def commit(database_id, events, nil, options)
       when is_binary(database_id) and is_list(options) do
-    commit(database_id, List.wrap(events), Fact.Query.from_none(), 0, options)
+    commit(database_id, List.wrap(events), nil, 0, options)
   end
 
   def commit(database_id, events, %Fact.QueryItem{} = append_condition, options)
@@ -125,9 +125,6 @@ defmodule Fact.EventLedger do
       not Enum.all?(events, &is_map_key(&1, :type)) ->
         {:error, :missing_event_type}
 
-      not is_function(fail_if_match, 1) ->
-        {:error, :invalid_fail_if_match_query}
-
       not (is_integer(after_position) and after_position >= 0) ->
         {:error, :invalid_after_position}
 
@@ -198,6 +195,10 @@ defmodule Fact.EventLedger do
     with :ok <- check_query_condition(state, condition) do
       do_commit(events, state)
     end
+  end
+
+  defp check_query_condition(%{} = _state, {nil, _pos}) do
+    :ok
   end
 
   defp check_query_condition(
