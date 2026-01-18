@@ -1,12 +1,28 @@
 defmodule Fact.Seam.Parsers do
   def parse_existing_atom(value) when is_binary(value) do
-    {:ok, String.to_atom(value)}
+    {:ok, String.to_existing_atom(value)}
   rescue
     ArgumentError -> :error
   end
 
   def parse_existing_atom(value) when is_atom(value), do: {:ok, value}
   def parse_existing_atom(_), do: :error
+
+  @field_name_regex ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+
+  def parse_field_name(value) when is_atom(value) do
+    parse_field_name(Atom.to_string(value))
+  end
+
+  def parse_field_name(value) when is_binary(value) do
+    if Regex.match?(@field_name_regex, value) do
+      {:ok, value}
+    else
+      :error
+    end
+  end
+
+  def parse_field_name(_), do: :error
 
   # Simple filenames...for compatibility.
   # - Alpha-numeric
