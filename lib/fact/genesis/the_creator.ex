@@ -17,9 +17,16 @@ defmodule Fact.Genesis.TheCreator do
   alias Fact.Event
   alias Fact.Storage
 
+  @doc """
+  Creates a Fact database from the `Fact.Genesis.Event.DatabaseCreated.V1` event.
+
+  It initializes storage, and appends the event as the first record of every database.
+  """
+  @doc since: "0.1.0"
+  @spec let_there_be_light(%DatabaseCreated.V1{}) :: :ok
   def let_there_be_light(%DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
-         {:ok, path} <- Storage.initialize_storage(context) do
+         {:ok, _path} <- Storage.initialize_storage(context) do
       schema = Event.Schema.get(context)
 
       genesis =
