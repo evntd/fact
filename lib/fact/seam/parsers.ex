@@ -10,6 +10,16 @@ defmodule Fact.Seam.Parsers do
 
   @field_name_regex ~r/^[A-Za-z_][A-Za-z0-9_]*$/
 
+  @doc """
+  Parses a value as a valid field name.
+    
+  A valid field name must start with a letter (`A-Z`, `a-z`) or underscore (`_`),
+  followed by zero or more letters, digits (`0-9`), or underscores.
+  """
+  @doc since: "0.2.0"
+  @spec parse_field_name(binary() | atom()) :: {:ok, binary()} | :error
+  def parse_field_name(nil), do: :error
+
   def parse_field_name(value) when is_atom(value) do
     parse_field_name(Atom.to_string(value))
   end
