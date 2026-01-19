@@ -1,13 +1,7 @@
-name: Build, Test, and Publish
+name: Publish
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
-    paths:
-      - '**/*.ex'
-      - '**/*.exs'
     tags:
       - v*
 

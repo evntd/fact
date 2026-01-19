@@ -1,4 +1,4 @@
-[![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
+[![Test](https://github.com/evntd/fact/actions/workflows/publish.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/publish.yml)
 
 <div style="display: flex; justify-content: center;">
   <img alt="logo" src=".github/assets/logo.png" width="424">
