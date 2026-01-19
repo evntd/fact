@@ -213,6 +213,7 @@ defmodule Fact.MixProject do
           Fact.Seam.Storage,
           Fact.Seam.Storage.Adapter,
           Fact.Seam.Storage.Standard.V1,
+          Fact.Seam.Storage.Standard.V2,
           Fact.Seam.Storage.Registry
         ]
       ],
