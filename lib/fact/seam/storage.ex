@@ -21,15 +21,45 @@ defmodule Fact.Seam.Storage do
   This allows the Fact system to operate on different storage strategies
   without changing the core database or event logic.
   """
+  @moduledoc since: "0.1.0"
 
   use Fact.Seam
 
+  @doc """
+  A callback function that initializes the directory structure used for records, indexes, 
+  and any other files used by the database.
+  """
+  @doc since: "0.2.0"
   @callback initialize_storage(t(), opts :: keyword()) :: {:ok, Path.t()} | {:error, term()}
 
+  @doc """
+  A callback function that gets the path to configured root directory for the database.
+  """
+  @doc since: "0.1.0"
   @callback path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+
+  @doc """
+  A callback function that gets the directory containing all records, or the path to a specific record.
+  """
+  @doc since: "0.2.0"
   @callback records_path(t(), record_id :: String.t(), opts :: keyword()) ::
               Path.t() | {:error, term()}
+
+  @doc """
+  A callback function that gets the base path to the directory where all index files are stored. 
+  """
+  @doc since: "0.1.0"
   @callback indices_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+
+  @doc """
+  A callback function that gets the path to the directory containing the ledger file.
+  """
+  @doc since: "0.1.0"
   @callback ledger_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+
+  @doc """
+  A callback function that gets the path to the directory containing the lock files.
+  """
+  @doc since: "0.1.0"
   @callback locks_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
 end
