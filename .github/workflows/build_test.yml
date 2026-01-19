@@ -2,13 +2,7 @@ name: Build & Test
 
 on:
   pull_request:
-    paths:
-      - '**/*.ex'
-      - '**/*.exs'
   push:
-    paths:
-      - '**/*.ex'
-      - '**/*.exs'
 
 permissions:
   contents: read
