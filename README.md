@@ -22,7 +22,7 @@
 - "Pseudo-WORM" storage<sup>[1](#fn1)</sup>
 - Supports multiple instances for siloed isolation in multi-tenancy setups
 - Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage)
-- Configurable event schemas<sup>[2](#fn2)</sup>
+- Configurable event schemas
 - Supported on Elixir 1.13+ and OTP 25+
 
 #### Coming soon...
@@ -44,8 +44,8 @@
         - cross-system anchoring
         - client-held receipts
 - Proof of scale
-    - Target: 1M events per day, <= 86.4 ms per write
-    - Honestly not trying to build for global scale, if that's what you need use Axon or Kurrent
+    - Target: 1M events per day, <= 86.4 ms per write, 11.5 events per second
+    - Honestly not trying to build for global scale, if that's what you need use Axon, Kurrent, or UmaDB
 - Full stack example application
 - A network protocol to enable non-BEAM based languages to interop.
 - A gossip protocol to coordinate multiple BEAM nodes
@@ -61,7 +61,7 @@ The package can be installed by adding `fact` to your list of dependencies in `m
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.1.2"}
+    {:fact, "~> 0.2.0"}
   ]
 end
 ```
@@ -111,5 +111,3 @@ iex> Fact.read(db, {:stream, "turtle-1"}) |> Enum.to_list()
 <small id="fn1">1 - Its "pseudo-WORM" because immutability is enforced at the filesystem level by marking events
 as read-only. This prevents modification during normal operation, but does not provide hardware-level or regulatory WORM
 enforcement.</small>
-
-<small id="fn2">2 - The groundwork has been laid, but still requires work in system genesis and bootstrapping.</small>
