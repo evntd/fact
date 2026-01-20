@@ -80,4 +80,24 @@ defmodule Fact.Seam.Parsers do
   end
 
   def parse_non_neg_integer(_), do: :error
+
+  @doc """
+  Parses a value as an integer and verifies it is within the specified range.
+  """
+  @doc since: "0.2.0"
+  @spec parse_integer_range(binary() | integer(), integer(), integer()) ::
+          {:ok, integer()} | :error
+  def parse_integer_range(value, min, max)
+      when is_integer(value) and value >= min and value <= max do
+    {:ok, value}
+  end
+
+  def parse_integer_range(value, min, max) when is_binary(value) do
+    parse_integer_range(String.to_integer(value), min, max)
+  rescue
+    ArgumentError ->
+      :error
+  end
+
+  def parse_integer_range(_, _, _), do: :error
 end
