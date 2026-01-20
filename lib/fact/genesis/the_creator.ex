@@ -15,10 +15,18 @@ defmodule Fact.Genesis.TheCreator do
 
   alias Fact.Genesis.Event.DatabaseCreated
   alias Fact.Event
+  alias Fact.Storage
 
+  @doc """
+  Creates a Fact database from the `Fact.Genesis.Event.DatabaseCreated.V1` event.
+
+  It initializes storage, and appends the event as the first record of every database.
+  """
+  @doc since: "0.1.0"
+  @spec let_there_be_light(%DatabaseCreated.V1{}) :: :ok
   def let_there_be_light(%DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
-         {:ok, path} <- init_storage(context) do
+         {:ok, path} <- Storage.initialize_storage(context) do
       schema = Event.Schema.get(context)
 
       genesis =
@@ -40,18 +48,6 @@ defmodule Fact.Genesis.TheCreator do
       :ok = Fact.BootstrapFile.write(path, {record_id, event})
 
       :ok
-    end
-  end
-
-  defp init_storage(%Fact.Context{} = context) do
-    with path <- Fact.Storage.path(context),
-         :ok <- File.mkdir_p(path),
-         :ok <- File.write(Path.join(path, ".gitignore"), "*"),
-         records_path <- Fact.Storage.records_path(context),
-         :ok <- File.mkdir_p(records_path),
-         indices_path <- Fact.Storage.indices_path(context),
-         :ok <- File.mkdir_p(indices_path) do
-      {:ok, path}
     end
   end
 end
