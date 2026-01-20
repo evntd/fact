@@ -198,6 +198,7 @@ defmodule Fact.MixProject do
           Fact.Seam.EventSchema.Registry,
           Fact.Seam.EventSchema.Emmett.V1,
           Fact.Seam.EventSchema.Kurrent.V1,
+          Fact.Seam.EventSchema.Marten.V1,
           Fact.Seam.EventSchema.Standard.V1,
           Fact.Seam.FileName,
           Fact.Seam.FileName.Adapter,
