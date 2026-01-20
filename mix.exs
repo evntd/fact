@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.1.2"
+  @version "0.2.0"
   @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
