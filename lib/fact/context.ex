@@ -112,9 +112,20 @@ defmodule Fact.Context do
     :storage
   ]
 
+  @doc """
+  Constructs a `Fact.Context` from a genesis event record.
+  """
+  @doc since: "0.1.0", deprecated: "Use from_genesis_event_data/1 instead"
   def from_record(%{"event_type" => "Elixir.Fact.Genesis.Event.DatabaseCreated.V1"} = record) do
     event_data = Map.get(record, "event_data")
+    from_genesis_event_data(event_data)
+  end
 
+  @doc """
+  Constructs a `Fact.Context` from a genesis event (`Fact.Genesis.Event.DatabaseCreated.V1`) data.
+  """
+  @doc since: "0.2.0"
+  def from_genesis_event_data(%{} = event_data) do
     %__MODULE__{
       database_id: Map.get(event_data, "database_id"),
       database_name: Map.get(event_data, "database_name"),
