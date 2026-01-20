@@ -157,7 +157,7 @@ defmodule Fact.RecordFile do
   end
 
   defp path(context, record_id) do
-    {:ok, Path.join(Storage.records_path(context), record_id)}
+    {:ok, Storage.records_path(context, record_id)}
   end
 
   defp process_write_results(results) do
