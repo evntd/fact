@@ -26,7 +26,7 @@ defmodule Fact.Genesis.TheCreator do
   @spec let_there_be_light(%DatabaseCreated.V1{}) :: :ok
   def let_there_be_light(%DatabaseCreated.V1{} = event) do
     with context <- DatabaseCreated.V1.to_context(event),
-         {:ok, _path} <- Storage.initialize_storage(context) do
+         {:ok, path} <- Storage.initialize_storage(context) do
       schema = Event.Schema.get(context)
 
       genesis =
@@ -42,6 +42,10 @@ defmodule Fact.Genesis.TheCreator do
 
       {:ok, record_id} = Fact.RecordFile.write(context, genesis)
       {:ok, ^record_id} = Fact.LedgerFile.write(context, record_id)
+
+      # writes the bare minimum into a special .bootstrap file
+      # with just enough to read the genesis event and start the system. 
+      :ok = Fact.BootstrapFile.write(path, {record_id, event})
 
       :ok
     end

@@ -105,7 +105,36 @@ defmodule Fact.Bootstrapper do
     end
   end
 
+  defp load_context_from_bootstrap_file(path) do
+    with {:ok, bootstrap} <- Fact.BootstrapFile.read(path) do
+      bootstrap_context = %Fact.Context{
+        event_schema: Fact.Event.Schema.from_config(bootstrap["event_schema"]),
+        record_file_decoder:
+          Fact.RecordFile.Decoder.from_config(bootstrap["record_file_decoder"]),
+        record_file_reader: Fact.RecordFile.Reader.from_config(bootstrap["record_file_reader"]),
+        storage: Fact.Storage.from_config(bootstrap["storage"])
+      }
+
+      {_, event} = Fact.RecordFile.read(bootstrap_context, bootstrap["record_id"])
+
+      event_data = Map.get(event, Fact.Event.Schema.get(bootstrap_context).event_data)
+
+      {:ok, Fact.Context.from_genesis_event_data(event_data)}
+    end
+  end
+
   defp load_context(path) do
+    case load_context_from_bootstrap_file(path) do
+      {:error, :bootstraps_not_found} ->
+        load_context_v1(path)
+
+      {:ok, _context} = result ->
+        result
+    end
+  end
+
+  @doc deprecated: "use load_context_from_bootstrap_file/1"
+  defp load_context_v1(path) do
     ledger_file = Path.join(path, ".ledger")
 
     if File.exists?(ledger_file) do

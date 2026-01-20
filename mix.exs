@@ -90,6 +90,13 @@ defmodule Fact.MixProject do
           Fact
         ],
         Context: [
+          Fact.BootstrapFile,
+          Fact.BootstrapFile.Context,
+          Fact.BootstrapFile.Decoder,
+          Fact.BootstrapFile.Encoder,
+          Fact.BootstrapFile.Name,
+          Fact.BootstrapFile.Reader,
+          Fact.BootstrapFile.Writer,
           Fact.Context,
           Fact.Event,
           Fact.Event.Id,
@@ -220,6 +227,7 @@ defmodule Fact.MixProject do
       logo: "guides/assets/images/turt-48.png",
       main: Fact,
       nest_modules_by_prefix: [
+        Fact.BootstrapFile,
         Fact.Event,
         Fact.Genesis,
         Fact.IndexCheckpointFile,
