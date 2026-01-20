@@ -5,5 +5,8 @@ defmodule Fact.Seam.EventSchema.Registry do
   Currently includes the standard version 1 implementation.
   """
   use Fact.Seam.Registry,
-    impls: [Fact.Seam.EventSchema.Standard.V1]
+    impls: [
+      Fact.Seam.EventSchema.Emmett.V1,
+      Fact.Seam.EventSchema.Standard.V1
+    ]
 end
