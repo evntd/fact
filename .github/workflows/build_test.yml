@@ -1,0 +1,75 @@
+name: Build & Test
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    name: Build and test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - elixir: 1.19.x
+            otp: 28
+            check_format: true
+
+          - elixir: 1.18.x
+            otp: 27
+            check_format: true
+
+          - elixir: 1.17.x
+            otp: 27
+            check_format: true
+
+          - elixir: 1.16.x
+            otp: 26
+            check_format: true
+
+          - elixir: 1.15.x
+            otp: 26
+            check_format: true
+
+          - elixir: 1.14.x
+            otp: 26
+            check_format: false
+
+          - elixir: 1.13.x
+            otp: 25
+            check_format: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        id: beam
+        uses: erlef/setup-beam@v1.20.4 # See https://github.com/erlef/setup-beam
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v3
+        with:
+          path: deps
+          key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix do deps.get, deps.compile
+
+      - name: Check formatting
+        if: ${{ matrix.check_format }}
+        run: mix format --check-formatted
+
+      - name: Check compilation
+        run: mix compile --warnings-as-errors
+
+      - name: Run tests
+        run: mix test

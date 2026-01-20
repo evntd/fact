@@ -1,4 +1,4 @@
-[![Test](https://github.com/evntd/fact/actions/workflows/elixir.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/elixir.yml)
+[![Test](https://github.com/evntd/fact/actions/workflows/publish.yml/badge.svg)](https://github.com/evntd/fact/actions/workflows/publish.yml)
 [![fact version](https://img.shields.io/hexpm/v/fact.svg)](https://hex.pm/packages/fact)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/fact/)
 [![Hex.pm](https://img.shields.io/hexpm/dt/fact.svg)](https://hex.pm/packages/)
