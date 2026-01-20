@@ -95,6 +95,8 @@ defmodule Mix.Tasks.Fact.Create do
 
   use Mix.Task
 
+  @shortdoc "Creates a Fact database"
+
   alias Fact.Genesis.Command.CreateDatabase
   alias Fact.Genesis.TheCreator
   alias Fact.Genesis.Decider
