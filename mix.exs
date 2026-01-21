@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.1.2"
+  @version "0.2.0"
   @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
@@ -90,6 +90,13 @@ defmodule Fact.MixProject do
           Fact
         ],
         Context: [
+          Fact.BootstrapFile,
+          Fact.BootstrapFile.Context,
+          Fact.BootstrapFile.Decoder,
+          Fact.BootstrapFile.Encoder,
+          Fact.BootstrapFile.Name,
+          Fact.BootstrapFile.Reader,
+          Fact.BootstrapFile.Writer,
           Fact.Context,
           Fact.Event,
           Fact.Event.Id,
@@ -189,6 +196,9 @@ defmodule Fact.MixProject do
           Fact.Seam.EventSchema,
           Fact.Seam.EventSchema.Adapter,
           Fact.Seam.EventSchema.Registry,
+          Fact.Seam.EventSchema.Emmett.V1,
+          Fact.Seam.EventSchema.Kurrent.V1,
+          Fact.Seam.EventSchema.Marten.V1,
           Fact.Seam.EventSchema.Standard.V1,
           Fact.Seam.FileName,
           Fact.Seam.FileName.Adapter,
@@ -213,6 +223,7 @@ defmodule Fact.MixProject do
           Fact.Seam.Storage,
           Fact.Seam.Storage.Adapter,
           Fact.Seam.Storage.Standard.V1,
+          Fact.Seam.Storage.Standard.V2,
           Fact.Seam.Storage.Registry
         ]
       ],
@@ -220,6 +231,7 @@ defmodule Fact.MixProject do
       logo: "guides/assets/images/turt-48.png",
       main: Fact,
       nest_modules_by_prefix: [
+        Fact.BootstrapFile,
         Fact.Event,
         Fact.Genesis,
         Fact.IndexCheckpointFile,
