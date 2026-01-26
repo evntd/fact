@@ -70,6 +70,8 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/queries-and-indexes.md",
+        "guides/components/seam-architecture.md",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
         "guides/introduction/dedication.md": [title: "Dedication"]
@@ -82,6 +84,7 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/queries-and-indexes.md",
           "guides/components/seam-architecture.md"
         ]
       ],
@@ -229,7 +232,7 @@ defmodule Fact.MixProject do
       ],
       language: "en",
       logo: "guides/assets/images/turt-48.png",
-      main: Fact,
+      main: "getting-started",
       nest_modules_by_prefix: [
         Fact.BootstrapFile,
         Fact.Event,
