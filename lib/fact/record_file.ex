@@ -17,7 +17,11 @@ defmodule Fact.RecordFile do
     """
     use Fact.Seam.Decoder.Adapter,
       context: :record_file_decoder,
-      allowed_impls: [{:json, 1}]
+      allowed_impls: [
+        {:binary, 1},
+        {:json, 1}
+      ],
+      default_impl: {:json, 1}
   end
 
   defmodule Encoder do
@@ -28,7 +32,11 @@ defmodule Fact.RecordFile do
     """
     use Fact.Seam.Encoder.Adapter,
       context: :record_file_encoder,
-      allowed_impls: [{:json, 1}]
+      allowed_impls: [
+        {:binary, 1},
+        {:json, 1}
+      ],
+      default_impl: {:json, 1}
   end
 
   defmodule Name do
