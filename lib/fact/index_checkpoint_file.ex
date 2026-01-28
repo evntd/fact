@@ -65,7 +65,7 @@ defmodule Fact.IndexCheckpointFile do
     There is currently only a single **allowed** implementation, see `Fact.Seam.FileWriter.Standard.V1`.
       
     Index checkpoint files are opened in write mode, overwriting any existing contents.     
-    
+
     As of Fact v0.2.1, the `sync` is now configurable, to allow configurable of non-durable writes, it still
     defaults to true, but may be set to false. When false, fsync will not be called, and this should increase
     write throughput.
