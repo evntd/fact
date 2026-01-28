@@ -749,6 +749,26 @@ defmodule Fact do
   end
 
   @doc """
+  Determines if the specified database is running and ready for use.
+  """
+  @doc since: "0.2.1"
+  @spec ready?(Fact.database_name()) :: boolean()
+  def ready?(database_name) do
+    with {:ok, database_id} <- Fact.Registry.get_database_id(database_name) do
+      case GenServer.whereis(Fact.Registry.via(database_id, Fact.Database)) do
+        nil ->
+          false
+
+        pid ->
+          Process.alive?(pid)
+      end
+    else
+      _ ->
+        false
+    end
+  end
+
+  @doc """
   Subscribe a process to an event source.
     
   A subscription streams new events to the subscriber process as they are appended to the event store.
@@ -830,5 +850,52 @@ defmodule Fact do
     Fact.CatchUpSubscription.Query.start_link(
       [database_id: database_id, query_items: query_items] ++ options
     )
+  end
+
+  @doc """
+  Asynchronously waits for the given database to become ready and notifies
+  the calling process when it does.
+
+  This function starts a background task that periodically checks whether
+  the database identified by `database_name` is ready. When readiness is
+  detected, a message is sent to the calling process:
+
+  * `{:database_ready, database_name}`
+
+  If the database does not become ready before the timeout expires, the
+  calling process is notified with:
+
+  * `{:error, {:database_ready_timeout, database_name}}`
+  """
+  @doc since: "0.2.1"
+  @spec when_ready(Fact.database_name(), keyword()) :: boolean()
+  def when_ready(database_name, opts) do
+    timeout = Keyword.get(opts, :timeout, 30_000)
+    interval = Keyword.get(opts, :interval, 500)
+    caller = self()
+
+    Task.start(fn ->
+      wait_until_ready(database_name, caller, timeout, interval)
+    end)
+  end
+
+  defp wait_until_ready(database_name, caller, timeout, interval) do
+    deadline = System.monotonic_time(:millisecond) + timeout
+    loop(database_name, caller, deadline, interval)
+  end
+
+  defp loop(database_name, caller, deadline, interval) do
+    if ready?(database_name) do
+      send(caller, {:database_ready, database_name})
+    else
+      now = System.monotonic_time(:millisecond)
+
+      if now >= deadline do
+        send(caller, {:error, {:database_ready_timeout, database_name}})
+      else
+        Process.sleep(interval)
+        loop(database_name, caller, deadline, interval)
+      end
+    end
   end
 end
