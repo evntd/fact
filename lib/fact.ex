@@ -747,7 +747,7 @@ defmodule Fact do
       Keyword.put_new(options, :eager, true)
     )
   end
-  
+
   @doc """
   Determines if the specified database is running and ready for use.
   """
@@ -758,13 +758,14 @@ defmodule Fact do
       case GenServer.whereis(Fact.Registry.via(database_id, Fact.Database)) do
         nil ->
           false
+
         pid ->
           Process.alive?(pid)
       end
     else
-      _ -> 
+      _ ->
         false
-    end    
+    end
   end
 
   @doc """
@@ -872,21 +873,23 @@ defmodule Fact do
     timeout = Keyword.get(opts, :timeout, 30_000)
     interval = Keyword.get(opts, :interval, 500)
     caller = self()
+
     Task.start(fn ->
       wait_until_ready(database_name, caller, timeout, interval)
     end)
   end
-  
+
   defp wait_until_ready(database_name, caller, timeout, interval) do
-    deadline = System.monotonic_time(:millisecond) + timeout 
+    deadline = System.monotonic_time(:millisecond) + timeout
     loop(database_name, caller, deadline, interval)
   end
-  
+
   defp loop(database_name, caller, deadline, interval) do
     if ready?(database_name) do
       send(caller, {:database_ready, database_name})
     else
       now = System.monotonic_time(:millisecond)
+
       if now >= deadline do
         send(caller, {:error, {:database_ready_timeout, database_name}})
       else
