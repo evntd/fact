@@ -30,7 +30,8 @@
 
 #### Coming soon...
 
-- User guides
+- More user guides
+- Write-Ahead Log (WAL) to make this crash-proof. It's only near crash-proof currently.
 - Backup task
 - Restore task
 - Data tampering verification task (for CAS)
@@ -64,7 +65,7 @@ The package can be installed by adding `fact` to your list of dependencies in `m
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.2.0"}
+    {:fact, "~> 0.2.1"}
   ]
 end
 ```
