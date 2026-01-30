@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Fact.Backup do
         ]
       )
 
-    path   = fetch_required!(parsed, :path)
+    path = fetch_required!(parsed, :path)
     output = fetch_required!(parsed, :output)
     include_indices = Keyword.get(parsed, :include_indices, false)
 
