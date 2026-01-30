@@ -26,14 +26,13 @@
 - Supports multiple instances for siloed isolation in multi-tenancy setups
 - Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage)
 - Configurable event schemas
+- Backup & Restore tasks
 - Supported on Elixir 1.13+ and OTP 25+
 
 #### Coming soon...
 
 - More user guides
 - Write-Ahead Log (WAL) to make this crash-proof. It's only near crash-proof currently.
-- Backup task
-- Restore task
 - Data tampering verification task (for CAS)
 - Custom Indexers
 
@@ -94,7 +93,7 @@ iex> event = %{
 iex> {:ok, pos} = Fact.append_stream(db, event, "turtle-1")
 
 # Read the event stream
-iex> Fact.read(db, {:stream, "turtle-1"}) |> Enum.to_list()
+iex> Fact.read(db, {:stream, "turtle-1"})
 [
   %{
     "event_data" => %{"name" => "Turts"},
@@ -106,6 +105,73 @@ iex> Fact.read(db, {:stream, "turtle-1"}) |> Enum.to_list()
     "store_timestamp" => 1765039106962264,
     "stream_id" => "turtle-1",
     "stream_position" => 1
+  }
+]
+```
+
+## Event Tags & Queries
+
+```elixir
+# Start a database instance
+iex> {:ok, db} = Fact.open("data/turtles")
+
+# Create an event
+iex> event = %{
+...>   type: "clutch_laid",
+...>   data: %{
+...>     eggs_laid: 107
+...>   },
+...>   tags: ["clutch:c1"]
+...> }
+
+# Append the tagged event
+iex> {:ok, pos} = Fact.append(db, event)
+
+# Create and append another tagged event
+iex> event = %{
+...>   type: "egg_hatched",
+...>   data: %{
+...>     egg_id: 42
+...>   },
+...>   tags: ["clutch:c1", "egg:42"]
+...> }
+iex> {:ok, pos} = Fact.append(db, event)
+
+# Query by the clutch tag that is defined on both appended events 
+iex> import Fact.QueryItem
+iex> Fact.read(db, {:query, tags("clutch:c1")})
+[
+  %{
+    "event_data" => %{"eggs_laid" => 107},
+    "event_id" => "0405bad46f1b407796c3e874c45664af",
+    "event_metadata" => %{},
+    "event_tags" => ["clutch:c1"],
+    "event_type" => "clutch_laid",
+    "store_position" => 2,
+    "store_timestamp" => 1769814807951055
+  },
+  %{
+    "event_data" => %{"egg_id" => 42},
+    "event_id" => "7c7e42353fa045c4a6a4320ecb4591b7",
+    "event_metadata" => %{},
+    "event_tags" => ["clutch:c1", "egg:42"],
+    "event_type" => "egg_hatched",
+    "store_position" => 3,
+    "store_timestamp" => 1769814855595808
+  }
+]
+
+# Query by the egg tag that was only on one of the events
+iex> Fact.read(db, {:query, tags("egg:42")})
+[
+  %{
+    "event_data" => %{"egg_id" => 42, "name" => "Turts"},
+    "event_id" => "7c7e42353fa045c4a6a4320ecb4591b7",
+    "event_metadata" => %{},
+    "event_tags" => ["clutch:c1", "egg:42"],
+    "event_type" => "egg_hatched",
+    "store_position" => 3,
+    "store_timestamp" => 1769814855595808
   }
 ]
 ```
