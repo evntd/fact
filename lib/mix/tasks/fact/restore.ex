@@ -79,4 +79,3 @@ defmodule Mix.Tasks.Fact.Restore do
     end
   end
 end
-
