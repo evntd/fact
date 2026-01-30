@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.2.0"
+  @version "0.2.1"
   @codename "Hatchling"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
@@ -70,6 +70,8 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/queries-and-indexes.md",
+        "guides/components/seam-architecture.md",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
         "guides/introduction/dedication.md": [title: "Dedication"]
@@ -82,6 +84,7 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/queries-and-indexes.md",
           "guides/components/seam-architecture.md"
         ]
       ],
@@ -177,6 +180,7 @@ defmodule Fact.MixProject do
           Fact.Seam.Adapter,
           Fact.Seam.Decoder,
           Fact.Seam.Decoder.Adapter,
+          Fact.Seam.Decoder.Binary.V1,
           Fact.Seam.Decoder.Delimited.V1,
           Fact.Seam.Decoder.Integer.V1,
           Fact.Seam.Decoder.Json.V1,
@@ -184,6 +188,7 @@ defmodule Fact.MixProject do
           Fact.Seam.Decoder.Registry,
           Fact.Seam.Encoder,
           Fact.Seam.Encoder.Adapter,
+          Fact.Seam.Encoder.Binary.V1,
           Fact.Seam.Encoder.Delimited.V1,
           Fact.Seam.Encoder.Integer.V1,
           Fact.Seam.Encoder.Json.V1,
@@ -229,7 +234,7 @@ defmodule Fact.MixProject do
       ],
       language: "en",
       logo: "guides/assets/images/turt-48.png",
-      main: Fact,
+      main: "getting-started",
       nest_modules_by_prefix: [
         Fact.BootstrapFile,
         Fact.Event,
