@@ -193,11 +193,16 @@ defmodule Fact.EventLedger do
 
   @doc false
   @impl true
-  def handle_call({:commit, events, commit_opts}, _from, state) do
-    with {:ok, end_pos} <- conditional_commit(events, Keyword.get(commit_opts, :condition), state) do
-      {:reply, {:ok, end_pos}, %{state | position: end_pos}}
+  def handle_call({:commit, events, commit_opts}, _from, %{position: pos} = state) do
+    if Enum.any?(events) do
+      with {:ok, end_pos} <-
+             conditional_commit(events, Keyword.get(commit_opts, :condition), state) do
+        {:reply, {:ok, end_pos}, %{state | position: end_pos}}
+      else
+        error -> {:reply, error, state}
+      end
     else
-      error -> {:reply, error, state}
+      {:reply, {:ok, pos}, state}
     end
   end
 
