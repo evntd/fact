@@ -76,6 +76,13 @@ defmodule FactTest do
     assert event.data.name == record["event_data"]["name"]
   end
 
+  test "append empty list of events is a no-op", %{db: db} do
+    [last_event] = Fact.read(db, :all, direction: :backward, position: :end, count: 1)
+    last_event_position = last_event["store_position"]
+    assert {:ok, ^last_event_position} = Fact.append(db, [])
+    all_events = Fact.read(db, :all)
+  end
+
   test "append some events and read them back a variety of different ways", %{db: db} do
     events = [
       %{
