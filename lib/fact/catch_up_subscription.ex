@@ -90,9 +90,21 @@ defmodule Fact.CatchUpSubscription do
 
       @impl true
       def handle_info(:replay, state) do
+        from_pos =
+          case state.position do
+            :start ->
+              0
+
+            :end ->
+              state.high_water_mark
+
+            pos when is_integer(pos) ->
+              min(state.position, state.high_water_mark)
+          end
+
         __MODULE__.replay(
           state,
-          min(state.position, state.high_water_mark),
+          from_pos,
           state.high_water_mark,
           fn record -> deliver(state.subscriber, record) end
         )
