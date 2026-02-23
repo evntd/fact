@@ -94,7 +94,7 @@ defmodule Fact.CatchUpSubscription do
           case state.position do
             :start ->
               0
-              
+
             :end ->
               state.high_water_mark
 
