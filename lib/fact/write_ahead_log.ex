@@ -4,7 +4,8 @@ defmodule Fact.WriteAheadLog do
   @sync_interval 200
   @segment_prefix "segment-"
 
-  alias __MODULE__.Entry
+  alias Fact.WriteAheadLog
+  alias Fact.WriteAheadLog.Entry
 
   # -----------------------------
   # Public API
@@ -14,39 +15,38 @@ defmodule Fact.WriteAheadLog do
     GenServer.start_link(__MODULE__, opts, name: opts[:name])
   end
 
-  def write_entry(pid, data),
-      do: GenServer.call(pid, {:write_entry, data, false})
+  def write_entry(database_id, data),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), {:write_entry, data, false})
 
-  def create_checkpoint(pid, data),
-      do: GenServer.call(pid, {:write_entry, data, true})
+  def create_checkpoint(database_id, data),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), {:write_entry, data, true})
 
-  def sync(pid),
-      do: GenServer.call(pid, :sync)
+  def sync(database_id),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), :sync)
 
-  def close(pid),
-      do: GenServer.call(pid, :close)
+  def close(database_id),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), :close)
 
-  def read_all(pid, from_checkpoint? \\ false),
-      do: GenServer.call(pid, {:read_all, from_checkpoint?})
+  def read_all(database_id, from_checkpoint? \\ false),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), {:read_all, from_checkpoint?})
 
-  def read_all_from_offset(pid, offset, from_checkpoint? \\ false),
-      do: GenServer.call(pid, {:read_all_from_offset, offset, from_checkpoint?})
+  def read_all_from_offset(database_id, offset, from_checkpoint? \\ false),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), {:read_all_from_offset, offset, from_checkpoint?})
 
-  def repair(pid),
-      do: GenServer.call(pid, :repair)
+  def repair(database_id),
+      do: GenServer.call(Fact.Registry.via(database_id, WriteAheadLog), :repair)
 
   # -----------------------------
   # State Fields
   # -----------------------------
-  defstruct directory: nil,
+  defstruct database_id: nil,
             file: nil,
-            buf: nil,
+            buffer: nil,
             last_seq: 0,
             segment_index: 0,
             max_file_size: nil,
             max_segments: nil,
-            should_fsync: false,
-            sync_ref: nil
+            should_fsync: false
 
   # -----------------------------
   # Init
@@ -57,26 +57,26 @@ defmodule Fact.WriteAheadLog do
 
   @impl true
   def init(opts) do
-    directory = opts[:directory]
+    database_id = Keyword.fetch!(opts, :database_id)
     enable_fsync = Keyword.get(opts, :enable_fsync, @default_enable_fsync)
     max_file_size = Keyword.get(opts, :max_file_size, @default_max_file_size)
     max_segments = Keyword.get(opts, :max_segments, @default_max_segments)
 
+    directory = Fact.Storage.write_ahead_log_path(database_id)
     File.mkdir_p!(directory)
 
     segment_index =
-      directory
-      |> segment_files()
+      segment_files(database_id)
       |> last_segment_index()
 
-    # `file` stores the path; `buf` is the IO device used for writing
-    file = segment_path(directory, segment_index)
-    {:ok, buf} = :file.open(file, [:append, :binary, :read, :write])
+    # `file` stores the path; `buffer` is the IO device used for writing
+    file = segment_path(database_id, segment_index)
+    {:ok, buffer} = :file.open(file, [:append, :binary, :read, :write])
 
     state = %__MODULE__{
-      directory: directory,
+      database_id: database_id,
       file: file,
-      buf: buf,
+      buffer: buffer,
       segment_index: segment_index,
       max_file_size: max_file_size,
       max_segments: max_segments,
@@ -123,19 +123,18 @@ defmodule Fact.WriteAheadLog do
 
   def handle_call(:close, _from, state) do
     {:ok, _} = sync_impl(state)
-    :file.close(state.buf)
+    :file.close(state.buffer)
     {:reply, :ok, state}
   end
 
   def handle_call({:read_all, from_checkpoint?}, _from, state) do
-    files = state.directory |> segment_files() |> Enum.sort()
+    files = segment_files(state.database_id) |> Enum.sort()
     {:reply, read_segments(files, from_checkpoint?), state}
   end
 
   def handle_call({:read_all_from_offset, offset, from_checkpoint?}, _from, state) do
     files =
-      state.directory
-      |> segment_files()
+      segment_files(state.database_id)
       |> Enum.filter(fn {idx, _} -> idx >= offset end)
       |> Enum.sort()
 
@@ -143,7 +142,7 @@ defmodule Fact.WriteAheadLog do
   end
 
   def handle_call(:repair, _from, state) do
-    files = segment_files(state.directory)
+    files = segment_files(state.database_id)
 
     case Enum.max_by(files, fn {idx, _} -> idx end, fn -> {0, nil} end) do
       {_, path} ->
@@ -168,9 +167,14 @@ defmodule Fact.WriteAheadLog do
   # Helpers
   # -----------------------------
 
-  defp segment_path(dir, idx), do: Path.join(dir, "#{@segment_prefix}#{idx}")
+  defp segment_path(database_id, idx) do
+    dir = Fact.Storage.write_ahead_log_path(database_id)
+    Path.join(dir, "#{@segment_prefix}#{idx}")
+  end
 
-  defp segment_files(dir) do
+  defp segment_files(database_id) do
+    dir = Fact.Storage.write_ahead_log_path(database_id)
+    
     Path.wildcard(Path.join(dir, "#{@segment_prefix}*"))
     |> Enum.map(fn file ->
       idx =
@@ -202,7 +206,7 @@ defmodule Fact.WriteAheadLog do
 
   defp rotate(state) do
     {:ok, state} = sync_impl(state)
-    :file.close(state.buf)
+    :file.close(state.buffer)
 
     next_index =
       if state.segment_index + 1 >= state.max_segments do
@@ -212,18 +216,17 @@ defmodule Fact.WriteAheadLog do
         state.segment_index + 1
       end
 
-    file = segment_path(state.directory, next_index)
+    file = segment_path(state.database_id, next_index)
 
     case :file.open(file, [:append, :binary, :read, :write]) do
-      {:ok, buf} -> {:ok, %{state | segment_index: next_index, file: file, buf: buf}}
+      {:ok, buffer} -> {:ok, %{state | segment_index: next_index, file: file, buffer: buffer}}
       {:error, _} = err -> err
     end
   end
 
   defp delete_oldest_segment(state) do
     [{_, path} | _] =
-      state.directory
-      |> segment_files()
+      segment_files(state.database_id)
       |> Enum.sort()
 
     File.rm(path)
@@ -233,13 +236,13 @@ defmodule Fact.WriteAheadLog do
     bin = Entry.serialize(entry)
     size = byte_size(bin)
 
-    :ok = :file.write(state.buf, <<size::little-32>>)
-    :ok = :file.write(state.buf, bin)
+    :ok = :file.write(state.buffer, <<size::little-32>>)
+    :ok = :file.write(state.buffer, bin)
     {:ok, state}
   end
 
   defp sync_impl(state) do
-    :file.sync(state.buf)
+    :file.sync(state.buffer)
     {:ok, state}
   end
 

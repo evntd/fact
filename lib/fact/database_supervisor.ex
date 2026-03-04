@@ -78,6 +78,8 @@ defmodule Fact.DatabaseSupervisor do
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
       {Fact.Database,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
+      {Fact.WriteAheadLog,
+       database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)},
       {Fact.EventLedger,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
       {Fact.EventStreamIndexer,

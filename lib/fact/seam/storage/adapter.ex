@@ -100,6 +100,18 @@ defmodule Fact.Seam.Storage.Adapter do
       def locks_path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :locks_path, [[{:__context__, context} | options]])
       end
+      
+      def write_ahead_log_path(database, options \\ [])
+      
+      def write_ahead_log_path(database_id, options) when is_binary(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          write_ahead_log_path(context, options)
+        end
+      end
+      
+      def write_ahead_log_path(%Context{@key => instance} = context, options) do
+        __seam_call__(instance, :write_ahead_log_path, [[{:__context__, context} | options]])
+      end
     end
   end
 end
