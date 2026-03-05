@@ -1,9 +1,6 @@
 defmodule Fact.WriteAheadLog do
   use GenServer
 
-  @sync_interval 200
-  @segment_prefix "segment-"
-
   alias Fact.WriteAheadLog
   alias Fact.WriteAheadLog.Entry
 
@@ -46,14 +43,16 @@ defmodule Fact.WriteAheadLog do
             segment_index: 0,
             max_file_size: nil,
             max_segments: nil,
-            should_fsync: false
+            should_fsync: false,
+            sync_interval: 0
 
   # -----------------------------
   # Init
   # -----------------------------
   @default_enable_fsync true
   @default_max_file_size 16 * 1024 * 1024
-  @default_max_segments 100
+  @default_max_segments 4
+  @default_sync_interval 200
 
   @impl true
   def init(opts) do
@@ -61,6 +60,7 @@ defmodule Fact.WriteAheadLog do
     enable_fsync = Keyword.get(opts, :enable_fsync, @default_enable_fsync)
     max_file_size = Keyword.get(opts, :max_file_size, @default_max_file_size)
     max_segments = Keyword.get(opts, :max_segments, @default_max_segments)
+    sync_interval = Keyword.get(opts, :sync_interval, @default_sync_interval)
 
     directory = Fact.Storage.write_ahead_log_path(database_id)
     File.mkdir_p!(directory)
@@ -80,12 +80,13 @@ defmodule Fact.WriteAheadLog do
       segment_index: segment_index,
       max_file_size: max_file_size,
       max_segments: max_segments,
-      should_fsync: enable_fsync
+      should_fsync: enable_fsync,
+      sync_interval: sync_interval
     }
 
     last_seq = get_last_sequence_no(state)
 
-    Process.send_after(self(), :sync_tick, @sync_interval)
+    Process.send_after(self(), :sync_tick, sync_interval)
 
     {:ok, %{state | last_seq: last_seq}}
   end
@@ -157,9 +158,9 @@ defmodule Fact.WriteAheadLog do
   # Periodic sync
   # -----------------------------
   @impl true
-  def handle_info(:sync_tick, state) do
+  def handle_info(:sync_tick, %{sync_interval: sync_interval} = state) do
     {:ok, state} = sync_impl(state)
-    Process.send_after(self(), :sync_tick, @sync_interval)
+    Process.send_after(self(), :sync_tick, sync_interval)
     {:noreply, state}
   end
 
@@ -169,21 +170,18 @@ defmodule Fact.WriteAheadLog do
 
   defp segment_path(database_id, idx) do
     dir = Fact.Storage.write_ahead_log_path(database_id)
-    Path.join(dir, "#{@segment_prefix}#{idx}")
+    Path.join(dir, "#{idx}")
   end
 
   defp segment_files(database_id) do
     dir = Fact.Storage.write_ahead_log_path(database_id)
-    
-    Path.wildcard(Path.join(dir, "#{@segment_prefix}*"))
-    |> Enum.map(fn file ->
-      idx =
-        file
-        |> Path.basename()
-        |> String.replace_prefix(@segment_prefix, "")
-        |> String.to_integer()
 
-      {idx, file}
+    Path.wildcard(Path.join(dir, "*"))
+    |> Enum.flat_map(fn file ->
+      case Integer.parse(Path.basename(file)) do
+        {idx, ""} -> [{idx, file}]
+        _ -> []
+      end
     end)
   end
 
@@ -208,13 +206,11 @@ defmodule Fact.WriteAheadLog do
     {:ok, state} = sync_impl(state)
     :file.close(state.buffer)
 
-    next_index =
-      if state.segment_index + 1 >= state.max_segments do
-        delete_oldest_segment(state)
-        0
-      else
-        state.segment_index + 1
-      end
+    next_index = state.segment_index + 1
+
+    if length(segment_files(state.database_id)) >= state.max_segments do
+      delete_oldest_segment(state)
+    end
 
     file = segment_path(state.database_id, next_index)
 
