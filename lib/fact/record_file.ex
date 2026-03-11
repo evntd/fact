@@ -88,16 +88,21 @@ defmodule Fact.RecordFile do
     Event records are opened in exclusive write mode, written using raw file descriptors, and explicitly
     synchronized to disk. After the write completes, the file is marked read-only to prevent further 
     modification.
+      
+    As of Fact v0.2.1, the `sync` is now configurable, to allow configurable of non-durable writes, it still
+    defaults to true, but may be set to false. When false, fsync will not be called, and this should increase
+    write throughput.
     """
+    @moduledoc since: "0.2.1"
     use Fact.Seam.FileWriter.Adapter,
       context: :record_file_writer,
+      default_options: %{sync: true},
       fixed_options: %{
         {:standard, 1} => %{
           access: :write,
           binary: true,
           exclusive: true,
           raw: true,
-          sync: true,
           worm: true
         }
       }
