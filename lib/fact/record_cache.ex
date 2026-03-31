@@ -116,6 +116,87 @@ defmodule Fact.RecordCache do
   end
 
   # -----------------------------
+  # Inspection & Management
+  # -----------------------------
+
+  @typedoc """
+  Cache size information returned by `size/1`.
+
+    * `:current` - Current cache usage in bytes.
+    * `:max` - Maximum configured cache size in bytes.
+    * `:percentage` - Current usage as a percentage of max capacity (`0.0` to `100.0`).
+  """
+  @typedoc since: "0.3.0"
+  @type size_info :: %{
+          current: non_neg_integer(),
+          max: pos_integer(),
+          percentage: float()
+        }
+
+  @doc """
+  Returns the current cache size, maximum capacity, and usage percentage.
+
+  Returns `{:error, :not_enabled}` when the cache is not active for the given database.
+  """
+  @doc since: "0.3.0"
+  @spec size(Fact.database_id()) :: {:ok, size_info()} | {:error, :not_enabled}
+  def size(database_id) do
+    with_cache(database_id, fn -> GenServer.call(via(database_id), :size) end)
+  end
+
+  @doc """
+  Returns the number of records currently in the cache.
+
+  Performs a direct ETS read without going through the GenServer.
+
+  Returns `{:error, :not_enabled}` when the cache is not active for the given database.
+  """
+  @doc since: "0.3.0"
+  @spec count(Fact.database_id()) :: {:ok, non_neg_integer()} | {:error, :not_enabled}
+  def count(database_id) do
+    table = data_table_name(database_id)
+
+    case :ets.whereis(table) do
+      :undefined -> {:error, :not_enabled}
+      _ref -> {:ok, :ets.info(table, :size)}
+    end
+  end
+
+  @doc """
+  Removes all entries from the cache.
+
+  Returns `{:error, :not_enabled}` when the cache is not active for the given database.
+  """
+  @doc since: "0.3.0"
+  @spec clear(Fact.database_id()) :: :ok | {:error, :not_enabled}
+  def clear(database_id) do
+    with_cache(database_id, fn -> GenServer.call(via(database_id), :clear) end)
+  end
+
+  @doc """
+  Returns the top `n` most frequently accessed cached records.
+
+  Each entry is a `{record_id, frequency}` tuple, sorted by frequency in descending order.
+
+  Returns `{:error, :not_enabled}` when the cache is not active for the given database.
+  """
+  @doc since: "0.3.0"
+  @spec top(Fact.database_id(), pos_integer()) ::
+          {:ok, [{Fact.record_id(), non_neg_integer()}]} | {:error, :not_enabled}
+  def top(database_id, n) when is_integer(n) and n > 0 do
+    with_cache(database_id, fn -> GenServer.call(via(database_id), {:top, n}) end)
+  end
+
+  defp via(database_id), do: Fact.Registry.via(database_id, __MODULE__)
+
+  defp with_cache(database_id, fun) do
+    case :ets.whereis(data_table_name(database_id)) do
+      :undefined -> {:error, :not_enabled}
+      _ref -> fun.()
+    end
+  end
+
+  # -----------------------------
   # GenServer Callbacks
   # -----------------------------
 
@@ -189,6 +270,28 @@ defmodule Fact.RecordCache do
     end
   end
 
+  @impl true
+  def handle_call(:size, _from, state) do
+    percentage =
+      if state.max_size > 0,
+        do: Float.round(state.current_size / state.max_size * 100, 2),
+        else: 0.0
+
+    info = %{current: state.current_size, max: state.max_size, percentage: percentage}
+    {:reply, {:ok, info}, state}
+  end
+
+  def handle_call(:clear, _from, state) do
+    :ets.delete_all_objects(state.data_table)
+    :ets.delete_all_objects(state.freq_table)
+    {:reply, :ok, %{state | current_size: 0}}
+  end
+
+  def handle_call({:top, n}, _from, state) do
+    entries = collect_top(state.freq_table, :ets.last(state.freq_table), n, [])
+    {:reply, {:ok, entries}, state}
+  end
+
   # -----------------------------
   # Frequency Decay
   # -----------------------------
@@ -247,6 +350,13 @@ defmodule Fact.RecordCache do
   # -----------------------------
   # Helpers
   # -----------------------------
+
+  defp collect_top(_table, :"$end_of_table", _remaining, acc), do: acc
+  defp collect_top(_table, _key, 0, acc), do: acc
+
+  defp collect_top(table, {freq, record_id} = key, remaining, acc) do
+    collect_top(table, :ets.prev(table, key), remaining - 1, acc ++ [{record_id, freq}])
+  end
 
   defp data_table_name(database_id) do
     :"fact_record_cache_data_#{database_id}"

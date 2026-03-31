@@ -17,11 +17,11 @@ At a high level:
 Every time an event record is read through `Fact.RecordFile.read/2`, the system performs two
 operations:
 
-1. **Disk I/O** &mdash; reading the event record file from the filesystem
-2. **Deserialization** &mdash; decoding the JSON binary into an Elixir map
+1. **Disk I/O** — reading the event record file from the filesystem
+2. **Deserialization** — decoding the JSON binary into an Elixir map
 
-For workloads that repeatedly access the same events &mdash; such as queries over consistency
-boundaries, stream head lookups, or subscription replays &mdash; these operations are redundant.
+For workloads that repeatedly access the same events — such as queries over consistency
+boundaries, stream head lookups, or subscription replays — these operations are redundant.
 The record on disk has not changed and never will.
 
 The Record Cache sits inside `RecordFile.read/2` and intercepts reads before they reach the
@@ -37,11 +37,11 @@ needs to be inserted, the records with the lowest access frequency are evicted f
 
 LFU is well-suited for event stores because:
 
-- **Hot records stay cached** &mdash; genesis events, stream heads, and frequently queried events
+- **Hot records stay cached** — genesis events, stream heads, and frequently queried events
   naturally accumulate high access counts and are retained
-- **Immutability eliminates staleness** &mdash; unlike mutable data where LFU can pin stale entries,
+- **Immutability eliminates staleness** — unlike mutable data where LFU can pin stale entries,
   event records never change, so a high frequency count always reflects genuine value
-- **Read patterns are non-uniform** &mdash; a small subset of events typically accounts for the
+- **Read patterns are non-uniform** — a small subset of events typically accounts for the
   majority of reads, and LFU directly optimizes for this distribution
 
 ## Frequency Decay
@@ -55,11 +55,11 @@ The Record Cache solves this with periodic **frequency decay**. At a configurabl
 (default: 10 minutes), the GenServer sweeps all cached entries and halves their frequency counters.
 This has two effects:
 
-1. **Stale entries lose their advantage** &mdash; a record that was read 10,000 times last week but
-   is no longer accessed will see its frequency halved on each sweep: 10,000 &rarr; 5,000 &rarr;
-   2,500 &rarr; 1,250, and so on. Within a few decay cycles, actively read records overtake it.
+1. **Stale entries lose their advantage** — a record that was read 10,000 times last week but
+   is no longer accessed will see its frequency halved on each sweep: 10,000 → 5,000 →
+   2,500 → 1,250, and so on. Within a few decay cycles, actively read records overtake it.
 
-2. **Cold entries are evicted** &mdash; when an entry's frequency decays to zero (i.e., it had a
+2. **Cold entries are evicted** — when an entry's frequency decays to zero (i.e., it had a
    frequency of 1 and was halved), it is removed from the cache entirely. This provides a natural
    cleanup mechanism for records that are no longer relevant.
 
@@ -157,21 +157,74 @@ proxy for in-memory size but not an exact match. Actual BEAM memory usage may be
 
 As a starting point:
 
-- **Small workloads** (thousands of events) &mdash; `64 * 1024 * 1024` (64 MiB) may cache the
+- **Small workloads** (thousands of events) — `64 * 1024 * 1024` (64 MiB) may cache the
   entire dataset
-- **Medium workloads** (hundreds of thousands of events) &mdash; `256 * 1024 * 1024` (256 MiB)
+- **Medium workloads** (hundreds of thousands of events) — `256 * 1024 * 1024` (256 MiB)
   keeps the hot set in memory
-- **Large workloads** (millions of events) &mdash; `512 * 1024 * 1024` (512 MiB) or more,
+- **Large workloads** (millions of events) — `512 * 1024 * 1024` (512 MiB) or more,
   depending on available system memory
 
 The optimal size depends on your read patterns. If a small number of events account for the
 majority of reads (common in event-sourced systems), even a modest cache can yield significant
 improvements.
 
+## Inspection and Management
+
+The cache exposes several functions for examining its state and managing its contents at runtime.
+All functions return `{:error, :not_enabled}` when the cache is not active for the given database.
+
+### Checking Cache Usage
+
+`Fact.RecordCache.size/1` returns the current byte usage, maximum capacity, and a percentage:
+
+```elixir
+iex> Fact.RecordCache.size(db)
+{:ok, %{current: 4_812_288, max: 536_870_912, percentage: 0.9}}
+```
+
+`Fact.RecordCache.count/1` returns the number of cached records. This is a direct ETS read and
+does not go through the GenServer:
+
+```elixir
+iex> Fact.RecordCache.count(db)
+{:ok, 1042}
+```
+
+### Finding Hot Records
+
+`Fact.RecordCache.top/2` returns the most frequently accessed records, sorted by frequency in
+descending order. Each entry is a `{record_id, frequency}` tuple:
+
+```elixir
+iex> Fact.RecordCache.top(db, 5)
+{:ok, [
+  {"ABCD1234", 8472},
+  {"EFGH5678", 6231},
+  {"IJKL9012", 4819},
+  {"MNOP3456", 3102},
+  {"QRST7890", 2847}
+]}
+```
+
+This is useful for understanding which events are driving the most read traffic and whether the
+cache is retaining the right data.
+
+### Clearing the Cache
+
+`Fact.RecordCache.clear/1` removes all entries from the cache and resets the size tracking to zero:
+
+```elixir
+iex> Fact.RecordCache.clear(db)
+:ok
+```
+
+The cache will begin warming again immediately as subsequent reads populate it. This can be useful
+after a bulk data migration or when you want to observe cache behavior from a cold start.
+
 ## Behavior on Restart
 
 If the `Fact.RecordCache` process crashes, its ETS tables are destroyed (they are owned by the
-process). The supervisor restarts the process with an empty cache. This is by design &mdash;
+process). The supervisor restarts the process with an empty cache. This is by design —
 correctness is never affected, only performance temporarily degrades while the cache warms back up.
 
 ## Supervision
