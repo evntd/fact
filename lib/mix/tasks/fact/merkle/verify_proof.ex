@@ -39,7 +39,8 @@ defmodule Mix.Tasks.Fact.Merkle.VerifyProof do
     proof = %{
       leaf_index: Map.fetch!(json, "leaf_index"),
       leaf_hash: decode_hex!(json, "leaf_hash"),
-      sibling_hashes: Enum.map(Map.fetch!(json, "sibling_hashes"), &Base.decode16!(&1, case: :mixed)),
+      sibling_hashes:
+        Enum.map(Map.fetch!(json, "sibling_hashes"), &Base.decode16!(&1, case: :mixed)),
       peaks: Enum.map(Map.fetch!(json, "peaks"), &Base.decode16!(&1, case: :mixed))
     }
 

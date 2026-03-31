@@ -137,7 +137,8 @@ defmodule Fact.MerkleMountainRange do
   to its peak. An auditor can verify the proof without access to the full database.
   """
   @doc since: "0.3.0"
-  @spec create_proof(Fact.database_id(), non_neg_integer()) :: {:ok, inclusion_proof()} | {:error, term()}
+  @spec create_proof(Fact.database_id(), non_neg_integer()) ::
+          {:ok, inclusion_proof()} | {:error, term()}
   def create_proof(database_id, position) when is_integer(position) and position > 0 do
     with_mmr(database_id, fn -> GenServer.call(via(database_id), {:create_proof, position}) end)
   end
@@ -416,11 +417,12 @@ defmodule Fact.MerkleMountainRange do
     mmr_pos = state.mmr_size
     write_node(state.fd, mmr_pos, leaf_hash, state.hash_size)
 
-    state = %{state |
-      mmr_size: mmr_pos + 1,
-      leaf_count: leaf_index + 1,
-      prev_leaf_hash: leaf_hash,
-      checkpoint: position
+    state = %{
+      state
+      | mmr_size: mmr_pos + 1,
+        leaf_count: leaf_index + 1,
+        prev_leaf_hash: leaf_hash,
+        checkpoint: position
     }
 
     # The number of merges after appending leaf at index i is count_trailing_ones(i).
@@ -613,6 +615,7 @@ defmodule Fact.MerkleMountainRange do
         # Left child — right sibling is at pos + subtree_size
         right_sibling = pos + subtree_size
         parent_pos = right_sibling + 1
+
         do_sibling_path(parent_pos, leaf_index, leaf_count, height + 1, [right_sibling | siblings])
     end
   end
@@ -698,5 +701,4 @@ defmodule Fact.MerkleMountainRange do
   defp hash_byte_size(algorithm) do
     byte_size(:crypto.hash(algorithm, <<>>))
   end
-
 end
