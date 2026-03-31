@@ -323,7 +323,7 @@ defmodule Fact.EventLedger do
     recovered_position =
       WriteAheadLog.read_all(database_id, true)
       |> Enum.reduce(last_position, fn entry, max_pos ->
-        {end_pos, events} = :erlang.binary_to_term(entry.data, [:safe])
+        {end_pos, events} = :erlang.binary_to_term(entry.data)
 
         if end_pos > last_position do
           {:ok, _} = recover_commit(context, events)
