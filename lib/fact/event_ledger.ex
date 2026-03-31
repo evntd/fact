@@ -264,7 +264,11 @@ defmodule Fact.EventLedger do
 
   defp do_commit(events, %{database_id: database_id} = state) do
     with {enriched_events, end_pos} <- enrich_events(events, state),
-         :ok <- WriteAheadLog.write_entry(database_id, :erlang.term_to_binary({end_pos, enriched_events})),
+         :ok <-
+           WriteAheadLog.write_entry(
+             database_id,
+             :erlang.term_to_binary({end_pos, enriched_events})
+           ),
          {:ok, committed} <- commit_events(enriched_events, state) do
       Fact.EventPublisher.publish_appended(database_id, committed)
 

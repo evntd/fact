@@ -16,9 +16,11 @@ defmodule Fact.Bootstrapper do
 
   require Logger
 
+  @typedoc since: "0.3.0"
   @type option ::
           {:path, Path.t()}
           | {:caller, pid()}
+          | {:wal, [Fact.WriteAheadLog.wal_option()]}
 
   @type options :: list(option)
 
@@ -49,7 +51,8 @@ defmodule Fact.Bootstrapper do
     with {:ok, path} <- Keyword.fetch(opts, :path) do
       arg = %{
         path: path,
-        caller: Keyword.get(opts, :caller)
+        caller: Keyword.get(opts, :caller),
+        wal: Keyword.get(opts, :wal, [])
       }
 
       GenServer.start_link(__MODULE__, arg, opts)
@@ -67,7 +70,7 @@ defmodule Fact.Bootstrapper do
 
   @impl true
   @doc false
-  def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
+  def handle_continue(:bootstrap, %{path: path, caller: caller, wal: wal} = state) do
     with {:ok, context} <- load_context(path) do
       case Fact.Registry.get_context(context.database_id) do
         {:ok, _} ->
@@ -75,7 +78,7 @@ defmodule Fact.Bootstrapper do
           {:stop, :normal, state}
 
         {:error, _} ->
-          case start_database(context) do
+          case start_database(context, wal) do
             {:ok, _pid} ->
               maybe_send(caller, {:database_started, context.database_id})
               {:stop, :normal, state}
@@ -95,10 +98,13 @@ defmodule Fact.Bootstrapper do
     end
   end
 
-  defp start_database(context) do
+  defp start_database(context, wal) do
     case Fact.Lock.status(context) do
       {:ok, :unlocked} ->
-        Supervisor.start_child(Fact.Supervisor, {Fact.DatabaseSupervisor, [context: context]})
+        Supervisor.start_child(
+          Fact.Supervisor,
+          {Fact.DatabaseSupervisor, [context: context, wal: wal]}
+        )
 
       {:ok, lock_info} ->
         {:error, {:locked, lock_info}}

@@ -19,28 +19,33 @@ defmodule Fact.DatabaseSupervisor do
 
   @typedoc """
   Options used when starting a `Fact.DatabaseSupervisor`.
-    
-  Current requires a `:context`, which provides the database identity and configuration needed to scope
-  and register all supervised processes.
+
+  * `:context` - (required) The `Fact.Context` providing database identity and configuration needed to scope
+    and register all supervised processes.
+  * `:wal` - (optional) A keyword list of write-ahead log options forwarded to `Fact.WriteAheadLog`.
   """
-  @typedoc since: "0.1.0"
-  @type option :: {:context, Fact.Context.t()}
+  @typedoc since: "0.3.0"
+  @type option ::
+          {:context, Fact.Context.t()}
+          | {:wal, [Fact.WriteAheadLog.wal_option()]}
 
   @doc """
   Returns a specification to start this module under a supervisor.
 
   The child spec is keyed by `t:Fact.database_id/0`, allowing multiple database instances to be supervised concurrently.
-    
-  Requires the `:context` option to be specified.
+
+  Requires the `:context` option to be specified. Optionally accepts `:wal` options that are
+  forwarded to `Fact.WriteAheadLog`.
   """
-  @doc since: "0.1.0"
+  @doc since: "0.3.0"
   @spec child_spec([option]) :: Supervisor.child_spec()
   def child_spec(opts) do
     context = Keyword.fetch!(opts, :context)
+    wal = Keyword.get(opts, :wal, [])
 
     %{
       id: {__MODULE__, context.database_id},
-      start: {__MODULE__, :start_link, [[context: context]]},
+      start: {__MODULE__, :start_link, [[context: context, wal: wal]]},
       type: :supervisor
     }
   end
@@ -51,25 +56,30 @@ defmodule Fact.DatabaseSupervisor do
   This supervisor defines the runtime boundary for a single Fact database instance.
   It is registered under a database-scoped name via `Fact.Registry`, ensuring full isolation between
   multiple database instances running in the same VM.
-    
+
   At startup, this supervisor initializes all database-scope infrastructure, including registries, PubSub,
   core write coordination processes, and event indexers.
-    
+
   This function is typically invoked by `Fact.Supervisor` as part of database initialization and is not
   intended to be called directly by application code.
   """
-  @doc since: "0.1.0"
+  @doc since: "0.3.0"
   @spec start_link([option()]) :: Supervisor.on_start()
-  def start_link(context: context) do
+  def start_link(opts) do
+    context = Keyword.fetch!(opts, :context)
+    wal = Keyword.get(opts, :wal, [])
     %Fact.Context{database_id: database_id} = context
 
-    Supervisor.start_link(__MODULE__, context, name: Fact.Registry.supervisor(database_id))
+    Supervisor.start_link(__MODULE__, {context, wal}, name: Fact.Registry.supervisor(database_id))
   end
 
   @doc false
   @impl true
-  def init(%Fact.Context{database_id: database_id} = context) do
+  def init({%Fact.Context{database_id: database_id} = context, wal}) do
     Fact.Registry.register(context)
+
+    wal_opts =
+      [database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)] ++ wal
 
     children = [
       {Registry, keys: :unique, name: Fact.Registry.registry(database_id)},
@@ -78,8 +88,7 @@ defmodule Fact.DatabaseSupervisor do
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
       {Fact.Database,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
-      {Fact.WriteAheadLog,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)},
+      {Fact.WriteAheadLog, wal_opts},
       {Fact.EventLedger,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
       {Fact.EventStreamIndexer,

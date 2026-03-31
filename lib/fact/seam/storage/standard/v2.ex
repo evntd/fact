@@ -160,7 +160,7 @@ defmodule Fact.Seam.Storage.Standard.V2 do
   @spec locks_path(t(), keyword()) :: Path.t()
   @impl true
   def locks_path(%__MODULE__{path: path}, _opts), do: path
-  
+
   @doc """
   Gets the path to the directory containing the write ahead log segment files.
   """

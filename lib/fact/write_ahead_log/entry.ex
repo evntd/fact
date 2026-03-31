@@ -11,11 +11,11 @@ defmodule Fact.WriteAheadLog.Entry do
   ]
 
   @type t :: %__MODULE__{
-               lsn: non_neg_integer(),
-               data: binary(),
-               crc: non_neg_integer(),
-               is_checkpoint: boolean()
-             }
+          lsn: non_neg_integer(),
+          data: binary(),
+          crc: non_neg_integer(),
+          is_checkpoint: boolean()
+        }
 
   @doc """
   Creates a new WAL entry and computes the CRC (IEEE).
