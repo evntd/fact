@@ -62,4 +62,10 @@ defmodule Fact.Seam.Storage do
   """
   @doc since: "0.1.0"
   @callback locks_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+
+  @doc """
+  A callback function that gets the path to the directory containing the Merkle Mountain Range.
+  """
+  @doc since: "0.3.0"
+  @callback merkle_mountain_range_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
 end

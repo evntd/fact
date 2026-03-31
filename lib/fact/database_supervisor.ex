@@ -19,12 +19,15 @@ defmodule Fact.DatabaseSupervisor do
 
   @typedoc """
   Options used when starting a `Fact.DatabaseSupervisor`.
-    
-  Current requires a `:context`, which provides the database identity and configuration needed to scope
-  and register all supervised processes.
+
+  * `:context` - (required) The `Fact.Context` providing database identity and configuration.
+  * `:opts` - (optional) Runtime options for database subsystems. Supports:
+    * `:merkle` - Merkle Mountain Range options. See `t:Fact.MerkleMountainRange.merkle_option/0`.
   """
-  @typedoc since: "0.1.0"
-  @type option :: {:context, Fact.Context.t()}
+  @typedoc since: "0.3.0"
+  @type option ::
+          {:context, Fact.Context.t()}
+          | {:opts, keyword()}
 
   @doc """
   Returns a specification to start this module under a supervisor.
@@ -33,14 +36,15 @@ defmodule Fact.DatabaseSupervisor do
     
   Requires the `:context` option to be specified.
   """
-  @doc since: "0.1.0"
+  @doc since: "0.3.0"
   @spec child_spec([option]) :: Supervisor.child_spec()
-  def child_spec(opts) do
-    context = Keyword.fetch!(opts, :context)
+  def child_spec(init_opts) do
+    context = Keyword.fetch!(init_opts, :context)
+    opts = Keyword.get(init_opts, :opts, [])
 
     %{
       id: {__MODULE__, context.database_id},
-      start: {__MODULE__, :start_link, [[context: context]]},
+      start: {__MODULE__, :start_link, [[context: context, opts: opts]]},
       type: :supervisor
     }
   end
@@ -58,17 +62,21 @@ defmodule Fact.DatabaseSupervisor do
   This function is typically invoked by `Fact.Supervisor` as part of database initialization and is not
   intended to be called directly by application code.
   """
-  @doc since: "0.1.0"
+  @doc since: "0.3.0"
   @spec start_link([option()]) :: Supervisor.on_start()
-  def start_link(context: context) do
+  def start_link(opts) do
+    context = Keyword.fetch!(opts, :context)
+    runtime_opts = Keyword.get(opts, :opts, [])
     %Fact.Context{database_id: database_id} = context
 
-    Supervisor.start_link(__MODULE__, context, name: Fact.Registry.supervisor(database_id))
+    Supervisor.start_link(__MODULE__, {context, runtime_opts},
+      name: Fact.Registry.supervisor(database_id)
+    )
   end
 
   @doc false
   @impl true
-  def init(%Fact.Context{database_id: database_id} = context) do
+  def init({%Fact.Context{database_id: database_id} = context, opts}) do
     Fact.Registry.register(context)
 
     children = [
@@ -99,6 +107,36 @@ defmodule Fact.DatabaseSupervisor do
        name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    merkle_children = merkle_children(context, database_id, opts)
+
+    Supervisor.init(children ++ merkle_children, strategy: :one_for_one)
+  end
+
+  defp merkle_children(context, database_id, opts) do
+    merkle_opts = merkle_opts(opts)
+
+    if merkle_opts != nil and cas_mode?(context) do
+      child_opts =
+        [
+          database_id: database_id,
+          name: Fact.Registry.via(database_id, Fact.MerkleMountainRange)
+        ] ++ merkle_opts
+
+      [{Fact.MerkleMountainRange, child_opts}]
+    else
+      []
+    end
+  end
+
+  defp merkle_opts(opts) do
+    cond do
+      :merkle in opts -> []
+      Keyword.has_key?(opts, :merkle) -> Keyword.get(opts, :merkle)
+      true -> nil
+    end
+  end
+
+  defp cas_mode?(%Fact.Context{record_file_name: %{module: mod}}) do
+    mod.family() == :hash
   end
 end

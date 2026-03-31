@@ -53,15 +53,18 @@ defmodule Fact.Supervisor do
 
   If no message is received within 3 seconds, the call fails with `{:error, :database_failure}`
   """
-  @doc since: "0.1.0"
-  @spec start_database(Path.t()) ::
+  @doc since: "0.3.0"
+  @spec start_database(Path.t(), keyword()) ::
           {:ok, Fact.database_id()}
           | {:error, :database_locked, Fact.Lock.metadata_record()}
           | {:error, :database_failure}
           | {:error, term()}
-  def start_database(path) when is_binary(path) do
+  def start_database(path, opts \\ []) when is_binary(path) do
     with {:ok, _pid} <-
-           Supervisor.start_child(__MODULE__, {Fact.Bootstrapper, [path: path, caller: self()]}) do
+           Supervisor.start_child(
+             __MODULE__,
+             {Fact.Bootstrapper, [path: path, caller: self(), opts: opts]}
+           ) do
       receive do
         {:database_started, database_id} ->
           {:ok, database_id}

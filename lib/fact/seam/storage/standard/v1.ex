@@ -94,4 +94,12 @@ defmodule Fact.Seam.Storage.Standard.V1 do
   @spec locks_path(t(), keyword()) :: Path.t()
   @impl true
   def locks_path(%__MODULE__{path: path}, _opts), do: path
+
+  @doc """
+  Gets the path to the Merkle Mountain Range directory.
+  """
+  @doc since: "0.3.0"
+  @spec merkle_mountain_range_path(t(), keyword()) :: Path.t()
+  @impl true
+  def merkle_mountain_range_path(%__MODULE__{path: path}, _opts), do: Path.join(path, "merkle")
 end
