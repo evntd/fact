@@ -245,11 +245,13 @@ defmodule Fact.MerkleMountainRange do
 
     {checkpoint, leaf_count} = read_checkpoint(checkpoint_file)
 
+    zero_hash = :binary.copy(<<0>>, hash_size)
+
     {mmr_size, leaf_count, prev_leaf_hash} =
       if checkpoint == 0 and leaf_count == 0 do
         # No checkpoint means no confirmed state — truncate any partial MMR data
         :file.truncate(fd)
-        {0, 0, <<0::size(hash_size * 8)>>}
+        {0, 0, zero_hash}
       else
         mmr_size = mmr_size_for_leaf_count(leaf_count)
         prev_leaf_hash = read_prev_leaf_hash(fd, leaf_count, hash_size, hash_algorithm)
@@ -453,7 +455,7 @@ defmodule Fact.MerkleMountainRange do
 
   defp do_verify(state) do
     {:ok, context} = Fact.Registry.get_context(state.database_id)
-    prev_leaf_hash = <<0::size(state.hash_size * 8)>>
+    prev_leaf_hash = :binary.copy(<<0>>, state.hash_size)
 
     tampered =
       Fact.LedgerFile.read(state.database_id)
@@ -650,7 +652,7 @@ defmodule Fact.MerkleMountainRange do
   end
 
   defp read_prev_leaf_hash(_fd, 0, hash_size, _algorithm) do
-    <<0::size(hash_size * 8)>>
+    :binary.copy(<<0>>, hash_size)
   end
 
   defp read_prev_leaf_hash(fd, leaf_count, hash_size, _algorithm) do
