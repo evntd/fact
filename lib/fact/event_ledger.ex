@@ -14,6 +14,7 @@ defmodule Fact.EventLedger do
   use GenServer
 
   alias Fact.Event
+  alias Fact.WriteAheadLog
 
   require Logger
 
@@ -181,9 +182,12 @@ defmodule Fact.EventLedger do
       type: schema.event_type
     }
 
+    position = Fact.Database.last_position(database_id)
+    recovered_position = recover_from_wal(database_id, position)
+
     state = %__MODULE__{
       database_id: database_id,
-      position: Fact.Database.last_position(database_id),
+      position: max(position, recovered_position),
       schema: schema,
       replacements: replacements
     }
@@ -260,6 +264,11 @@ defmodule Fact.EventLedger do
 
   defp do_commit(events, %{database_id: database_id} = state) do
     with {enriched_events, end_pos} <- enrich_events(events, state),
+         :ok <-
+           WriteAheadLog.write_entry(
+             database_id,
+             :erlang.term_to_binary({end_pos, enriched_events})
+           ),
          {:ok, committed} <- commit_events(enriched_events, state) do
       Fact.EventPublisher.publish_appended(database_id, committed)
 
@@ -299,6 +308,63 @@ defmodule Fact.EventLedger do
   defp commit_events(events, %{database_id: database_id} = _state) do
     with {:ok, written_records} <- Fact.RecordFile.write(database_id, events) do
       Fact.LedgerFile.write(database_id, written_records)
+    end
+  end
+
+  # ---------------------
+  # WAL Recovery
+  # ---------------------
+
+  defp recover_from_wal(database_id, last_position) do
+    WriteAheadLog.repair(database_id)
+
+    {:ok, context} = Fact.Registry.get_context(database_id)
+
+    recovered_position =
+      WriteAheadLog.read_all(database_id, true)
+      |> Enum.reduce(last_position, fn entry, max_pos ->
+        {end_pos, events} = :erlang.binary_to_term(entry.data)
+
+        if end_pos > last_position do
+          {:ok, _} = recover_commit(context, events)
+          max(max_pos, end_pos)
+        else
+          max_pos
+        end
+      end)
+
+    :ok = WriteAheadLog.create_checkpoint(database_id, <<recovered_position::64>>)
+
+    recovered_position
+  end
+
+  defp recover_commit(context, events) do
+    with {:ok, record_ids} <- recover_write_records(context, events) do
+      Fact.LedgerFile.write(context, record_ids)
+    end
+  end
+
+  defp recover_write_records(context, events) do
+    results =
+      Enum.map(events, fn event ->
+        case Fact.RecordFile.write(context, event) do
+          {:ok, record_id} ->
+            {:ok, record_id}
+
+          {:error, :eexist} ->
+            with {:ok, encoded} <- Fact.RecordFile.Encoder.encode(context, event),
+                 {:ok, record_id} <- Fact.RecordFile.Name.get(context, {event, encoded}) do
+              {:ok, record_id}
+            end
+
+          error ->
+            error
+        end
+      end)
+
+    case Enum.find(results, &match?({:error, _}, &1)) do
+      nil -> {:ok, Enum.map(results, fn {:ok, id} -> id end)}
+      error -> error
     end
   end
 
