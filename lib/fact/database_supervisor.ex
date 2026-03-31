@@ -19,12 +19,15 @@ defmodule Fact.DatabaseSupervisor do
 
   @typedoc """
   Options used when starting a `Fact.DatabaseSupervisor`.
-    
-  Current requires a `:context`, which provides the database identity and configuration needed to scope
-  and register all supervised processes.
+
+  * `:context` - (required) The `Fact.Context` providing database identity and configuration.
+  * `:opts` - (optional) Runtime options for database subsystems. Supports:
+    * `:cache` - Record cache options. See `t:Fact.RecordCache.cache_option/0`.
   """
-  @typedoc since: "0.1.0"
-  @type option :: {:context, Fact.Context.t()}
+  @typedoc since: "0.3.0"
+  @type option ::
+          {:context, Fact.Context.t()}
+          | {:opts, keyword()}
 
   @doc """
   Returns a specification to start this module under a supervisor.
@@ -33,14 +36,15 @@ defmodule Fact.DatabaseSupervisor do
     
   Requires the `:context` option to be specified.
   """
-  @doc since: "0.1.0"
+  @doc since: "0.3.0"
   @spec child_spec([option]) :: Supervisor.child_spec()
-  def child_spec(opts) do
-    context = Keyword.fetch!(opts, :context)
+  def child_spec(init_opts) do
+    context = Keyword.fetch!(init_opts, :context)
+    opts = Keyword.get(init_opts, :opts, [])
 
     %{
       id: {__MODULE__, context.database_id},
-      start: {__MODULE__, :start_link, [[context: context]]},
+      start: {__MODULE__, :start_link, [[context: context, opts: opts]]},
       type: :supervisor
     }
   end
@@ -58,18 +62,24 @@ defmodule Fact.DatabaseSupervisor do
   This function is typically invoked by `Fact.Supervisor` as part of database initialization and is not
   intended to be called directly by application code.
   """
-  @doc since: "0.1.0"
+  @doc since: "0.3.0"
   @spec start_link([option()]) :: Supervisor.on_start()
-  def start_link(context: context) do
+  def start_link(opts) do
+    context = Keyword.fetch!(opts, :context)
+    runtime_opts = Keyword.get(opts, :opts, [])
     %Fact.Context{database_id: database_id} = context
 
-    Supervisor.start_link(__MODULE__, context, name: Fact.Registry.supervisor(database_id))
+    Supervisor.start_link(__MODULE__, {context, runtime_opts},
+      name: Fact.Registry.supervisor(database_id)
+    )
   end
 
   @doc false
   @impl true
-  def init(%Fact.Context{database_id: database_id} = context) do
+  def init({%Fact.Context{database_id: database_id} = context, opts}) do
     Fact.Registry.register(context)
+
+    cache_opts = Keyword.get(opts, :cache, [])
 
     children = [
       {Registry, keys: :unique, name: Fact.Registry.registry(database_id)},
@@ -99,6 +109,22 @@ defmodule Fact.DatabaseSupervisor do
        name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    cache_children =
+      case Keyword.get(cache_opts, :max_size) do
+        max_size when is_integer(max_size) and max_size > 0 ->
+          cache_child_opts =
+            [
+              database_id: database_id,
+              max_size: max_size,
+              name: Fact.Registry.via(database_id, Fact.RecordCache)
+            ] ++ Keyword.take(cache_opts, [:decay_interval])
+
+          [{Fact.RecordCache, cache_child_opts}]
+
+        _ ->
+          []
+      end
+
+    Supervisor.init(children ++ cache_children, strategy: :one_for_one)
   end
 end

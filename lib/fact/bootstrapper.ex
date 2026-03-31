@@ -19,6 +19,7 @@ defmodule Fact.Bootstrapper do
   @type option ::
           {:path, Path.t()}
           | {:caller, pid()}
+          | {:opts, keyword()}
 
   @type options :: list(option)
 
@@ -49,7 +50,8 @@ defmodule Fact.Bootstrapper do
     with {:ok, path} <- Keyword.fetch(opts, :path) do
       arg = %{
         path: path,
-        caller: Keyword.get(opts, :caller)
+        caller: Keyword.get(opts, :caller),
+        opts: Keyword.get(opts, :opts, [])
       }
 
       GenServer.start_link(__MODULE__, arg, opts)
@@ -67,7 +69,7 @@ defmodule Fact.Bootstrapper do
 
   @impl true
   @doc false
-  def handle_continue(:bootstrap, %{path: path, caller: caller} = state) do
+  def handle_continue(:bootstrap, %{path: path, caller: caller, opts: opts} = state) do
     with {:ok, context} <- load_context(path) do
       case Fact.Registry.get_context(context.database_id) do
         {:ok, _} ->
@@ -75,7 +77,7 @@ defmodule Fact.Bootstrapper do
           {:stop, :normal, state}
 
         {:error, _} ->
-          case start_database(context) do
+          case start_database(context, opts) do
             {:ok, _pid} ->
               maybe_send(caller, {:database_started, context.database_id})
               {:stop, :normal, state}
@@ -95,10 +97,13 @@ defmodule Fact.Bootstrapper do
     end
   end
 
-  defp start_database(context) do
+  defp start_database(context, opts) do
     case Fact.Lock.status(context) do
       {:ok, :unlocked} ->
-        Supervisor.start_child(Fact.Supervisor, {Fact.DatabaseSupervisor, [context: context]})
+        Supervisor.start_child(
+          Fact.Supervisor,
+          {Fact.DatabaseSupervisor, [context: context, opts: opts]}
+        )
 
       {:ok, lock_info} ->
         {:error, {:locked, lock_info}}

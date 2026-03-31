@@ -538,26 +538,37 @@ defmodule Fact do
 
   @doc """
   Initializes a Fact database at the given filesystem path.
-    
-  This function ensures that the `Fact.Supervisor` is running and then starts the database 
+
+  This function ensures that the `Fact.Supervisor` is running and then starts the database
   supervision tree as a child process. Once the `Fact.DatabaseSupervisor` is running, the
   database id is returned, and you may use it as a handle for appending events, reading
   and subscribing to event sources.
-    
+
+  ## Options
+
+    * `:cache` - A keyword list of record cache options. See `Fact.RecordCache` for details.
+      * `:max_size` - Maximum cache size in bytes. The cache is disabled when not set.
+      * `:decay_interval` - Milliseconds between frequency decay sweeps. Defaults to `600_000` (10 minutes).
+
   ## Examples
-    
+
     Opens a new database.
-    
+
       iex> {:ok, db} = Fact.open("data/turtles")
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
-    
+
+    Opens a database with an in-memory record cache.
+
+      iex> {:ok, db} = Fact.open("data/turtles", cache: [max_size: 512 * 1024 * 1024])
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+
     Subsequent calls to the same path return the same database id...with the same BEAM.
-    
+
       iex> {:ok, db2} = Fact.open("data/turtles")
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
-    
+
     Keep that database running. Try to open the database again in another instance
-    of IEx. You'll get a database locked error similar to the following: 
+    of IEx. You'll get a database locked error similar to the following:
 
       iex> Fact.open("data/turtles")
       {:error, :database_locked,
@@ -570,14 +581,15 @@ defmodule Fact do
        }}
 
     Remember to use `mix fact.create -p <path>` to create a database before attempting
-    to open it. 
+    to open it.
 
       iex> Fact.open("does/not/exist")
       {:error, :database_not_found}
 
   """
-  @spec open(Path.t()) :: {:ok, database_id()} | {:error, term()}
-  def open(path) do
+  @doc since: "0.3.0"
+  @spec open(Path.t(), keyword()) :: {:ok, database_id()} | {:error, term()}
+  def open(path, opts \\ []) do
     {:ok, _pid} =
       case Process.whereis(Fact.Supervisor) do
         nil ->
@@ -587,7 +599,7 @@ defmodule Fact do
           {:ok, pid}
       end
 
-    Fact.Supervisor.start_database(path)
+    Fact.Supervisor.start_database(path, opts)
   end
 
   @doc """
