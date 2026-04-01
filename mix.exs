@@ -2,8 +2,8 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.2.2"
-  @codename "Hatchling"
+  @version "0.3.0"
+  @codename "Hardened Shell"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
   @authors ["Jake Bruun"]
@@ -70,8 +70,11 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
+        "guides/components/record-cache.md",
         "guides/components/seam-architecture.md",
+        "guides/components/write-ahead-log.md",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
         "guides/introduction/dedication.md": [title: "Dedication"]
@@ -84,8 +87,11 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
-          "guides/components/seam-architecture.md"
+          "guides/components/record-cache.md",
+          "guides/components/seam-architecture.md",
+          "guides/components/write-ahead-log.md"
         ]
       ],
       groups_for_modules: [
@@ -149,6 +155,9 @@ defmodule Fact.MixProject do
           Fact.Genesis.Decider,
           Fact.Genesis.Event.DatabaseCreated.V1,
           Fact.Genesis.TheCreator
+        ],
+        Integrity: [
+          Fact.MerkleMountainRange
         ],
         Indexing: [
           Fact.EventDataIndexer,

@@ -22,46 +22,55 @@ defmodule Fact.Supervisor do
   @typedoc """
   Option values used by the `start_link/1` function.
 
-  * `{:databases, paths}` - A list of file-system paths identifying databases that should be bootstrapped automatically
-    at startup.
+  * `{:databases, paths}` - A list of database paths or `{path, opts}` tuples identifying databases
+    that should be bootstrapped automatically at startup. Each entry may be a bare path (binary) or a
+    `{path, opts}` tuple where `opts` is a keyword list. See `start_database/2` for supported options.
   """
-  @typedoc since: "0.1.0"
+  @typedoc since: "0.3.0"
   @type option ::
-          {:databases, list(Path.t())}
+          {:databases, list(Path.t() | {Path.t(), [keyword()]})}
 
   @doc """
   Starts a database at the given filesystem path.
-    
+
   This function delegates startup to a `Fact.Bootstrapper` process under this supervisor and waits
   for a startup acknowledgement message.
-    
+
   The caller will block until one the following occurs:
 
     * The database is successfully started and the database identifier is returned
     * The database is already locked by another process
     * An error occurs during initialization.
     * The startup process times out.
-      
+
+  ## Options
+
+    * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
+    * `:cache` - A keyword list of record cache options. Seet `Fact.RecordCache` for details.
+
   ### Process interaction
-    
+
   The bootstrapper is started as a supervised child and is expected to send of the following
   messages back to the calling process:
-    
+
     * `{:database_started, database_id}`
     * `{:database_locked, lock_metadata}`
     * `{:database_error, reason}`
 
   If no message is received within 3 seconds, the call fails with `{:error, :database_failure}`
   """
-  @doc since: "0.1.0"
-  @spec start_database(Path.t()) ::
+  @doc since: "0.3.0"
+  @spec start_database(Path.t(), keyword()) ::
           {:ok, Fact.database_id()}
           | {:error, :database_locked, Fact.Lock.metadata_record()}
           | {:error, :database_failure}
           | {:error, term()}
-  def start_database(path) when is_binary(path) do
+  def start_database(path, opts \\ []) when is_binary(path) do
     with {:ok, _pid} <-
-           Supervisor.start_child(__MODULE__, {Fact.Bootstrapper, [path: path, caller: self()]}) do
+           Supervisor.start_child(
+             __MODULE__,
+             {Fact.Bootstrapper, [path: path, caller: self(), opts: opts]}
+           ) do
       receive do
         {:database_started, database_id} ->
           {:ok, database_id}
@@ -88,7 +97,7 @@ defmodule Fact.Supervisor do
       for each configured path.
 
   Databases listed in the `:databases` option are started eagerly as part of supervisor initialization. 
-  Additional databases may be started later at runtime using `start_database/1`.
+  Additional databases may be started later at runtime using `start_database/2`.
   """
   @doc since: "0.1.0"
   @spec start_link([option()]) :: Supervisor.on_start()
@@ -105,7 +114,12 @@ defmodule Fact.Supervisor do
       {Registry, keys: :unique, name: Fact.Registry}
     ]
 
-    bootstrappers = Enum.map(databases, &{Fact.Bootstrapper, [path: &1]})
+    bootstrappers =
+      Enum.map(databases, fn
+        {path, db_opts} when is_binary(path) -> {Fact.Bootstrapper, [path: path, opts: db_opts]}
+        path when is_binary(path) -> {Fact.Bootstrapper, [path: path]}
+      end)
+
     Supervisor.init(children ++ bootstrappers, strategy: :one_for_one)
   end
 end

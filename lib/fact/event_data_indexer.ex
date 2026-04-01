@@ -32,7 +32,8 @@ defmodule Fact.EventDataIndexer do
   """
   @doc since: "0.1.0"
   @impl true
-  @spec index_event(Fact.event_schema(), Fact.event_record(), options()) :: String.t() | nil
+  @spec index_event(Fact.event_record_schema(), Fact.event_record(), options()) ::
+          String.t() | nil
   def index_event(schema, event, opts) do
     event_data = event[schema.event_data]
     indexer_key = Keyword.get(opts, :indexer_key)

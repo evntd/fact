@@ -27,28 +27,21 @@
 - Configurable [Content-Addressable Storage (CAS)](https://en.wikipedia.org/wiki/Content-addressable_storage)
 - Configurable event schemas
 - Backup & Restore tasks
+- Write Ahead Log to prevent data loss during a crash.
+- Merkle Mountain Range
+  - Mix tooling to create and verify proofs
+  - Mix tooling to find tampered events
+- Writes up to 3000 events/second
 - Supported on Elixir 1.13+ and OTP 25+
 
 #### Coming soon...
 
 - More user guides
-- Write-Ahead Log (WAL) to make this crash-proof. It's only near crash-proof currently.
-- Data tampering verification task (for CAS)
 - Custom Indexers
 
 #### Coming later...
 
 - Telemetry
-- Merkle Mountain Range
-    - inclusion proofs, this event exists in the ledger at position N.
-    - doesn't prevent tampering, but proves it did or didn't happen
-    - Needs one of these 🤔:
-        - signed checkpoints
-        - cross-system anchoring
-        - client-held receipts
-- Proof of scale
-    - Target: 1M events per day, <= 86.4 ms per write, 11.5 events per second
-    - Honestly not trying to build for global scale, if that's what you need use Axon, Kurrent, or UmaDB
 - Full stack example application
 - A network protocol to enable non-BEAM based languages to interop.
 - A gossip protocol to coordinate multiple BEAM nodes
@@ -64,7 +57,7 @@ The package can be installed by adding `fact` to your list of dependencies in `m
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.2.2"}
+    {:fact, "~> 0.3.0"}
   ]
 end
 ```

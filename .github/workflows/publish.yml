@@ -46,24 +46,24 @@ jobs:
             check_format: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Elixir
         id: beam
-        uses: erlef/setup-beam@v1.20.4 # See https://github.com/erlef/setup-beam
+        uses: erlef/setup-beam@v1
         with:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
 
       - name: Restore dependencies cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: deps
           key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-
 
       - name: Install dependencies
-        run: mix do deps.get, deps.compile
+        run: mix do deps.get + deps.compile
 
       - name: Check formatting
         if: ${{ matrix.check_format }}
