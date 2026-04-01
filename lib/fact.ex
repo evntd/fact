@@ -550,6 +550,12 @@ defmodule Fact do
       * `:max_size` - Maximum cache size in bytes. The cache is disabled when not set.
       * `:decay_interval` - Milliseconds between frequency decay sweeps. Defaults to `600_000` (10 minutes).
 
+    * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
+      * `:enable_fsync` - Whether to call fsync after writes. Defaults to `true`.
+      * `:max_file_size` - Maximum size in bytes of a WAL segment file before rotation. Defaults to `16_777_216` (16 MB).
+      * `:max_segments` - Maximum number of segment files to retain. Defaults to `4`.
+      * `:sync_interval` - Time in milliseconds between periodic sync operations. Defaults to `200`. Values below `10` are clamped to `10`.
+
   ## Examples
 
     Opens a new database.
@@ -560,6 +566,9 @@ defmodule Fact do
     Opens a database with an in-memory record cache.
 
       iex> {:ok, db} = Fact.open("data/turtles", cache: [max_size: 512 * 1024 * 1024])
+    Opens a database with custom write-ahead log options.
+
+      iex> {:ok, db} = Fact.open("data/turtles", wal: [max_file_size: 64 * 1024 * 1024, sync_interval: 500])
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
 
     Subsequent calls to the same path return the same database id...with the same BEAM.

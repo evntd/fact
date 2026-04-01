@@ -62,4 +62,10 @@ defmodule Fact.Seam.Storage do
   """
   @doc since: "0.1.0"
   @callback locks_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+
+  @doc """
+  A callback function that gets the path to the directory containing the write ahead log segment files.
+  """
+  @doc since: "0.3.0"
+  @callback write_ahead_log_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
 end

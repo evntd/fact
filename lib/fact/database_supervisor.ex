@@ -23,6 +23,7 @@ defmodule Fact.DatabaseSupervisor do
   * `:context` - (required) The `Fact.Context` providing database identity and configuration.
   * `:opts` - (optional) Runtime options for database subsystems. Supports:
     * `:cache` - Record cache options. See `t:Fact.RecordCache.cache_option/0`.
+    * `:wal` - (optional) A keyword list of write-ahead log options forwarded to `Fact.WriteAheadLog`.
   """
   @typedoc since: "0.3.0"
   @type option ::
@@ -33,8 +34,9 @@ defmodule Fact.DatabaseSupervisor do
   Returns a specification to start this module under a supervisor.
 
   The child spec is keyed by `t:Fact.database_id/0`, allowing multiple database instances to be supervised concurrently.
-    
-  Requires the `:context` option to be specified.
+
+  Requires the `:context` option to be specified. Optionally accepts `:wal` options that are
+  forwarded to `Fact.WriteAheadLog`.
   """
   @doc since: "0.3.0"
   @spec child_spec([option]) :: Supervisor.child_spec()
@@ -55,10 +57,10 @@ defmodule Fact.DatabaseSupervisor do
   This supervisor defines the runtime boundary for a single Fact database instance.
   It is registered under a database-scoped name via `Fact.Registry`, ensuring full isolation between
   multiple database instances running in the same VM.
-    
+
   At startup, this supervisor initializes all database-scope infrastructure, including registries, PubSub,
   core write coordination processes, and event indexers.
-    
+
   This function is typically invoked by `Fact.Supervisor` as part of database initialization and is not
   intended to be called directly by application code.
   """
@@ -79,6 +81,10 @@ defmodule Fact.DatabaseSupervisor do
   def init({%Fact.Context{database_id: database_id} = context, opts}) do
     Fact.Registry.register(context)
 
+    wal_opts =
+      [database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)] ++ 
+        Keyword.get(opts, :wal, [])
+
     cache_opts = Keyword.get(opts, :cache, [])
 
     children = [
@@ -88,6 +94,7 @@ defmodule Fact.DatabaseSupervisor do
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
       {Fact.Database,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
+      {Fact.WriteAheadLog, wal_opts},
       {Fact.EventLedger,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
       {Fact.EventStreamIndexer,

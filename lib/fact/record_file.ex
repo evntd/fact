@@ -97,7 +97,7 @@ defmodule Fact.RecordFile do
           binary: true,
           exclusive: true,
           raw: true,
-          sync: true,
+          sync: false,
           worm: true
         }
       }

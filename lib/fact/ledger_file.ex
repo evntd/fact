@@ -75,7 +75,7 @@ defmodule Fact.LedgerFile do
           binary: true,
           exclusive: false,
           raw: true,
-          sync: true,
+          sync: false,
           worm: false
         }
       }
