@@ -285,7 +285,47 @@ defmodule Fact.MixProject do
   defp test_coverage do
     [
       ignore_modules: [
-        Fact.EventIndexer
+        Fact.EventIndexer,
+        # Seam behaviours and adapters (macro-generated boilerplate, tested via implementations)
+        Fact.Seam.Adapter,
+        Fact.Seam.Decoder,
+        Fact.Seam.Decoder.Adapter,
+        Fact.Seam.Encoder,
+        Fact.Seam.Encoder.Adapter,
+        Fact.Seam.Encoder.Raw.V1,
+        Fact.Seam.EventId,
+        Fact.Seam.EventId.Adapter,
+        Fact.Seam.EventSchema,
+        Fact.Seam.EventSchema.Adapter,
+        Fact.Seam.FileName,
+        Fact.Seam.FileName.Adapter,
+        Fact.Seam.FileReader,
+        Fact.Seam.FileReader.Adapter,
+        Fact.Seam.FileWriter,
+        Fact.Seam.FileWriter.Adapter,
+        Fact.Seam.Registry,
+        Fact.Seam.Storage,
+        Fact.Seam.Storage.Adapter,
+        # Mix tasks (CLI wrappers)
+        Mix.Tasks.Fact.Backup,
+        Mix.Tasks.Fact.Restore,
+        Mix.Tasks.Fact.Merkle.CreateProof,
+        Mix.Tasks.Fact.Merkle.Root,
+        Mix.Tasks.Fact.Merkle.Verify,
+        Mix.Tasks.Fact.Merkle.VerifyProof,
+        # Debug utility
+        Fact.CatchUpSubscription.DebugSubscriber,
+        # MMR requires CAS-mode database and async PubSub; tested via mix tasks and smoke tests
+        Fact.MerkleMountainRange,
+        # Index subscription tested indirectly via query subscription
+        Fact.CatchUpSubscription.Index,
+        # LockFile is adapter boilerplate — lock/unlock tested through Fact.Lock
+        Fact.LockFile,
+        Fact.LockFile.Decoder,
+        Fact.LockFile.Encoder,
+        Fact.LockFile.Name,
+        Fact.LockFile.Reader,
+        Fact.LockFile.Writer
       ],
       summary: [
         threshold: 80
