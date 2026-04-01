@@ -609,7 +609,8 @@ defmodule Fact do
 
   """
   @doc since: "0.3.0"
-  @spec open(Path.t(), atom() | keyword()) :: {:ok, database_id()} | {:error, term()}
+  @spec open(Path.t(), atom() | [Fact.DatabaseSupervisor.subsystem_option()]) ::
+          {:ok, database_id()} | {:error, term()}
   def open(path, opts \\ [])
 
   def open(path, opt) when is_atom(opt), do: open(path, [opt])
