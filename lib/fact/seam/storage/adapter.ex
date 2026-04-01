@@ -11,6 +11,7 @@ defmodule Fact.Seam.Storage.Adapter do
     * `indices_path/2` – path for storing index files.
     * `ledger_path/2` – path for the event ledger.
     * `locks_path/2` – path for database locks.
+    * `merkle_mountain_range_path/2` – path for the Merkle Mountain Range.
 
   Each function can be called with either a database id (`String.t()`) or a
   `Fact.Context` containing the configured storage instance. When called with a
@@ -99,6 +100,20 @@ defmodule Fact.Seam.Storage.Adapter do
 
       def locks_path(%Context{@key => instance} = context, options) do
         __seam_call__(instance, :locks_path, [[{:__context__, context} | options]])
+      end
+
+      def merkle_mountain_range_path(database, options \\ [])
+
+      def merkle_mountain_range_path(database_id, options) when is_binary(database_id) do
+        with {:ok, context} <- Fact.Registry.get_context(database_id) do
+          merkle_mountain_range_path(context, options)
+        end
+      end
+
+      def merkle_mountain_range_path(%Context{@key => instance} = context, options) do
+        __seam_call__(instance, :merkle_mountain_range_path, [
+          [{:__context__, context} | options]
+        ])
       end
 
       def write_ahead_log_path(database, options \\ [])

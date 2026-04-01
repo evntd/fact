@@ -549,6 +549,11 @@ defmodule Fact do
     * `:cache` - A keyword list of record cache options. See `Fact.RecordCache` for details.
       * `:max_size` - Maximum cache size in bytes. The cache is disabled when not set.
       * `:decay_interval` - Milliseconds between frequency decay sweeps. Defaults to `600_000` (10 minutes).
+      
+    * `:merkle` - A keyword list of Merkle Mountain Range options. See `Fact.MerkleMountainRange`.
+      Requires CAS mode (`record_file_name` configured with `hash@1`).
+      * `:batch_size` - Maximum events to buffer before flushing. Defaults to `1`.
+      * `:flush_interval` - Maximum milliseconds before flushing a partial batch. Defaults to `1_000`.
 
     * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
       * `:enable_fsync` - Whether to call fsync after writes. Defaults to `true`.
@@ -563,9 +568,16 @@ defmodule Fact do
       iex> {:ok, db} = Fact.open("data/turtles")
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
 
+    Opens a CAS-mode database with Merkle Mountain Range enabled.
+
+      iex> {:ok, db} = Fact.open("data/turtles", merkle: [batch_size: 10, flush_interval: 1_000])
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+      
     Opens a database with an in-memory record cache.
 
       iex> {:ok, db} = Fact.open("data/turtles", cache: [max_size: 512 * 1024 * 1024])
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+      
     Opens a database with custom write-ahead log options.
 
       iex> {:ok, db} = Fact.open("data/turtles", wal: [max_file_size: 64 * 1024 * 1024, sync_interval: 500])
@@ -597,8 +609,12 @@ defmodule Fact do
 
   """
   @doc since: "0.3.0"
-  @spec open(Path.t(), keyword()) :: {:ok, database_id()} | {:error, term()}
-  def open(path, opts \\ []) do
+  @spec open(Path.t(), atom() | keyword()) :: {:ok, database_id()} | {:error, term()}
+  def open(path, opts \\ [])
+
+  def open(path, opt) when is_atom(opt), do: open(path, [opt])
+
+  def open(path, opts) when is_list(opts) do
     {:ok, _pid} =
       case Process.whereis(Fact.Supervisor) do
         nil ->

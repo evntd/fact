@@ -70,6 +70,7 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
         "guides/components/record-cache.md",
         "guides/components/seam-architecture.md",
@@ -86,6 +87,7 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
           "guides/components/record-cache.md",
           "guides/components/seam-architecture.md",
@@ -153,6 +155,9 @@ defmodule Fact.MixProject do
           Fact.Genesis.Decider,
           Fact.Genesis.Event.DatabaseCreated.V1,
           Fact.Genesis.TheCreator
+        ],
+        Integrity: [
+          Fact.MerkleMountainRange
         ],
         Indexing: [
           Fact.EventDataIndexer,

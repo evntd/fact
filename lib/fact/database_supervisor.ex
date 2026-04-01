@@ -23,6 +23,7 @@ defmodule Fact.DatabaseSupervisor do
   * `:context` - (required) The `Fact.Context` providing database identity and configuration.
   * `:opts` - (optional) Runtime options for database subsystems. Supports:
     * `:cache` - Record cache options. See `t:Fact.RecordCache.cache_option/0`.
+    * `:merkle` - Merkle Mountain Range options. See `t:Fact.MerkleMountainRange.merkle_option/0`.
     * `:wal` - (optional) A keyword list of write-ahead log options forwarded to `Fact.WriteAheadLog`.
   """
   @typedoc since: "0.3.0"
@@ -132,6 +133,36 @@ defmodule Fact.DatabaseSupervisor do
           []
       end
 
-    Supervisor.init(children ++ cache_children, strategy: :one_for_one)
+    merkle_children = merkle_children(context, database_id, opts)
+
+    Supervisor.init(children ++ cache_children ++ merkle_children, strategy: :one_for_one)
+  end
+
+  defp merkle_children(context, database_id, opts) do
+    merkle_opts = merkle_opts(opts)
+
+    if merkle_opts != nil and cas_mode?(context) do
+      child_opts =
+        [
+          database_id: database_id,
+          name: Fact.Registry.via(database_id, Fact.MerkleMountainRange)
+        ] ++ merkle_opts
+
+      [{Fact.MerkleMountainRange, child_opts}]
+    else
+      []
+    end
+  end
+
+  defp merkle_opts(opts) do
+    cond do
+      :merkle in opts -> []
+      Keyword.has_key?(opts, :merkle) -> Keyword.get(opts, :merkle)
+      true -> nil
+    end
+  end
+
+  defp cas_mode?(%Fact.Context{record_file_name: %{module: mod}}) do
+    mod.family() == :hash
   end
 end

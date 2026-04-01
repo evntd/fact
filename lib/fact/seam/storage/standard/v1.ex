@@ -96,6 +96,14 @@ defmodule Fact.Seam.Storage.Standard.V1 do
   def locks_path(%__MODULE__{path: path}, _opts), do: path
 
   @doc """
+  Gets the path to the Merkle Mountain Range directory.
+  """
+  @doc since: "0.3.0"
+  @spec merkle_mountain_range_path(t(), keyword()) :: Path.t()
+  @impl true
+  def merkle_mountain_range_path(%__MODULE__{path: path}, _opts), do: Path.join(path, "merkle")
+
+  @doc """
   Gets the path to the directory containing the write ahead log segment files.
   """
   @doc since: "0.3.0"
