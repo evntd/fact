@@ -26,7 +26,7 @@ defmodule Fact.Seam.Storage do
   use Fact.Seam
 
   @doc """
-  A callback function that initializes the directory structure used for records, indexes, 
+  A callback function that initializes the directory structure used for records, indexes,
   and any other files used by the database.
   """
   @doc since: "0.2.0"
@@ -46,7 +46,7 @@ defmodule Fact.Seam.Storage do
               Path.t() | {:error, term()}
 
   @doc """
-  A callback function that gets the base path to the directory where all index files are stored. 
+  A callback function that gets the base path to the directory where all index files are stored.
   """
   @doc since: "0.1.0"
   @callback indices_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
@@ -69,6 +69,7 @@ defmodule Fact.Seam.Storage do
   @doc since: "0.3.0"
   @callback merkle_mountain_range_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
 
+  @doc """
   A callback function that gets the path to the directory containing the write ahead log segment files.
   """
   @doc since: "0.3.0"

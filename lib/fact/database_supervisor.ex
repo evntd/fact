@@ -116,7 +116,7 @@ defmodule Fact.DatabaseSupervisor do
        strategy: :one_for_one,
        name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
     ]
-    
+
     cache_children =
       case Keyword.get(cache_opts, :max_size) do
         max_size when is_integer(max_size) and max_size > 0 ->

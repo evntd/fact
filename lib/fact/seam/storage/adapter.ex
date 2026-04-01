@@ -114,6 +114,7 @@ defmodule Fact.Seam.Storage.Adapter do
         __seam_call__(instance, :merkle_mountain_range_path, [
           [{:__context__, context} | options]
         ])
+      end
 
       def write_ahead_log_path(database, options \\ [])
 
