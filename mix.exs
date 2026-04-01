@@ -71,6 +71,7 @@ defmodule Fact.MixProject do
       extras: [
         "LICENSE",
         "guides/components/queries-and-indexes.md",
+        "guides/components/record-cache.md",
         "guides/components/seam-architecture.md",
         "guides/components/write-ahead-log.md",
         "guides/introduction/getting-started.md",
@@ -86,6 +87,7 @@ defmodule Fact.MixProject do
         ],
         Components: [
           "guides/components/queries-and-indexes.md",
+          "guides/components/record-cache.md",
           "guides/components/seam-architecture.md",
           "guides/components/write-ahead-log.md"
         ]

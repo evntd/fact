@@ -546,6 +546,10 @@ defmodule Fact do
 
   ## Options
 
+    * `:cache` - A keyword list of record cache options. See `Fact.RecordCache` for details.
+      * `:max_size` - Maximum cache size in bytes. The cache is disabled when not set.
+      * `:decay_interval` - Milliseconds between frequency decay sweeps. Defaults to `600_000` (10 minutes).
+
     * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
       * `:enable_fsync` - Whether to call fsync after writes. Defaults to `true`.
       * `:max_file_size` - Maximum size in bytes of a WAL segment file before rotation. Defaults to `16_777_216` (16 MB).
@@ -559,6 +563,9 @@ defmodule Fact do
       iex> {:ok, db} = Fact.open("data/turtles")
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
 
+    Opens a database with an in-memory record cache.
+
+      iex> {:ok, db} = Fact.open("data/turtles", cache: [max_size: 512 * 1024 * 1024])
     Opens a database with custom write-ahead log options.
 
       iex> {:ok, db} = Fact.open("data/turtles", wal: [max_file_size: 64 * 1024 * 1024, sync_interval: 500])
@@ -590,8 +597,7 @@ defmodule Fact do
 
   """
   @doc since: "0.3.0"
-  @spec open(Path.t(), [Fact.Supervisor.database_option()]) ::
-          {:ok, database_id()} | {:error, term()}
+  @spec open(Path.t(), keyword()) :: {:ok, database_id()} | {:error, term()}
   def open(path, opts \\ []) do
     {:ok, _pid} =
       case Process.whereis(Fact.Supervisor) do

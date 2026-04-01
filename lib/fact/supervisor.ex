@@ -20,14 +20,6 @@ defmodule Fact.Supervisor do
   require Logger
 
   @typedoc """
-  Options accepted by `start_database/2`.
-
-    * `:wal` - A list of write-ahead log options. See `t:Fact.WriteAheadLog.wal_option/0`.
-  """
-  @typedoc since: "0.3.0"
-  @type database_option :: {:wal, [Fact.WriteAheadLog.wal_option()]}
-
-  @typedoc """
   Option values used by the `start_link/1` function.
 
   * `{:databases, paths}` - A list of database paths or `{path, opts}` tuples identifying databases
@@ -36,7 +28,7 @@ defmodule Fact.Supervisor do
   """
   @typedoc since: "0.3.0"
   @type option ::
-          {:databases, list(Path.t() | {Path.t(), [database_option()]})}
+          {:databases, list(Path.t() | {Path.t(), [keyword()]})}
 
   @doc """
   Starts a database at the given filesystem path.
@@ -54,6 +46,7 @@ defmodule Fact.Supervisor do
   ## Options
 
     * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
+    * `:cache` - A keyword list of record cache options. Seet `Fact.RecordCache` for details.
 
   ### Process interaction
 
@@ -67,7 +60,7 @@ defmodule Fact.Supervisor do
   If no message is received within 3 seconds, the call fails with `{:error, :database_failure}`
   """
   @doc since: "0.3.0"
-  @spec start_database(Path.t(), [database_option()]) ::
+  @spec start_database(Path.t(), keyword()) ::
           {:ok, Fact.database_id()}
           | {:error, :database_locked, Fact.Lock.metadata_record()}
           | {:error, :database_failure}
@@ -76,7 +69,7 @@ defmodule Fact.Supervisor do
     with {:ok, _pid} <-
            Supervisor.start_child(
              __MODULE__,
-             {Fact.Bootstrapper, [path: path, caller: self()] ++ opts}
+             {Fact.Bootstrapper, [path: path, caller: self(), opts: opts]}
            ) do
       receive do
         {:database_started, database_id} ->
@@ -123,7 +116,7 @@ defmodule Fact.Supervisor do
 
     bootstrappers =
       Enum.map(databases, fn
-        {path, db_opts} when is_binary(path) -> {Fact.Bootstrapper, [path: path] ++ db_opts}
+        {path, db_opts} when is_binary(path) -> {Fact.Bootstrapper, [path: path, opts: db_opts]}
         path when is_binary(path) -> {Fact.Bootstrapper, [path: path]}
       end)
 
