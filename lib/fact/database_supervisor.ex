@@ -82,7 +82,7 @@ defmodule Fact.DatabaseSupervisor do
     Fact.Registry.register(context)
 
     wal_opts =
-      [database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)] ++ 
+      [database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)] ++
         Keyword.get(opts, :wal, [])
 
     cache_opts = Keyword.get(opts, :cache, [])
