@@ -97,7 +97,7 @@ defmodule Fact.RecordFile do
           binary: true,
           exclusive: true,
           raw: true,
-          sync: true,
+          sync: false,
           worm: true
         }
       }
@@ -109,11 +109,27 @@ defmodule Fact.RecordFile do
     end
   end
 
-  def read(%Context{} = context, record_id) do
+  def read(%Context{database_id: nil} = context, record_id) do
     with {:ok, record_path} <- path(context, record_id),
          {:ok, encoded_record} <- read_single(context, record_path),
          {:ok, record} <- Decoder.decode(context, encoded_record) do
       {record_id, record}
+    end
+  end
+
+  def read(%Context{database_id: database_id} = context, record_id) do
+    case Fact.RecordCache.get(database_id, record_id) do
+      {:ok, cached} ->
+        cached
+
+      :miss ->
+        with {:ok, record_path} <- path(context, record_id),
+             {:ok, encoded_record} <- read_single(context, record_path),
+             {:ok, record} <- Decoder.decode(context, encoded_record) do
+          result = {record_id, record}
+          Fact.RecordCache.put(database_id, record_id, record)
+          result
+        end
     end
   end
 

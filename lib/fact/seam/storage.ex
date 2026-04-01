@@ -68,4 +68,9 @@ defmodule Fact.Seam.Storage do
   """
   @doc since: "0.3.0"
   @callback merkle_mountain_range_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
+
+  A callback function that gets the path to the directory containing the write ahead log segment files.
+  """
+  @doc since: "0.3.0"
+  @callback write_ahead_log_path(t(), opts :: keyword()) :: Path.t() | {:error, term()}
 end

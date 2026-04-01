@@ -546,10 +546,20 @@ defmodule Fact do
 
   ## Options
 
+    * `:cache` - A keyword list of record cache options. See `Fact.RecordCache` for details.
+      * `:max_size` - Maximum cache size in bytes. The cache is disabled when not set.
+      * `:decay_interval` - Milliseconds between frequency decay sweeps. Defaults to `600_000` (10 minutes).
+      
     * `:merkle` - A keyword list of Merkle Mountain Range options. See `Fact.MerkleMountainRange`.
       Requires CAS mode (`record_file_name` configured with `hash@1`).
       * `:batch_size` - Maximum events to buffer before flushing. Defaults to `1`.
       * `:flush_interval` - Maximum milliseconds before flushing a partial batch. Defaults to `1_000`.
+
+    * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
+      * `:enable_fsync` - Whether to call fsync after writes. Defaults to `true`.
+      * `:max_file_size` - Maximum size in bytes of a WAL segment file before rotation. Defaults to `16_777_216` (16 MB).
+      * `:max_segments` - Maximum number of segment files to retain. Defaults to `4`.
+      * `:sync_interval` - Time in milliseconds between periodic sync operations. Defaults to `200`. Values below `10` are clamped to `10`.
 
   ## Examples
 
@@ -561,6 +571,16 @@ defmodule Fact do
     Opens a CAS-mode database with Merkle Mountain Range enabled.
 
       iex> {:ok, db} = Fact.open("data/turtles", merkle: [batch_size: 10, flush_interval: 1_000])
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+      
+    Opens a database with an in-memory record cache.
+
+      iex> {:ok, db} = Fact.open("data/turtles", cache: [max_size: 512 * 1024 * 1024])
+      {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
+      
+    Opens a database with custom write-ahead log options.
+
+      iex> {:ok, db} = Fact.open("data/turtles", wal: [max_file_size: 64 * 1024 * 1024, sync_interval: 500])
       {:ok, "EF73AQJ6S5HHZE5PMX7ZP254QQ"}
 
     Subsequent calls to the same path return the same database id...with the same BEAM.

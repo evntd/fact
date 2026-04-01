@@ -72,7 +72,9 @@ defmodule Fact.MixProject do
         "LICENSE",
         "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
+        "guides/components/record-cache.md",
         "guides/components/seam-architecture.md",
+        "guides/components/write-ahead-log.md",
         "guides/introduction/getting-started.md",
         "guides/introduction/process-model.md",
         "guides/introduction/dedication.md": [title: "Dedication"]
@@ -87,7 +89,9 @@ defmodule Fact.MixProject do
         Components: [
           "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
-          "guides/components/seam-architecture.md"
+          "guides/components/record-cache.md",
+          "guides/components/seam-architecture.md",
+          "guides/components/write-ahead-log.md"
         ]
       ],
       groups_for_modules: [

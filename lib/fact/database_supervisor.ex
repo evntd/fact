@@ -22,7 +22,9 @@ defmodule Fact.DatabaseSupervisor do
 
   * `:context` - (required) The `Fact.Context` providing database identity and configuration.
   * `:opts` - (optional) Runtime options for database subsystems. Supports:
+    * `:cache` - Record cache options. See `t:Fact.RecordCache.cache_option/0`.
     * `:merkle` - Merkle Mountain Range options. See `t:Fact.MerkleMountainRange.merkle_option/0`.
+    * `:wal` - (optional) A keyword list of write-ahead log options forwarded to `Fact.WriteAheadLog`.
   """
   @typedoc since: "0.3.0"
   @type option ::
@@ -33,8 +35,9 @@ defmodule Fact.DatabaseSupervisor do
   Returns a specification to start this module under a supervisor.
 
   The child spec is keyed by `t:Fact.database_id/0`, allowing multiple database instances to be supervised concurrently.
-    
-  Requires the `:context` option to be specified.
+
+  Requires the `:context` option to be specified. Optionally accepts `:wal` options that are
+  forwarded to `Fact.WriteAheadLog`.
   """
   @doc since: "0.3.0"
   @spec child_spec([option]) :: Supervisor.child_spec()
@@ -55,10 +58,10 @@ defmodule Fact.DatabaseSupervisor do
   This supervisor defines the runtime boundary for a single Fact database instance.
   It is registered under a database-scoped name via `Fact.Registry`, ensuring full isolation between
   multiple database instances running in the same VM.
-    
+
   At startup, this supervisor initializes all database-scope infrastructure, including registries, PubSub,
   core write coordination processes, and event indexers.
-    
+
   This function is typically invoked by `Fact.Supervisor` as part of database initialization and is not
   intended to be called directly by application code.
   """
@@ -79,6 +82,12 @@ defmodule Fact.DatabaseSupervisor do
   def init({%Fact.Context{database_id: database_id} = context, opts}) do
     Fact.Registry.register(context)
 
+    wal_opts =
+      [database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)] ++
+        Keyword.get(opts, :wal, [])
+
+    cache_opts = Keyword.get(opts, :cache, [])
+
     children = [
       {Registry, keys: :unique, name: Fact.Registry.registry(database_id)},
       {Phoenix.PubSub, name: Fact.Registry.pubsub(database_id)},
@@ -86,6 +95,7 @@ defmodule Fact.DatabaseSupervisor do
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
       {Fact.Database,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
+      {Fact.WriteAheadLog, wal_opts},
       {Fact.EventLedger,
        database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
       {Fact.EventStreamIndexer,
@@ -106,10 +116,26 @@ defmodule Fact.DatabaseSupervisor do
        strategy: :one_for_one,
        name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
     ]
+    
+    cache_children =
+      case Keyword.get(cache_opts, :max_size) do
+        max_size when is_integer(max_size) and max_size > 0 ->
+          cache_child_opts =
+            [
+              database_id: database_id,
+              max_size: max_size,
+              name: Fact.Registry.via(database_id, Fact.RecordCache)
+            ] ++ Keyword.take(cache_opts, [:decay_interval])
+
+          [{Fact.RecordCache, cache_child_opts}]
+
+        _ ->
+          []
+      end
 
     merkle_children = merkle_children(context, database_id, opts)
 
-    Supervisor.init(children ++ merkle_children, strategy: :one_for_one)
+    Supervisor.init(children ++ cache_children ++ merkle_children, strategy: :one_for_one)
   end
 
   defp merkle_children(context, database_id, opts) do

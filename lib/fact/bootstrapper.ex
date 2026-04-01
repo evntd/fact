@@ -16,6 +16,7 @@ defmodule Fact.Bootstrapper do
 
   require Logger
 
+  @typedoc since: "0.3.0"
   @type option ::
           {:path, Path.t()}
           | {:caller, pid()}
