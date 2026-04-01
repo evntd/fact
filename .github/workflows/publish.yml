@@ -50,7 +50,7 @@ jobs:
 
       - name: Set up Elixir
         id: beam
-        uses: erlef/setup-beam@v1.20.4 # See https://github.com/erlef/setup-beam
+        uses: erlef/setup-beam@v1
         with:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
@@ -63,7 +63,7 @@ jobs:
           restore-keys: ${{ runner.os }}-mix-
 
       - name: Install dependencies
-        run: mix do deps.get, deps.compile
+        run: mix do deps.get + deps.compile
 
       - name: Check formatting
         if: ${{ matrix.check_format }}

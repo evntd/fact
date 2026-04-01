@@ -80,7 +80,7 @@ defmodule FactTest do
     [last_event] = Fact.read(db, :all, direction: :backward, position: :end, count: 1)
     last_event_position = last_event["store_position"]
     assert {:ok, ^last_event_position} = Fact.append(db, [])
-    all_events = Fact.read(db, :all)
+    _all_events = Fact.read(db, :all)
   end
 
   test "append some events and read them back a variety of different ways", %{db: db} do
@@ -197,7 +197,7 @@ defmodule FactTest do
       }
     ]
 
-    # Appending events with a variety of data points! 
+    # Appending events with a variety of data points!
 
     {:ok, end_position} = Fact.append(db, events)
     _start_position = end_position - length(events)
