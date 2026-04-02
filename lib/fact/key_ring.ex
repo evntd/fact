@@ -55,6 +55,10 @@ defmodule Fact.KeyRing do
     wrapped_dek = Keyword.fetch!(opts, :wrapped_dek)
     kek = Keyword.fetch!(opts, :kek)
 
+    # Prevent the DEK from appearing in crash dumps, :sys.get_state,
+    # observer, and trace output.
+    Process.flag(:sensitive, true)
+
     case unwrap_dek(wrapped_dek, kek) do
       {:ok, dek} ->
         {:ok, %{dek: dek}}
