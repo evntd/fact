@@ -24,11 +24,11 @@ defmodule Fact.Supervisor do
 
   * `{:databases, paths}` - A list of database paths or `{path, opts}` tuples identifying databases
     that should be bootstrapped automatically at startup. Each entry may be a bare path (binary) or a
-    `{path, opts}` tuple where `opts` is a keyword list. See `start_database/2` for supported options.
+    `{path, opts}` tuple where `opts` is a keyword list of `t:Fact.DatabaseSupervisor.subsystem_option/0`.
   """
   @typedoc since: "0.3.0"
   @type option ::
-          {:databases, list(Path.t() | {Path.t(), [keyword()]})}
+          {:databases, list(Path.t() | {Path.t(), [Fact.DatabaseSupervisor.subsystem_option()]})}
 
   @doc """
   Starts a database at the given filesystem path.
@@ -45,8 +45,7 @@ defmodule Fact.Supervisor do
 
   ## Options
 
-    * `:wal` - A keyword list of write-ahead log options. See `Fact.WriteAheadLog` for details.
-    * `:cache` - A keyword list of record cache options. Seet `Fact.RecordCache` for details.
+  See `t:Fact.DatabaseSupervisor.subsystem_option/0` for all supported options.
 
   ### Process interaction
 
@@ -60,7 +59,7 @@ defmodule Fact.Supervisor do
   If no message is received within 3 seconds, the call fails with `{:error, :database_failure}`
   """
   @doc since: "0.3.0"
-  @spec start_database(Path.t(), keyword()) ::
+  @spec start_database(Path.t(), [Fact.DatabaseSupervisor.subsystem_option()]) ::
           {:ok, Fact.database_id()}
           | {:error, :database_locked, Fact.Lock.metadata_record()}
           | {:error, :database_failure}

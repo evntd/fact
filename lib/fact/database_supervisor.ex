@@ -18,26 +18,37 @@ defmodule Fact.DatabaseSupervisor do
   use Supervisor
 
   @typedoc """
-  Options used when starting a `Fact.DatabaseSupervisor`.
+  Runtime options for database subsystems, passed via the `:opts` key.
 
-  * `:context` - (required) The `Fact.Context` providing database identity and configuration.
-  * `:opts` - (optional) Runtime options for database subsystems. Supports:
     * `:cache` - Record cache options. See `t:Fact.RecordCache.cache_option/0`.
     * `:merkle` - Merkle Mountain Range options. See `t:Fact.MerkleMountainRange.merkle_option/0`.
-    * `:wal` - (optional) A keyword list of write-ahead log options forwarded to `Fact.WriteAheadLog`.
+      Requires CAS mode. May also be the bare atom `:merkle` to enable with defaults.
+    * `:wal` - Write-ahead log options. See `t:Fact.WriteAheadLog.wal_option/0`.
+  """
+  @typedoc since: "0.3.0"
+  @type subsystem_option ::
+          {:cache, [Fact.RecordCache.cache_option()]}
+          | {:merkle, [Fact.MerkleMountainRange.merkle_option()]}
+          | {:wal, [Fact.WriteAheadLog.wal_option()]}
+
+  @typedoc """
+  Options used when starting a `Fact.DatabaseSupervisor`.
+
+    * `:context` - (required) The `Fact.Context` providing database identity and configuration.
+    * `:opts` - (optional) Runtime options for database subsystems. See `t:subsystem_option/0`.
   """
   @typedoc since: "0.3.0"
   @type option ::
           {:context, Fact.Context.t()}
-          | {:opts, keyword()}
+          | {:opts, [subsystem_option()]}
 
   @doc """
   Returns a specification to start this module under a supervisor.
 
   The child spec is keyed by `t:Fact.database_id/0`, allowing multiple database instances to be supervised concurrently.
 
-  Requires the `:context` option to be specified. Optionally accepts `:wal` options that are
-  forwarded to `Fact.WriteAheadLog`.
+  Requires the `:context` option to be specified. Optionally accepts `:opts` for database
+  subsystem configuration. See `t:subsystem_option/0`.
   """
   @doc since: "0.3.0"
   @spec child_spec([option]) :: Supervisor.child_spec()
