@@ -98,35 +98,41 @@ defmodule Fact.DatabaseSupervisor do
         Keyword.get(opts, :wal, [])
 
     cache_opts = Keyword.get(opts, :cache, [])
+    key_ring_children = key_ring_children(database_id, opts)
 
-    children = [
-      {Registry, keys: :unique, name: Fact.Registry.registry(database_id)},
-      {Phoenix.PubSub, name: Fact.Registry.pubsub(database_id)},
-      {Fact.EventPublisher,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
-      {Fact.Database,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
-      {Fact.WriteAheadLog, wal_opts},
-      {Fact.EventLedger,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
-      {Fact.EventStreamIndexer,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventStreamIndexer)},
-      {Fact.EventTagsIndexer,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventTagsIndexer)},
-      {Fact.EventTypeIndexer,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventTypeIndexer)},
-      {Fact.EventStreamCategoryIndexer,
-       database_id: database_id,
-       name: Fact.Registry.via(database_id, Fact.EventStreamCategoryIndexer)},
-      {Fact.EventStreamsIndexer,
-       database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventStreamsIndexer)},
-      {Fact.EventStreamsByCategoryIndexer,
-       database_id: database_id,
-       name: Fact.Registry.via(database_id, Fact.EventStreamsByCategoryIndexer)},
-      {DynamicSupervisor,
-       strategy: :one_for_one,
-       name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
-    ]
+    children =
+      [
+        {Registry, keys: :unique, name: Fact.Registry.registry(database_id)}
+      ] ++
+        key_ring_children ++
+        [
+          {Phoenix.PubSub, name: Fact.Registry.pubsub(database_id)},
+          {Fact.EventPublisher,
+           database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventPublisher)},
+          {Fact.Database,
+           database_id: database_id, name: Fact.Registry.via(database_id, Fact.Database)},
+          {Fact.WriteAheadLog, wal_opts},
+          {Fact.EventLedger,
+           database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventLedger)},
+          {Fact.EventStreamIndexer,
+           database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventStreamIndexer)},
+          {Fact.EventTagsIndexer,
+           database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventTagsIndexer)},
+          {Fact.EventTypeIndexer,
+           database_id: database_id, name: Fact.Registry.via(database_id, Fact.EventTypeIndexer)},
+          {Fact.EventStreamCategoryIndexer,
+           database_id: database_id,
+           name: Fact.Registry.via(database_id, Fact.EventStreamCategoryIndexer)},
+          {Fact.EventStreamsIndexer,
+           database_id: database_id,
+           name: Fact.Registry.via(database_id, Fact.EventStreamsIndexer)},
+          {Fact.EventStreamsByCategoryIndexer,
+           database_id: database_id,
+           name: Fact.Registry.via(database_id, Fact.EventStreamsByCategoryIndexer)},
+          {DynamicSupervisor,
+           strategy: :one_for_one,
+           name: Fact.Registry.via(database_id, Fact.EventStreamWriterSupervisor)}
+        ]
 
     cache_children =
       case Keyword.get(cache_opts, :max_size) do
@@ -147,6 +153,26 @@ defmodule Fact.DatabaseSupervisor do
     merkle_children = merkle_children(context, database_id, opts)
 
     Supervisor.init(children ++ cache_children ++ merkle_children, strategy: :one_for_one)
+  end
+
+  defp key_ring_children(database_id, opts) do
+    encryption_opts = Keyword.get(opts, :encryption, [])
+
+    case Keyword.get(encryption_opts, :wrapped_dek) do
+      nil ->
+        []
+
+      wrapped_dek ->
+        kek = Keyword.fetch!(encryption_opts, :kek)
+
+        [
+          {Fact.KeyRing,
+           database_id: database_id,
+           wrapped_dek: wrapped_dek,
+           kek: kek,
+           name: Fact.Registry.via(database_id, Fact.KeyRing)}
+        ]
+    end
   end
 
   defp merkle_children(context, database_id, opts) do

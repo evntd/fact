@@ -25,7 +25,8 @@ defmodule Fact.Genesis.Decider do
   def decide(:initial_state, %CreateDatabase.V1{args: args} = _command) do
     with args <- resolve_name_and_path(args),
          :ok <- verify_path(Keyword.get(args, :path)),
-         {:ok, configuration} <- build_configuration(args) do
+         {:ok, configuration} <- build_configuration(args),
+         {:ok, encryption_meta} <- resolve_encryption(args, configuration) do
       info = %{
         database_id: generate_database_id(),
         database_name: Keyword.get(args, :name),
@@ -36,7 +37,8 @@ defmodule Fact.Genesis.Decider do
         otp_version: otp_version()
       }
 
-      {:ok, [struct(DatabaseCreated.V1, Map.merge(info, configuration))]}
+      event = struct(DatabaseCreated.V1, Map.merge(info, configuration))
+      {:ok, [event], encryption_meta}
     end
   end
 
@@ -268,6 +270,39 @@ defmodule Fact.Genesis.Decider do
              | options: %{path: path}
            }
        }}
+    end
+  end
+
+  defp resolve_encryption(args, %{record_file_writer: %{family: :encrypted}} = _config) do
+    with {:ok, kek} <- resolve_key(Keyword.get(args, :key)),
+         {:ok, recovery_kek} <- resolve_key(Keyword.get(args, :recovery_key)) do
+      dek = Fact.KeyRing.generate_dek()
+
+      {:ok,
+       %{
+         dek: dek,
+         kek: kek,
+         recovery_kek: recovery_kek,
+         wrapped_dek_primary: Fact.KeyRing.wrap_dek(dek, kek),
+         wrapped_dek_recovery: Fact.KeyRing.wrap_dek(dek, recovery_kek)
+       }}
+    end
+  end
+
+  defp resolve_encryption(_args, _config), do: {:ok, nil}
+
+  defp resolve_key(nil), do: {:ok, :crypto.strong_rand_bytes(32)}
+
+  defp resolve_key(value) when is_binary(value) do
+    case Base.decode64(value) do
+      {:ok, key} when byte_size(key) in [16, 24, 32] ->
+        {:ok, key}
+
+      {:ok, key} ->
+        {:error, {:invalid_key_size, byte_size(key)}}
+
+      :error ->
+        {:error, {:invalid_key, "must be valid base64"}}
     end
   end
 

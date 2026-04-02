@@ -71,6 +71,7 @@ defmodule Fact.IndexFile do
     """
     use Fact.Seam.FileWriter.Adapter,
       context: :index_file_writer,
+      allowed_impls: [{:standard, 1}],
       fixed_options: %{
         {:standard, 1} => %{
           access: :append,

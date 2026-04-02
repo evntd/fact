@@ -186,19 +186,27 @@ defmodule Fact.BootstrapFile do
   It writes just enough configuration, so that the genesis record (`Fact.Genesis.Event.DatabaseCreated.V1`)
   can be read and a full `Fact.Context` can be loaded.
   """
-  @doc since: "0.2.0"
-  @spec write(Path.t(), genesis_record :: Fact.record()) :: :ok | {:error, term()}
-  def write(path, {record_id, event}) do
+  @doc since: "0.3.1"
+  @spec write(Path.t(), genesis_record :: Fact.record(), keyword()) :: :ok | {:error, term()}
+  def write(path, {record_id, event}, opts \\ []) do
     this = get_bootstrap_write_context()
 
-    {:ok, bootstrap_record} =
-      Encoder.encode(this, %{
-        record_id: record_id,
-        event_schema: event.event_schema,
-        record_file_decoder: event.record_file_decoder,
-        record_file_reader: event.record_file_reader,
-        storage: event.storage
-      })
+    record = %{
+      record_id: record_id,
+      event_schema: event.event_schema,
+      record_file_decoder: event.record_file_decoder,
+      record_file_reader: event.record_file_reader,
+      record_file_writer: event.record_file_writer,
+      storage: event.storage
+    }
+
+    record =
+      case Keyword.get(opts, :encryption) do
+        nil -> record
+        encryption -> Map.put(record, :encryption, encryption)
+      end
+
+    {:ok, bootstrap_record} = Encoder.encode(this, record)
 
     Writer.write(this, Path.join(path, Name.get(this)), bootstrap_record)
   end

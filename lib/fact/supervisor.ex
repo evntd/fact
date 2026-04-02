@@ -87,6 +87,30 @@ defmodule Fact.Supervisor do
   end
 
   @doc """
+  Stops a running database.
+
+  This terminates the `Fact.DatabaseSupervisor` for the given database and removes it from the
+  supervision tree. The database lock is released as part of the shutdown.
+
+  Returns `:ok` on success, or `{:error, :not_found}` if no database with the given identifier
+  is running.
+  """
+  @doc since: "0.3.1"
+  @spec stop_database(Fact.database_id()) :: :ok | {:error, :not_found}
+  def stop_database(database_id) when is_binary(database_id) do
+    child_id = {Fact.DatabaseSupervisor, database_id}
+
+    case Supervisor.terminate_child(__MODULE__, child_id) do
+      :ok ->
+        Supervisor.delete_child(__MODULE__, child_id)
+        :ok
+
+      {:error, :not_found} ->
+        {:error, :not_found}
+    end
+  end
+
+  @doc """
   Starts the `Fact.Supervisor`.
     
   At startup, the supervisor:
