@@ -2,9 +2,6 @@ defmodule TestHelper do
   require Logger
 
   @doc """
-  Test helper method to create a database with a random name.
-  """
-  @doc """
   Creates a CAS-mode database (hash@1 record file name) for MMR testing.
   """
   def create_cas_db(name_prefix) do
@@ -29,6 +26,9 @@ defmodule TestHelper do
     path
   end
 
+  @doc """
+  Creates a database with a random name.
+  """
   def create_db(name_prefix) do
     path =
       :uuid.get_v4()
