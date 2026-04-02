@@ -56,6 +56,6 @@ defmodule Fact.WriteAheadLog.Entry do
         {:error, {:unexpected_format, other}}
     end
   rescue
-    ArgumentError -> {:error, :corrupt_entry}
+    _ -> {:error, :corrupt_entry}
   end
 end
