@@ -108,6 +108,7 @@ defmodule Fact.EventIndexer do
   ### Built-in Indexers
 
     * `Fact.EventDataIndexer` - requires an `t:Fact.EventIndexer.indexer_key/0`
+    * `Fact.EventMetadataIndexer` - requires an `t:Fact.EventIndexer.indexer_key/0`
     * `Fact.EventStreamCategoryIndexer`
     * `Fact.EventStreamIndexer`
     * `Fact.EventStreamsByCategoryIndexer`
@@ -115,9 +116,10 @@ defmodule Fact.EventIndexer do
     * `Fact.EventTagsIndexer`
     * `Fact.EventTypeIndexer`
   """
-  @typedoc since: "0.1.2"
+  @typedoc since: "0.3.1"
   @type indexer_id() ::
           Fact.EventDataIndexer.id()
+          | Fact.EventMetadataIndexer.id()
           | Fact.EventStreamCategoryIndexer.id()
           | Fact.EventStreamIndexer.id()
           | Fact.EventStreamsByCategoryIndexer.id()
