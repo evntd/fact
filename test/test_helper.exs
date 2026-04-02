@@ -14,7 +14,7 @@ defmodule TestHelper do
       |> String.split_at(63)
       |> then(fn {name, _} -> Path.join("tmp", name) end)
 
-    Mix.Tasks.Fact.Create.run(["--path", path])
+    Mix.Tasks.Fact.Create.run(["--path", path, "--quiet"])
 
     path
   end
