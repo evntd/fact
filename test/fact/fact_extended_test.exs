@@ -24,7 +24,8 @@ defmodule FactExtendedTest do
 
   describe "open/2" do
     test "returns error for nonexistent database" do
-      assert {:error, :database_not_found} = Fact.open("does/not/exist/#{System.unique_integer()}")
+      assert {:error, :database_not_found} =
+               Fact.open("does/not/exist/#{System.unique_integer()}")
     end
   end
 
