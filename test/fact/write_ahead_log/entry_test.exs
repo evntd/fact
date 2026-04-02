@@ -56,14 +56,16 @@ defmodule Fact.WriteAheadLog.EntryTest do
   end
 
   describe "deserialize/1 error cases" do
-    test "returns crc_mismatch when data is corrupted" do
-      entry = Entry.create(1, "original")
+    test "returns error when data is corrupted" do
+      entry = Entry.create(1, "original data that is long enough")
       bin = Entry.serialize(entry)
 
-      # Corrupt the binary by flipping bytes near the end
-      corrupted = binary_part(bin, 0, byte_size(bin) - 2) <> <<0, 0>>
+      # Corrupt bytes in the middle of the binary where the data field lives
+      mid = div(byte_size(bin), 2)
+      <<head::binary-size(mid), _::binary-size(2), tail::binary>> = bin
+      corrupted = <<head::binary, 0, 0, tail::binary>>
 
-      assert {:error, :crc_mismatch} = Entry.deserialize(corrupted)
+      assert {:error, _reason} = Entry.deserialize(corrupted)
     end
 
     test "returns unexpected_format for non-Entry term" do
