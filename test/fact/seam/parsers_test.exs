@@ -106,4 +106,111 @@ defmodule Fact.Seam.ParsersTest do
       assert :error = Parsers.parse_integer_range(%{}, 1, 10)
     end
   end
+
+  describe "parse_existing_atom/1" do
+    test "accepts existing atom as binary" do
+      assert {:ok, :sha256} = Parsers.parse_existing_atom("sha256")
+    end
+
+    test "accepts atom directly" do
+      assert {:ok, :sha256} = Parsers.parse_existing_atom(:sha256)
+    end
+
+    test "rejects non-existing atom string" do
+      assert :error = Parsers.parse_existing_atom("this_atom_definitely_does_not_exist_xyz_999")
+    end
+
+    test "rejects non-string non-atom" do
+      assert :error = Parsers.parse_existing_atom(123)
+    end
+  end
+
+  describe "parse_filename/1" do
+    test "accepts simple filenames" do
+      assert {:ok, "file.txt"} = Parsers.parse_filename("file.txt")
+      assert {:ok, "my-file_v2.json"} = Parsers.parse_filename("my-file_v2.json")
+    end
+
+    test "rejects filenames with directory components" do
+      assert :error = Parsers.parse_filename("path/to/file.txt")
+    end
+
+    test "rejects filenames with spaces" do
+      assert :error = Parsers.parse_filename("my file.txt")
+    end
+
+    test "rejects non-binary" do
+      assert :error = Parsers.parse_filename(123)
+    end
+  end
+
+  describe "parse_directory/1" do
+    test "accepts valid directory paths" do
+      assert {:ok, "tmp/data"} = Parsers.parse_directory("tmp/data")
+      assert {:ok, "/abs/path"} = Parsers.parse_directory("/abs/path")
+      assert {:ok, "."} = Parsers.parse_directory(".")
+      assert {:ok, ".."} = Parsers.parse_directory("..")
+    end
+  end
+
+  describe "parse_pos_integer/1" do
+    test "accepts positive integers" do
+      assert {:ok, 1} = Parsers.parse_pos_integer(1)
+      assert {:ok, 42} = Parsers.parse_pos_integer(42)
+    end
+
+    test "accepts positive integer strings" do
+      assert {:ok, 5} = Parsers.parse_pos_integer("5")
+    end
+
+    test "rejects zero and negatives" do
+      assert :error = Parsers.parse_pos_integer(0)
+      assert :error = Parsers.parse_pos_integer(-1)
+    end
+
+    test "rejects non-numeric" do
+      assert :error = Parsers.parse_pos_integer("abc")
+      assert :error = Parsers.parse_pos_integer(nil)
+    end
+  end
+
+  describe "parse_non_neg_integer/1" do
+    test "accepts zero and positive integers" do
+      assert {:ok, 0} = Parsers.parse_non_neg_integer(0)
+      assert {:ok, 5} = Parsers.parse_non_neg_integer(5)
+    end
+
+    test "accepts non-negative integer strings" do
+      assert {:ok, 0} = Parsers.parse_non_neg_integer("0")
+    end
+
+    test "rejects negatives" do
+      assert :error = Parsers.parse_non_neg_integer(-1)
+    end
+
+    test "rejects non-numeric" do
+      assert :error = Parsers.parse_non_neg_integer("abc")
+      assert :error = Parsers.parse_non_neg_integer(nil)
+    end
+  end
+
+  describe "parse_pos_integer/1 edge cases" do
+    test "rejects float" do
+      assert :error = Parsers.parse_pos_integer(1.5)
+    end
+
+    test "string negative" do
+      assert :error = Parsers.parse_pos_integer("-1")
+    end
+
+    test "string zero" do
+      assert :error = Parsers.parse_pos_integer("0")
+    end
+  end
+
+  describe "parse_non_neg_integer/1 edge cases" do
+    test "rejects float" do
+      assert :error = Parsers.parse_non_neg_integer(1.5)
+    end
+  end
 end
