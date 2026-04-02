@@ -2,25 +2,25 @@ defmodule Fact.EventMetadataIndexer do
   @moduledoc """
   Indexes events by the values of a specified field within event metadata.
   """
-  @moduledoc since: "0.3.1"
+  @moduledoc since: "0.4.0"
   use Fact.EventIndexer
 
   @typedoc """
   The id for a Fact.EventMetadataIndexer.
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type id :: {Fact.EventMetadataIndexer, Fact.EventIndexer.indexer_key()}
 
   @typedoc """
   Custom option values passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type option :: {:indexer_key, String.t()} | Fact.EventIndexer.indexer_option()
 
   @typedoc """
   Custom options passed to the `c:Fact.EventIndexer.index_event/3` callback function.
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type options :: [option()]
 
   @doc """
@@ -30,7 +30,7 @@ defmodule Fact.EventMetadataIndexer do
 
     * `:indexer_key` — required, specifies the field to lookup within the event metadata
   """
-  @doc since: "0.3.1"
+  @doc since: "0.4.0"
   @impl true
   @spec index_event(Fact.event_record_schema(), Fact.event_record(), options()) ::
           String.t() | nil

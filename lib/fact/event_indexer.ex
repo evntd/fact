@@ -116,7 +116,7 @@ defmodule Fact.EventIndexer do
     * `Fact.EventTagsIndexer`
     * `Fact.EventTypeIndexer`
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type indexer_id() ::
           Fact.EventDataIndexer.id()
           | Fact.EventMetadataIndexer.id()
