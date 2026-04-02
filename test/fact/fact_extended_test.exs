@@ -223,7 +223,7 @@ defmodule FactExtendedTest do
       {:ok, _db} = Fact.open(path)
       Fact.when_ready(db_name, timeout: 5_000)
 
-      assert_receive {:database_ready, ^db_name}, 5_000
+      assert_receive {:database_ready, %{database_name: ^db_name}}, 5_000
     end
   end
 
