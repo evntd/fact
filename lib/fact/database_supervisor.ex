@@ -41,7 +41,7 @@ defmodule Fact.DatabaseSupervisor do
       # With key and options
       {MyApp.RegionIndexer, key: "us-east", options: [separator: "-"]}
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type indexer_spec ::
           module()
           | {module(), [indexer_spec_option()]}
@@ -52,7 +52,7 @@ defmodule Fact.DatabaseSupervisor do
     * `:key` - An `t:Fact.EventIndexer.indexer_key/0` to distinguish parameterized instances.
     * `:options` - Options forwarded to `c:Fact.EventIndexer.index_event/3`.
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type indexer_spec_option ::
           {:key, Fact.EventIndexer.indexer_key()}
           | {:options, Fact.EventIndexer.indexer_options()}
@@ -80,7 +80,7 @@ defmodule Fact.DatabaseSupervisor do
     * `:context` - (required) The `Fact.Context` providing database identity and configuration.
     * `:opts` - (optional) Runtime options for database subsystems. See `t:subsystem_option/0`.
   """
-  @typedoc since: "0.3.1"
+  @typedoc since: "0.4.0"
   @type option ::
           {:context, Fact.Context.t()}
           | {:opts, [subsystem_option()]}
