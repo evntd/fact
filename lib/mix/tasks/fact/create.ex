@@ -159,7 +159,8 @@ defmodule Mix.Tasks.Fact.Create do
     record_file_writer: :string,
     record_file_writer_options: :string,
     storage: :string,
-    storage_options: :string
+    storage_options: :string,
+    quiet: :boolean
   ]
 
   @aliases [
@@ -212,9 +213,11 @@ defmodule Mix.Tasks.Fact.Create do
     with {:ok, [genesis_event]} <- Decider.decide(state, command) do
       TheCreator.let_there_be_light(genesis_event)
 
-      display_banner()
-      display_results(genesis_event, Keyword.get(command.args, :path))
-      display_next_steps()
+      unless Keyword.get(parsed, :quiet, false) do
+        display_banner()
+        display_results(genesis_event, Keyword.get(command.args, :path))
+        display_next_steps()
+      end
 
       :ok
     else
