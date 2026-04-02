@@ -57,7 +57,7 @@ The package can be installed by adding `fact` to your list of dependencies in `m
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.3.0"}
+    {:fact, "~> 0.3.1"}
   ]
 end
 ```
