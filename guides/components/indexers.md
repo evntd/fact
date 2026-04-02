@@ -34,7 +34,9 @@ restart.
 
 ## Built-in Indexers
 
-Fact starts six indexers automatically with every database. These power the core read APIs and query system.
+Fact ships with eight indexers. Six start automatically with every database and power the core read APIs and query
+system. The remaining two, `Fact.EventDataIndexer` and `Fact.EventMetadataIndexer`, are parameterized and started
+via configuration.
 
 ### Event Stream Indexer
 
@@ -116,6 +118,20 @@ targets a single key and is identified by that key.
 /indices/event_data/user_id/user_123
 /indices/event_data/user_id/user_456
 /indices/event_data/tenant_id/acme
+```
+
+### Event Metadata Indexer
+
+**Module:** `Fact.EventMetadataIndexer`
+
+A parameterized indexer that extracts the value of a specific field from the event metadata payload. Works the same
+way as `Fact.EventDataIndexer` but reads from metadata instead of data. Useful for indexing operational concerns
+like correlation IDs, causation IDs, or tenant identifiers carried in metadata.
+
+```
+/indices/event_metadata/correlation_id/abc-123
+/indices/event_metadata/correlation_id/def-456
+/indices/event_metadata/causation_id/xyz-789
 ```
 
 ## Custom Indexers
@@ -252,7 +268,7 @@ children = [
 ]
 ```
 
-Custom indexers are **additive** — they run alongside the six built-in indexers, which are always started.
+Custom indexers are **additive** — they run alongside the built-in indexers that are always started.
 
 ## Reading from Custom Indexes
 
@@ -313,6 +329,9 @@ indices/
 ├── event_streams_by_category/  # EventStreamsByCategoryIndexer
 │   └── <category>
 ├── event_data/             # EventDataIndexer
+│   └── <key>/
+│       └── <value>
+├── event_metadata/         # EventMetadataIndexer
 │   └── <key>/
 │       └── <value>
 └── user/                   # MyApp.UserIndexer (custom)
