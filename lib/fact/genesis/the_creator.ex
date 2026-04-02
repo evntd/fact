@@ -26,7 +26,7 @@ defmodule Fact.Genesis.TheCreator do
   (since the KeyRing process is not yet running) and the bootstrap file includes
   the wrapped DEK for later decryption.
   """
-  @doc since: "0.3.1"
+  @doc since: "0.4.0"
   @spec let_there_be_light(%DatabaseCreated.V1{}, map() | nil) :: :ok
   def let_there_be_light(%DatabaseCreated.V1{} = event, encryption_meta \\ nil) do
     with context <- DatabaseCreated.V1.to_context(event),

@@ -641,7 +641,7 @@ defmodule Fact do
       :ok
 
   """
-  @doc since: "0.3.1"
+  @doc since: "0.4.0"
   @spec close(database_id()) :: :ok | {:error, :not_found}
   def close(database_id) when is_binary(database_id) do
     Fact.Supervisor.stop_database(database_id)

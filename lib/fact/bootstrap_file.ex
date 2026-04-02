@@ -186,7 +186,7 @@ defmodule Fact.BootstrapFile do
   It writes just enough configuration, so that the genesis record (`Fact.Genesis.Event.DatabaseCreated.V1`)
   can be read and a full `Fact.Context` can be loaded.
   """
-  @doc since: "0.3.1"
+  @doc since: "0.4.0"
   @spec write(Path.t(), genesis_record :: Fact.record(), keyword()) :: :ok | {:error, term()}
   def write(path, {record_id, event}, opts \\ []) do
     this = get_bootstrap_write_context()

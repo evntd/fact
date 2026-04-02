@@ -95,7 +95,7 @@ defmodule Fact.Supervisor do
   Returns `:ok` on success, or `{:error, :not_found}` if no database with the given identifier
   is running.
   """
-  @doc since: "0.3.1"
+  @doc since: "0.4.0"
   @spec stop_database(Fact.database_id()) :: :ok | {:error, :not_found}
   def stop_database(database_id) when is_binary(database_id) do
     child_id = {Fact.DatabaseSupervisor, database_id}
