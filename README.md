@@ -101,9 +101,12 @@ iex> Fact.read(db, {:stream, "turtle-1"})
 Fact is compliant with the [Dynamic Consistency Boundary (DCB) specification](https://dcb.events/specification/).
 
 Traditional event stores enforce consistency at the stream level — one aggregate, one stream. DCB goes further:
-it lets you define consistency boundaries dynamically using **queries** over event types, tags, and data fields.
-This means your consistency boundaries can cross streams, evolve over time, and model real-world invariants that
-don't fit neatly into a single aggregate.
+it lets you define consistency boundaries dynamically using **queries** over event types and tags. This means
+your consistency boundaries can cross streams, evolve over time, and model real-world invariants that don't fit
+neatly into a single aggregate.
+
+Fact implements the full DCB specification and **extends it** with queries over **event data fields**. This
+lets you define boundaries based on the actual content of your events — not just their types and tags.
 
 In Fact, a query *is* a consistency boundary. Combine `tags`, `types`, and `data` conditions to select exactly
 the events that matter for a given decision, then use conditional appends to enforce invariants across them.
@@ -111,14 +114,15 @@ the events that matter for a given decision, then use conditional appends to enf
 ```elixir
 import Fact.QueryItem
 
-# All events for a specific user, regardless of which stream they're in
+# DCB: query by tags and types
 user_boundary = tags("user:42")
+admin_users = tags("admin") |> types("user_created")
 
-# All admin user_created events with a specific name — across all streams
-narrow_boundary = tags("admin") |> types("user_created") |> data(name: "Alice")
+# Fact extension: query by event data fields
+by_name = tags("admin") |> types("user_created") |> data(name: "Alice")
 
 # Read from a dynamic boundary
-Fact.read(db, {:query, user_boundary})
+Fact.read(db, {:query, by_name})
 ```
 
 ## Event Tags & Queries
