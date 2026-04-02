@@ -20,7 +20,7 @@ defmodule Fact.Bootstrapper do
   @type option ::
           {:path, Path.t()}
           | {:caller, pid()}
-          | {:opts, keyword()}
+          | {:opts, [Fact.DatabaseSupervisor.subsystem_option()]}
 
   @type options :: list(option)
 
