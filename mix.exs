@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.3.0"
+  @version "0.3.1"
   @codename "Hardened Shell"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
