@@ -4,6 +4,31 @@ defmodule TestHelper do
   @doc """
   Test helper method to create a database with a random name.
   """
+  @doc """
+  Creates a CAS-mode database (hash@1 record file name) for MMR testing.
+  """
+  def create_cas_db(name_prefix) do
+    path =
+      :uuid.get_v4()
+      |> :uuid.uuid_to_string(:nodash)
+      |> to_string()
+      |> then(fn uuid -> name_prefix <> uuid end)
+      |> String.downcase()
+      |> String.split_at(63)
+      |> then(fn {name, _} -> Path.join("tmp", name) end)
+
+    Mix.Tasks.Fact.Create.run([
+      "--path",
+      path,
+      "--record-file-name",
+      "hash@1",
+      "--record-file-name-options",
+      "algorithm=sha256,encoding=base16"
+    ])
+
+    path
+  end
+
   def create_db(name_prefix) do
     path =
       :uuid.get_v4()
@@ -14,7 +39,7 @@ defmodule TestHelper do
       |> String.split_at(63)
       |> then(fn {name, _} -> Path.join("tmp", name) end)
 
-    Mix.Tasks.Fact.Create.run(["--path", path])
+    Mix.Tasks.Fact.Create.run(["--path", path, "--quiet"])
 
     path
   end

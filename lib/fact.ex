@@ -609,7 +609,8 @@ defmodule Fact do
 
   """
   @doc since: "0.3.0"
-  @spec open(Path.t(), atom() | keyword()) :: {:ok, database_id()} | {:error, term()}
+  @spec open(Path.t(), atom() | [Fact.DatabaseSupervisor.subsystem_option()]) ::
+          {:ok, database_id()} | {:error, term()}
   def open(path, opts \\ [])
 
   def open(path, opt) when is_atom(opt), do: open(path, [opt])
@@ -897,14 +898,20 @@ defmodule Fact do
   the database identified by `database_name` is ready. When readiness is
   detected, a message is sent to the calling process:
 
-  * `{:database_ready, database_name}`
+  * `{:database_ready, %{database_name: database_name, database_id: database_id}}`
 
   If the database does not become ready before the timeout expires, the
   calling process is notified with:
 
   * `{:error, {:database_ready_timeout, database_name}}`
+
+  > #### Breaking change in 0.3.1 {: .warning}
+  >
+  > The ready message changed from `{:database_ready, database_name}` to
+  > `{:database_ready, %{database_name: ..., database_id: ...}}`.
+  > Update any `receive` blocks that pattern match on the old format.
   """
-  @doc since: "0.2.1"
+  @doc since: "0.3.1"
   @spec when_ready(Fact.database_name(), keyword()) :: boolean()
   def when_ready(database_name, opts) do
     timeout = Keyword.get(opts, :timeout, 30_000)
@@ -923,7 +930,9 @@ defmodule Fact do
 
   defp loop(database_name, caller, deadline, interval) do
     if ready?(database_name) do
-      send(caller, {:database_ready, database_name})
+      {:ok, database_id} = Fact.Registry.get_database_id(database_name)
+
+      send(caller, {:database_ready, %{database_name: database_name, database_id: database_id}})
     else
       now = System.monotonic_time(:millisecond)
 
