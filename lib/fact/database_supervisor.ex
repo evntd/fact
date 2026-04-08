@@ -93,8 +93,15 @@ defmodule Fact.DatabaseSupervisor do
   def init({%Fact.Context{database_id: database_id} = context, opts}) do
     Fact.Registry.register(context)
 
+    encryption_opts = Keyword.get(opts, :encryption, [])
+    encrypted = Keyword.get(encryption_opts, :wrapped_dek) != nil
+
     wal_opts =
-      [database_id: database_id, name: Fact.Registry.via(database_id, Fact.WriteAheadLog)] ++
+      [
+        database_id: database_id,
+        name: Fact.Registry.via(database_id, Fact.WriteAheadLog),
+        encrypted: encrypted
+      ] ++
         Keyword.get(opts, :wal, [])
 
     cache_opts = Keyword.get(opts, :cache, [])

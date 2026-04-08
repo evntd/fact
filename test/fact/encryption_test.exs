@@ -196,6 +196,46 @@ defmodule Fact.EncryptionTest do
       assert record["event_data"]["name"] == "Shelldon"
     end
 
+    test "WAL segment files do not contain plaintext event data", %{
+      path: path,
+      encryption_meta: meta
+    } do
+      {:ok, db} = Fact.open(path, encryption_key: Base.encode64(meta.kek))
+
+      {:ok, position} = Fact.append(db, %{type: "turtle_hatched", data: %{name: "Shelldon"}})
+      TestHelper.subscribe_and_wait(db, position)
+
+      Fact.WriteAheadLog.sync(db)
+
+      wal_dir = Path.join(path, "wal")
+
+      wal_bytes =
+        Path.wildcard(Path.join(wal_dir, "*"))
+        |> Enum.map(&File.read!/1)
+        |> Enum.join()
+
+      refute String.contains?(wal_bytes, "turtle_hatched")
+      refute String.contains?(wal_bytes, "Shelldon")
+    end
+
+    test "WAL recovery works with encrypted entries", %{path: path, encryption_meta: meta} do
+      {:ok, db} = Fact.open(path, encryption_key: Base.encode64(meta.kek))
+
+      {:ok, position} = Fact.append(db, %{type: "turtle_hatched", data: %{name: "Shelldon"}})
+      TestHelper.subscribe_and_wait(db, position)
+
+      # Close and reopen to trigger WAL recovery
+      Process.flag(:trap_exit, true)
+      :ok = Fact.close(db)
+      Process.flag(:trap_exit, false)
+
+      {:ok, db2} = Fact.open(path, encryption_key: Base.encode64(meta.kek))
+
+      events = Fact.read(db2, :all)
+      event_types = Enum.map(events, & &1["event_type"])
+      assert "turtle_hatched" in event_types
+    end
+
     test "wrong encryption key returns clear error", %{path: path} do
       wrong_key = :crypto.strong_rand_bytes(32) |> Base.encode64()
       assert {:error, :invalid_encryption_key} = Fact.open(path, encryption_key: wrong_key)
