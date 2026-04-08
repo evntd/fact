@@ -315,8 +315,8 @@ defmodule Fact.WriteAheadLog do
   defp maybe_decrypt_entry(entry, %{encrypted: true, database_id: database_id}) do
     {:ok, dek} = Fact.KeyRing.get_dek(database_id)
 
-    <<nonce::binary-size(@nonce_size), auth_tag::binary-size(@auth_tag_size),
-      ciphertext::binary>> = entry.data
+    <<nonce::binary-size(@nonce_size), auth_tag::binary-size(@auth_tag_size), ciphertext::binary>> =
+      entry.data
 
     plaintext =
       :crypto.crypto_one_time_aead(:aes_256_gcm, dek, nonce, ciphertext, "", auth_tag, false)
