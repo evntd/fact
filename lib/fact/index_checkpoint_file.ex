@@ -98,6 +98,7 @@ defmodule Fact.IndexCheckpointFile do
       decoded
     else
       {:error, :enoent} -> 0
+      {:error, {:decode, _}} -> 0
     end
   end
 

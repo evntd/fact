@@ -27,7 +27,7 @@ defmodule TestHelper do
   end
 
   @doc """
-  Test helper method to create a database with a random name.
+  Creates a database with a random name.
   """
   def create_db(name_prefix) do
     path =
