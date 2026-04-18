@@ -23,7 +23,7 @@ Add `fact` to your dependencies:
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.3.1"},
+    {:fact, "~> 0.4.0"},
     {:jason, "~> 1.4"}  # required on Elixir 1.17 and earlier
   ]
 end
@@ -226,13 +226,13 @@ Look up a database by name at runtime:
 | `mix fact.merkle.create_proof -p <path> --position <n>` | Create an inclusion proof |
 | `mix fact.merkle.verify_proof --proof <file>` | Verify an inclusion proof |
 
-## Coming in v0.4.0
+## New in v0.4.0
 
 - **Encryption at rest** — AES-256-GCM authenticated encryption for event record files, with envelope encryption (DEK/KEK) and recovery key support
 - **Custom indexers** — define application-specific indexes with a single callback, configured via `Fact.open/2`
 - **Metadata indexer** — built-in indexer for event metadata fields (correlation IDs, tenant IDs, etc.)
 
-## Roadmap
+## Road to v1.0.0
 
 - Telemetry
 - Full stack example application
