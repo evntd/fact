@@ -2,9 +2,6 @@ defmodule TestHelper do
   require Logger
 
   @doc """
-  Test helper method to create a database with a random name.
-  """
-  @doc """
   Creates a CAS-mode database (hash@1 record file name) for MMR testing.
   """
   def create_cas_db(name_prefix) do
@@ -29,6 +26,9 @@ defmodule TestHelper do
     path
   end
 
+  @doc """
+  Test helper method to create a database with a random name.
+  """
   def create_db(name_prefix) do
     path =
       :uuid.get_v4()
@@ -60,8 +60,8 @@ defmodule TestHelper do
 
   @doc """
   Subscribes to the database and waits for all the indexers to index events
-  up to the specified position. 
-    
+  up to the specified position.
+
   This uses a really naive approach when waiting, it just expects to receive
   some message with the timeout window, then waits again resetting the time
   window, a continues until the expected message is received.
