@@ -71,6 +71,7 @@ defmodule Fact.MixProject do
       extras: [
         "LICENSE",
         "guides/components/encryption.md",
+        "guides/components/indexers.md",
         "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
         "guides/components/record-cache.md",
@@ -89,6 +90,7 @@ defmodule Fact.MixProject do
         ],
         Components: [
           "guides/components/encryption.md",
+          "guides/components/indexers.md",
           "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
           "guides/components/record-cache.md",
@@ -173,6 +175,7 @@ defmodule Fact.MixProject do
         Indexing: [
           Fact.EventDataIndexer,
           Fact.EventIndexer,
+          Fact.EventMetadataIndexer,
           Fact.EventStreamCategoryIndexer,
           Fact.EventStreamIndexer,
           Fact.EventStreamsByCategoryIndexer,

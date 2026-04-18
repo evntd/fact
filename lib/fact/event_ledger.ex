@@ -1,6 +1,6 @@
 defmodule Fact.EventLedger do
   @moduledoc """
-  This is the Judge Judy of the system, it manages the event ledger for a Fact database instance, 
+  This is the Judge Judy of the system, it manages the event ledger for a Fact database instance,
   handling all commits, enforcing optimistic concurrency control via append conditions.
 
   `Fact.EventLedger` is a GenServer responsible for:
@@ -28,8 +28,8 @@ defmodule Fact.EventLedger do
 
   @typedoc """
   Defines the options that can be specified when committing.
-    
-    * `:timeout` (default: 5000) - specifies how long the caller should wait for the commit operation to complete in milliseconds 
+
+    * `:timeout` (default: 5000) - specifies how long the caller should wait for the commit operation to complete in milliseconds
   """
   @typedoc since: "0.1.0"
   @type commit_option :: {:timeout, timeout()}
@@ -67,7 +67,7 @@ defmodule Fact.EventLedger do
   Each event is enriched with additional metadata, including a timestamp, and assigning a store position.
   Events are then written to the configured storage and a reference to the event is appended to the ledger file.
 
-  If the commit operation is successful, an `{:appended, {record_id, event}}` message will be published by the 
+  If the commit operation is successful, an `{:appended, {record_id, event}}` message will be published by the
   `Fact.EventPublisher` for each event that was written.
   """
   @doc since: "0.2.0"
@@ -290,6 +290,10 @@ defmodule Fact.EventLedger do
       event_with_renamed_keys =
         rename_keys(event, replacements)
 
+      deduplicated_tags =
+        Map.get(event_with_renamed_keys, schema.event_tags, [])
+        |> Enum.uniq()
+
       enriched_event =
         %{
           schema.event_data => %{},
@@ -300,6 +304,7 @@ defmodule Fact.EventLedger do
           schema.event_store_timestamp => timestamp
         }
         |> Map.merge(event_with_renamed_keys)
+        |> Map.put(schema.event_tags, deduplicated_tags)
 
       {enriched_event, next}
     end)
