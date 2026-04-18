@@ -70,6 +70,7 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/encryption.md",
         "guides/components/indexers.md",
         "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
@@ -88,6 +89,7 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/encryption.md",
           "guides/components/indexers.md",
           "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
@@ -145,12 +147,21 @@ defmodule Fact.MixProject do
           Fact.Storage
         ],
         Core: [
+          Fact.BuildInfo,
           Fact.Database,
           Fact.EventLedger,
           Fact.EventReader,
           Fact.EventStreamWriter,
           Fact.Query,
-          Fact.QueryItem
+          Fact.QueryItem,
+          Fact.RecordCache,
+          Fact.WriteAheadLog,
+          Fact.WriteAheadLog.Entry
+        ],
+        Encryption: [
+          Fact.Encryption.KEKProvider,
+          Fact.Encryption.KEKProvider.Explicit,
+          Fact.KeyRing
         ],
         Genesis: [
           Fact.Genesis.Command.CreateDatabase.V1,
@@ -227,11 +238,13 @@ defmodule Fact.MixProject do
           Fact.Seam.FileName.Registry,
           Fact.Seam.FileReader,
           Fact.Seam.FileReader.Adapter,
+          Fact.Seam.FileReader.Encrypted.V1,
           Fact.Seam.FileReader.FixedLength.V1,
           Fact.Seam.FileReader.Full.V1,
           Fact.Seam.FileReader.Registry,
           Fact.Seam.FileWriter,
           Fact.Seam.FileWriter.Adapter,
+          Fact.Seam.FileWriter.Encrypted.V1,
           Fact.Seam.FileWriter.Standard.V1,
           Fact.Seam.FileWriter.Registry,
           Fact.Seam.Instance,

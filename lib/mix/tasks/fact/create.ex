@@ -3,15 +3,15 @@ defmodule Mix.Tasks.Fact.Create do
   Creates a new database.
 
   ### Usage
-      
+
 
   ### Options
-    
+
   There are a lot of options to control how the database stores information. However many of these options currently
   only support a single value. Each represents a **seam** within the system, and each can be supplied with a set of
   implementation specific options. Each seam implementation is configured using `{family}@{version}` format, while
   options are specified using a comma-delimited list of key value pairs `{key1}={value1},{key2}={value2}`.
-    
+
   Maybe this all just a big old YAGNI...but I think it will prove its worth in time.
 
   #### Event options
@@ -22,30 +22,30 @@ defmodule Mix.Tasks.Fact.Create do
     * `--event-schema-options` - Configuration options for the selected event schema. (default: `""`)
 
   #### Index file options
-    
-    * `--index-file-decoder` - Controls how record are decoded after reading. (default: `raw@1`)  
+
+    * `--index-file-decoder` - Controls how record are decoded after reading. (default: `raw@1`)
     * `--index-file-decoder-options` - Configuration options for the selected record file decoder. (default: `""`)
     * `--index-file-encoder` - Controls how record are encoded for writing. (default: `delimited@1`)
     * `--index-file-encoder-options` - Configuration options for the selected record file encoder. (default: `""`)
     * `--index-file-name` - Controls how record files are named. (default: `raw@1`)
-    * `--index-file-name-options` - Configuration options for the selected record file name seam. (default: `""`) 
+    * `--index-file-name-options` - Configuration options for the selected record file name seam. (default: `""`)
     * `--index-file-reader` - Controls how record files are read. (default: `fixed_length@1`)
     * `--index-file-reader-options` - Configuration options for the selected record file reader. (default: `""`)
     * `--index-file-writer` - Controls how record files are written. (default: `standard@1`)
     * `--index-file-writer-options` - Configuration options for the selected record file writer. (default: `""`)
-    
-  #### Index checkpoint file options 
+
+  #### Index checkpoint file options
 
     * `--index-checkpoint-file-decoder` - Controls how record are decoded after reading. (default: `integer@1`)
     * `--index-checkpoint-file-decoder-options` - Configuration options for the selected record file decoder. (default: `""`)
     * `--index-checkpoint-file-encoder` - Controls how record are encoded for writing. (default: `integer@1`)
     * `--index-checkpoint-file-encoder-options` - Configuration options for the selected record file encoder. (default: `""`)
     * `--index-checkpoint-file-name` - Controls how record files are named. (default: `fixed@1`)
-    * `--index-checkpoint-file-name-options` - Configuration options for the selected record file name seam. (default: `""`) 
+    * `--index-checkpoint-file-name-options` - Configuration options for the selected record file name seam. (default: `""`)
     * `--index-checkpoint-file-reader` - Controls how record files are read. (default: `full@1`)
     * `--index-checkpoint-file-reader-options` - Configuration options for the selected record file reader. (default: `""`)
     * `--index-checkpoint-file-writer` - Controls how record files are written. (default: `standard@1`)
-    * `--index-checkpoint-file-writer-options` - Configuration options for the selected record file writer. (default: `""`)    
+    * `--index-checkpoint-file-writer-options` - Configuration options for the selected record file writer. (default: `""`)
 
   #### Ledger file options
 
@@ -54,7 +54,7 @@ defmodule Mix.Tasks.Fact.Create do
     * `--ledger-file-encoder` - Controls how record are encoded for writing. (default: `delimited@1`)
     * `--ledger-file-encoder-options` - Configuration options for the selected record file encoder. (default: `""`)
     * `--ledger-file-name` - Controls how record files are named. (default: `fixed@1`)
-    * `--ledger-file-name-options` - Configuration options for the selected record file name seam. (default: `""`) 
+    * `--ledger-file-name-options` - Configuration options for the selected record file name seam. (default: `""`)
     * `--ledger-file-reader` - Controls how record files are read. (default: `fixed_length@1`)
     * `--ledger-file-reader-options` - Configuration options for the selected record file reader. (default: `""`)
     * `--ledger-file-writer` - Controls how record files are written. (default: `standard@1`)
@@ -67,29 +67,36 @@ defmodule Mix.Tasks.Fact.Create do
     * `--lock-file-encoder` - Controls how record are encoded for writing. (default: `json@1`)
     * `--lock-file-encoder-options` - Configuration options for the selected record file encoder. (default: `""`)
     * `--lock-file-name` - Controls how record files are named. (default: `fixed@1`)
-    * `--lock-file-name-options` - Configuration options for the selected record file name seam. (default: `""`) 
+    * `--lock-file-name-options` - Configuration options for the selected record file name seam. (default: `""`)
     * `--lock-file-reader` - Controls how record files are read. (default: `full@1`)
     * `--lock-file-reader-options` - Configuration options for the selected record file reader. (default: `""`)
     * `--lock-file-writer` - Controls how record files are written. (default: `standard@1`)
-    * `--lock-file-writer-options` - Configuration options for the selected record file writer. (default: `""`)  
+    * `--lock-file-writer-options` - Configuration options for the selected record file writer. (default: `""`)
 
   #### Record file options
-    
+
     * `--record-file-decoder` - Controls how record are decoded after reading. (default: `json@1`)
     * `--record-file-decoder-options` - Configuration options for the selected record file decoder. (default: `""`)
     * `--record-file-encoder` - Controls how record are encoded for writing. (default: `json@1`)
     * `--record-file-encoder-options` - Configuration options for the selected record file encoder. (default: `""`)
     * `--record-file-name` - Controls how record files are named. (default: `event_id@1`)
-    * `--record-file-name-options` - Configuration options for the selected record file name seam. (default: `""`) 
+    * `--record-file-name-options` - Configuration options for the selected record file name seam. (default: `""`)
     * `--record-file-reader` - Controls how record files are read. (default: `full@1`)
     * `--record-file-reader-options` - Configuration options for the selected record file reader. (default: `""`)
     * `--record-file-writer` - Controls how record files are written. (default: `standard@1`)
     * `--record-file-writer-options` - Configuration options for the selected record file writer. (default: `""`)
-    
+
   #### Storage options
-    
+
     * `--storage` - Controls how the files are organized within the file system. (default: `standard@1`)
     * `--storage-options` - Configuration options for the selected storage. (default: `""`)
+
+  #### Encryption options
+
+    * `--encrypted` - Enables encryption at rest for event record files. This is a shorthand that
+      sets the record file writer and reader to `encrypted@1` with `cipher=aes_gcm`.
+    * `--key` - Base64-encoded primary encryption key (16, 24, or 32 bytes decoded). Generated if not provided.
+    * `--recovery-key` - Base64-encoded recovery encryption key (16, 24, or 32 bytes decoded). Generated if not provided.
 
   """
 
@@ -160,6 +167,9 @@ defmodule Mix.Tasks.Fact.Create do
     record_file_writer_options: :string,
     storage: :string,
     storage_options: :string,
+    encrypted: :boolean,
+    key: :string,
+    recovery_key: :string,
     quiet: :boolean
   ]
 
@@ -207,15 +217,17 @@ defmodule Mix.Tasks.Fact.Create do
       Mix.raise("Unexpected arguments: #{Enum.join(argv, " ")}")
     end
 
+    parsed = expand_encrypted_flag(parsed)
     command = %CreateDatabase.V1{args: parsed}
     state = Decider.initial_state()
 
-    with {:ok, [genesis_event]} <- Decider.decide(state, command) do
-      TheCreator.let_there_be_light(genesis_event)
+    with {:ok, [genesis_event], encryption_meta} <- Decider.decide(state, command) do
+      TheCreator.let_there_be_light(genesis_event, encryption_meta)
 
       unless Keyword.get(parsed, :quiet, false) do
         display_banner()
         display_results(genesis_event, Keyword.get(command.args, :path))
+        display_encryption_keys(encryption_meta)
         display_next_steps()
       end
 
@@ -228,6 +240,19 @@ defmodule Mix.Tasks.Fact.Create do
     end
   end
 
+  defp expand_encrypted_flag(parsed) do
+    if Keyword.get(parsed, :encrypted, false) do
+      parsed
+      |> Keyword.delete(:encrypted)
+      |> Keyword.put_new(:record_file_writer, "encrypted@1")
+      |> Keyword.put_new(:record_file_writer_options, "cipher=aes_gcm")
+      |> Keyword.put_new(:record_file_reader, "encrypted@1")
+      |> Keyword.put_new(:record_file_reader_options, "cipher=aes_gcm")
+    else
+      parsed
+    end
+  end
+
   defp display_banner() do
     # ANSI Shadow
     Mix.shell().info("""
@@ -235,25 +260,25 @@ defmodule Mix.Tasks.Fact.Create do
 
           ███████╗ █████╗  ██████╗ ████████╗
           ██╔════╝██╔══██╗██╔════╝ ╚══██╔══╝
-          █████╗  ███████║██║         ██║   
-          ██╔══╝  ██╔══██║██║         ██║   
-          ██║     ██║  ██║╚██████╗    ██║   
-          ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.BuildInfo.version()} (#{Fact.BuildInfo.codename()})  
+          █████╗  ███████║██║         ██║
+          ██╔══╝  ██╔══██║██║         ██║
+          ██║     ██║  ██║╚██████╗    ██║
+          ╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝ v#{Fact.BuildInfo.version()} (#{Fact.BuildInfo.codename()})
 
     """)
   end
 
   defp display_results(event, path) do
     Mix.shell().info("""
-      
+
        🐢 "#{Enum.random(@quotes)}"
-      
-      ================================================================  
+
+      ================================================================
           ID: #{event.database_id}
         NAME: #{event.database_name}
         PATH: #{Path.absname(path)}
       ================================================================
-      
+
        Try it out...
 
         $ iex -S mix
@@ -264,10 +289,33 @@ defmodule Mix.Tasks.Fact.Create do
     """)
   end
 
+  defp display_encryption_keys(nil), do: :ok
+
+  defp display_encryption_keys(%{kek: kek, recovery_kek: recovery_kek}) do
+    Mix.shell().info("""
+
+      ================================================================
+       🔐 ENCRYPTION KEYS — SAVE THESE NOW
+      ================================================================
+
+           KEY: #{Base.encode64(kek)}
+      RECOVERY: #{Base.encode64(recovery_kek)}
+
+      ================================================================
+
+       Store the key securely (secrets manager, environment variable).
+       Store the recovery key separately in a safe, offline location.
+
+       These keys will NOT be shown again. If you lose both keys,
+       your data is unrecoverable.
+      ================================================================
+    """)
+  end
+
   defp display_next_steps() do
     Mix.shell().info("""
        Next Steps:
-        
+
           📖 \e]8;;#{Fact.BuildInfo.docs_url()}\e\\Read the documentation\e]8;;\e\\ at #{Fact.BuildInfo.docs_url()}
           🤓 \e]8;;https://leanpub.com/eventmodeling-and-eventsourcing\e\\Learn to understand event sourcing\e]8;;\e\\
           🫆  \e]8;;https://eventmodeling.org\e\\Design and deliver better systems with Event Modeling\e]8;;\e\\

@@ -456,12 +456,13 @@ defmodule Fact.MerkleMountainRange do
   defp do_verify(state) do
     {:ok, context} = Fact.Registry.get_context(state.database_id)
     prev_leaf_hash = :binary.copy(<<0>>, state.hash_size)
+    dek = resolve_dek(context)
 
     tampered =
       Fact.LedgerFile.read(state.database_id)
       |> Enum.with_index()
       |> Enum.reduce({[], prev_leaf_hash}, fn {record_id, index}, {tampered, prev_hash} ->
-        case verify_record(context, state, record_id, index, prev_hash) do
+        case verify_record(context, state, record_id, index, prev_hash, dek) do
           {:ok, _store_position, leaf_hash} ->
             {tampered, leaf_hash}
 
@@ -478,8 +479,15 @@ defmodule Fact.MerkleMountainRange do
     end
   end
 
-  defp verify_record(context, state, record_id, index, prev_hash) do
-    content_ok? = verify_content_hash(context, record_id)
+  defp resolve_dek(%{record_file_reader: %{module: mod}} = context) do
+    if mod.family() == :encrypted do
+      {:ok, dek} = Fact.KeyRing.get_dek(context.database_id)
+      dek
+    end
+  end
+
+  defp verify_record(context, state, record_id, index, prev_hash, dek) do
+    content_ok? = verify_content_hash(context, record_id, dek)
 
     # Read event and extract position; if the file was corrupted beyond decoding,
     # treat it as tampered but continue verification with a poison hash.
@@ -504,16 +512,22 @@ defmodule Fact.MerkleMountainRange do
     end
   end
 
-  defp verify_content_hash(context, record_id) do
+  defp verify_content_hash(context, record_id, dek) do
     record_path = Fact.Storage.records_path(context, record_id)
 
     with {:ok, raw_bytes} <- File.read(record_path),
-         {:ok, expected_id} <- Fact.RecordFile.Name.get(context, raw_bytes, []) do
+         {:ok, content} <- decrypt_if_needed(dek, raw_bytes),
+         {:ok, expected_id} <- Fact.RecordFile.Name.get(context, content, []) do
       expected_id == record_id
     else
       _ -> false
     end
   end
+
+  defp decrypt_if_needed(nil, raw_bytes), do: {:ok, raw_bytes}
+
+  defp decrypt_if_needed(dek, raw_bytes),
+    do: Fact.Seam.FileReader.Encrypted.V1.decrypt_binary(dek, raw_bytes)
 
   # -----------------------------
   # MMR Position Arithmetic

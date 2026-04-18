@@ -642,6 +642,25 @@ defmodule Fact do
   end
 
   @doc """
+  Closes a running database.
+
+  Shuts down the database's supervision tree and releases its lock. After closing,
+  the database can be reopened with `open/2` or opened by another process.
+
+  ## Examples
+
+      iex> {:ok, db} = Fact.open("data/turtles")
+      iex> Fact.close(db)
+      :ok
+
+  """
+  @doc since: "0.4.0"
+  @spec close(database_id()) :: :ok | {:error, :not_found}
+  def close(database_id) when is_binary(database_id) do
+    Fact.Supervisor.stop_database(database_id)
+  end
+
+  @doc """
   Read from an event source.
 
   ## Event Sources
