@@ -42,9 +42,9 @@ The wrapped DEK (encrypted with both the primary and recovery KEKs) is stored in
 alongside the database configuration. The KEKs themselves are never written to disk.
 
 ```
-                ┌─────────────┐
-                │  Primary KEK │ (runtime only, never on disk)
-                └──────┬──────┘
+              ┌────────────────┐
+              │  Primary KEK   │ (runtime only, never on disk)
+              └────────┬───────┘
                        │ wraps
                        ▼
               ┌────────────────┐
@@ -53,7 +53,7 @@ alongside the database configuration. The KEKs themselves are never written to d
                        │ encrypts
                        ▼
               ┌────────────────┐
-              │ Record Files   │ (encrypted on disk)
+              │  Record Files  │ (encrypted on disk)
               └────────────────┘
 ```
 
