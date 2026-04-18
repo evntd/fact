@@ -70,6 +70,7 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/indexers.md",
         "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
         "guides/components/record-cache.md",
@@ -87,6 +88,7 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/indexers.md",
           "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
           "guides/components/record-cache.md",
