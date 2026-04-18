@@ -70,6 +70,7 @@ defmodule Fact.LockFile do
     """
     use Fact.Seam.FileWriter.Adapter,
       context: :lock_file_writer,
+      allowed_impls: [{:standard, 1}],
       fixed_options: %{
         {:standard, 1} => %{
           access: :write,

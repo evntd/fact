@@ -26,10 +26,11 @@ defmodule Fact.EventIndexer do
     
   ## Custom Indexers
 
-  Custom indexers only need to implement the callback.
+  Custom indexers only need to implement the callback, then include them in the `:indexers`
+  option when opening the database.
 
   ### Examples
-    
+
   This would produce an index for every user, including all the events which define a `user_id` in the event data.
 
       defmodule YourApp.UserIndexer do
@@ -37,26 +38,53 @@ defmodule Fact.EventIndexer do
 
         @impl true
         def index_event(schema, event, _opts) do
-          unless is_nil(user_id = Map.get(event[schema.event_data], "user_id")), 
+          unless is_nil(user_id = Map.get(event[schema.event_data], "user_id")),
             do: to_string(user_id)
-        end 
+        end
       end
-    
-  This would produce an index for every tenant, including all the events which define a `tenant_id` in the event 
+
+  This would produce an index for every tenant, including all the events which define a `tenant_id` in the event
   metadata.
-    
+
       defmodule YourApp.TenantIndexer do
         use Fact.EventIndexer
 
         @impl true
         def index_event(schema, event, _opts) do
           unless is_nil(tenant_id = Map.get(event[schema.event_metadata], "tenant_id")),
-            do: to_string(tenant_id)          
+            do: to_string(tenant_id)
         end
       end
 
+  ### Configuration
+
+  Pass custom indexers to `Fact.open/2` via the `:indexers` option. Bare modules, `{module, opts}`
+  tuples, and `Fact.EventDataIndexer` instances can all be mixed freely.
+
+      {:ok, db} = Fact.open("data/my_app",
+        indexers: [
+          YourApp.UserIndexer,
+          YourApp.TenantIndexer,
+          {Fact.EventDataIndexer, key: "order_id"}
+        ]
+      )
+
+  The same configuration works in application supervision trees:
+
+      # In your Application.start/2
+      children = [
+        {Fact.Supervisor,
+          databases: [
+            {"data/my_app",
+              indexers: [
+                YourApp.UserIndexer,
+                {Fact.EventDataIndexer, key: "order_id"}
+              ]}
+          ]}
+      ]
+
   """
-  @moduledoc since: "0.1.0"
+  @moduledoc since: "0.4.0"
 
   @typedoc """
   The values that can be return by a `c:Fact.EventIndexer.index_event` callback function.
@@ -108,6 +136,7 @@ defmodule Fact.EventIndexer do
   ### Built-in Indexers
 
     * `Fact.EventDataIndexer` - requires an `t:Fact.EventIndexer.indexer_key/0`
+    * `Fact.EventMetadataIndexer` - requires an `t:Fact.EventIndexer.indexer_key/0`
     * `Fact.EventStreamCategoryIndexer`
     * `Fact.EventStreamIndexer`
     * `Fact.EventStreamsByCategoryIndexer`
@@ -115,9 +144,10 @@ defmodule Fact.EventIndexer do
     * `Fact.EventTagsIndexer`
     * `Fact.EventTypeIndexer`
   """
-  @typedoc since: "0.1.2"
+  @typedoc since: "0.4.0"
   @type indexer_id() ::
           Fact.EventDataIndexer.id()
+          | Fact.EventMetadataIndexer.id()
           | Fact.EventStreamCategoryIndexer.id()
           | Fact.EventStreamIndexer.id()
           | Fact.EventStreamsByCategoryIndexer.id()
