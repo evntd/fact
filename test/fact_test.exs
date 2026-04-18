@@ -32,6 +32,17 @@ defmodule FactTest do
     assert position == record["store_position"]
   end
 
+  test "append event with duplicate tags are deduplicated", %{db: db} do
+    event = %{type: "turtle_mutated", tags: ["mutant:1", "mutant:1"]}
+    assert {:ok, position} = Fact.append(db, event)
+
+    record =
+      Fact.read(db, :all, position: position - 1, count: 1)
+      |> List.first()
+
+    assert length(record["event_tags"]) == 1
+  end
+
   test "append and read it back via a type query", %{db: db} do
     event = %{type: "pizza_ordered"}
     {:ok, position} = Fact.append(db, event)
