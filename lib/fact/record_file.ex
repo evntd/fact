@@ -76,7 +76,8 @@ defmodule Fact.RecordFile do
     """
     use Fact.Seam.FileReader.Adapter,
       context: :record_file_reader,
-      allowed_impls: [{:full, 1}]
+      allowed_impls: [{:encrypted, 1}, {:full, 1}],
+      default_impl: {:full, 1}
   end
 
   defmodule Writer do
@@ -91,12 +92,22 @@ defmodule Fact.RecordFile do
     """
     use Fact.Seam.FileWriter.Adapter,
       context: :record_file_writer,
+      allowed_impls: [{:encrypted, 1}, {:standard, 1}],
+      default_impl: {:standard, 1},
       fixed_options: %{
         {:standard, 1} => %{
           access: :write,
           binary: true,
           exclusive: true,
           raw: true,
+          sync: false,
+          worm: true
+        },
+        {:encrypted, 1} => %{
+          access: :write,
+          binary: true,
+          exclusive: true,
+          raw: false,
           sync: false,
           worm: true
         }

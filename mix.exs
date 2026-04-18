@@ -2,8 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.3.1"
-  @codename "Hardened Shell"
+  @codename "AESop"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
   @authors ["Jake Bruun"]
@@ -12,7 +11,7 @@ defmodule Fact.MixProject do
     [
       aliases: aliases(),
       app: :fact,
-      version: @version,
+      version: version(),
       codename: @codename,
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
@@ -70,6 +69,8 @@ defmodule Fact.MixProject do
       extra_section: "GUIDES",
       extras: [
         "LICENSE",
+        "guides/components/encryption.md",
+        "guides/components/indexers.md",
         "guides/components/merkle-mountain-range.md",
         "guides/components/queries-and-indexes.md",
         "guides/components/record-cache.md",
@@ -87,6 +88,8 @@ defmodule Fact.MixProject do
           "guides/introduction/process-model.md"
         ],
         Components: [
+          "guides/components/encryption.md",
+          "guides/components/indexers.md",
           "guides/components/merkle-mountain-range.md",
           "guides/components/queries-and-indexes.md",
           "guides/components/record-cache.md",
@@ -143,12 +146,21 @@ defmodule Fact.MixProject do
           Fact.Storage
         ],
         Core: [
+          Fact.BuildInfo,
           Fact.Database,
           Fact.EventLedger,
           Fact.EventReader,
           Fact.EventStreamWriter,
           Fact.Query,
-          Fact.QueryItem
+          Fact.QueryItem,
+          Fact.RecordCache,
+          Fact.WriteAheadLog,
+          Fact.WriteAheadLog.Entry
+        ],
+        Encryption: [
+          Fact.Encryption.KEKProvider,
+          Fact.Encryption.KEKProvider.Explicit,
+          Fact.KeyRing
         ],
         Genesis: [
           Fact.Genesis.Command.CreateDatabase.V1,
@@ -162,6 +174,7 @@ defmodule Fact.MixProject do
         Indexing: [
           Fact.EventDataIndexer,
           Fact.EventIndexer,
+          Fact.EventMetadataIndexer,
           Fact.EventStreamCategoryIndexer,
           Fact.EventStreamIndexer,
           Fact.EventStreamsByCategoryIndexer,
@@ -224,11 +237,13 @@ defmodule Fact.MixProject do
           Fact.Seam.FileName.Registry,
           Fact.Seam.FileReader,
           Fact.Seam.FileReader.Adapter,
+          Fact.Seam.FileReader.Encrypted.V1,
           Fact.Seam.FileReader.FixedLength.V1,
           Fact.Seam.FileReader.Full.V1,
           Fact.Seam.FileReader.Registry,
           Fact.Seam.FileWriter,
           Fact.Seam.FileWriter.Adapter,
+          Fact.Seam.FileWriter.Encrypted.V1,
           Fact.Seam.FileWriter.Standard.V1,
           Fact.Seam.FileWriter.Registry,
           Fact.Seam.Instance,
@@ -331,5 +346,12 @@ defmodule Fact.MixProject do
         threshold: 80
       ]
     ]
+  end
+
+  defp version do
+    case System.cmd("git", ["describe", "--tags", "--abbrev=0"], stderr_to_stdout: true) do
+      {"v" <> version, 0} -> String.trim(version)
+      _ -> "0.0.0-dev"
+    end
   end
 end

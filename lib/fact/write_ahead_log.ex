@@ -163,7 +163,8 @@ defmodule Fact.WriteAheadLog do
             max_file_size: nil,
             max_segments: nil,
             should_fsync: false,
-            sync_interval: 0
+            sync_interval: 0,
+            encrypted: false
 
   # -----------------------------
   # Init
@@ -195,6 +196,8 @@ defmodule Fact.WriteAheadLog do
     file = segment_path(database_id, segment_index)
     {:ok, buffer} = :file.open(file, [:append, :binary, :read, :write])
 
+    encrypted = Keyword.get(opts, :encrypted, false)
+
     state = %__MODULE__{
       database_id: database_id,
       file: file,
@@ -203,7 +206,8 @@ defmodule Fact.WriteAheadLog do
       max_file_size: max_file_size,
       max_segments: max_segments,
       should_fsync: enable_fsync,
-      sync_interval: sync_interval
+      sync_interval: sync_interval,
+      encrypted: encrypted
     }
 
     last_seq = get_last_sequence_no(state)
@@ -224,6 +228,7 @@ defmodule Fact.WriteAheadLog do
 
       {:ok, state} ->
         seq = state.last_seq + 1
+        data = maybe_encrypt(data, state)
         entry = Entry.create(seq, data, checkpoint?)
         {:ok, state} = write_entry_to_buffer(entry, %{state | last_seq: seq})
 
@@ -252,7 +257,7 @@ defmodule Fact.WriteAheadLog do
 
   def handle_call({:read_all, from_checkpoint?}, _from, state) do
     files = segment_files(state.database_id) |> Enum.sort()
-    {:reply, read_segments(files, from_checkpoint?), state}
+    {:reply, read_segments(files, from_checkpoint?, state), state}
   end
 
   def handle_call({:read_all_from_offset, offset, from_checkpoint?}, _from, state) do
@@ -261,7 +266,7 @@ defmodule Fact.WriteAheadLog do
       |> Enum.filter(fn {idx, _} -> idx >= offset end)
       |> Enum.sort()
 
-    {:reply, read_segments(files, from_checkpoint?), state}
+    {:reply, read_segments(files, from_checkpoint?, state), state}
   end
 
   def handle_call(:repair, _from, state) do
@@ -284,6 +289,39 @@ defmodule Fact.WriteAheadLog do
     {:ok, state} = sync_impl(state)
     Process.send_after(self(), :sync_tick, sync_interval)
     {:noreply, state}
+  end
+
+  # -----------------------------
+  # Encryption
+  # -----------------------------
+
+  @nonce_size 12
+  @auth_tag_size 16
+
+  defp maybe_encrypt(data, %{encrypted: false}), do: data
+
+  defp maybe_encrypt(data, %{encrypted: true, database_id: database_id}) do
+    {:ok, dek} = Fact.KeyRing.get_dek(database_id)
+    nonce = :crypto.strong_rand_bytes(@nonce_size)
+
+    {ciphertext, auth_tag} =
+      :crypto.crypto_one_time_aead(:aes_256_gcm, dek, nonce, data, "", true)
+
+    <<nonce::binary-size(@nonce_size), auth_tag::binary-size(@auth_tag_size), ciphertext::binary>>
+  end
+
+  defp maybe_decrypt_entry(entry, %{encrypted: false}), do: entry
+
+  defp maybe_decrypt_entry(entry, %{encrypted: true, database_id: database_id}) do
+    {:ok, dek} = Fact.KeyRing.get_dek(database_id)
+
+    <<nonce::binary-size(@nonce_size), auth_tag::binary-size(@auth_tag_size), ciphertext::binary>> =
+      entry.data
+
+    plaintext =
+      :crypto.crypto_one_time_aead(:aes_256_gcm, dek, nonce, ciphertext, "", auth_tag, false)
+
+    %{entry | data: plaintext}
   end
 
   # -----------------------------
@@ -368,10 +406,10 @@ defmodule Fact.WriteAheadLog do
   # Reading
   # ---------------------
 
-  defp read_segments(files, from_checkpoint?) do
+  defp read_segments(files, from_checkpoint?, state) do
     Enum.reduce(files, {[], 0}, fn {_idx, path}, {acc, last_cp} ->
       {:ok, fd} = File.open(path, [:read, :binary])
-      {entries, cp} = do_read_entries(fd, from_checkpoint?)
+      {entries, cp} = do_read_entries(fd, from_checkpoint?, state)
       File.close(fd)
 
       if from_checkpoint? and cp > last_cp do
@@ -383,17 +421,19 @@ defmodule Fact.WriteAheadLog do
     |> elem(0)
   end
 
-  defp do_read_entries(fd, from_checkpoint?) do
-    read_loop(fd, [], 0, from_checkpoint?)
+  defp do_read_entries(fd, from_checkpoint?, state) do
+    read_loop(fd, [], 0, from_checkpoint?, state)
   end
 
-  defp read_loop(fd, acc, last_cp, from_checkpoint?) do
+  defp read_loop(fd, acc, last_cp, from_checkpoint?, state) do
     case :file.read(fd, 4) do
       {:ok, <<size::little-32>>} ->
         case :file.read(fd, size) do
           {:ok, bin} ->
             case Entry.deserialize(bin) do
               {:ok, entry} ->
+                entry = maybe_decrypt_entry(entry, state)
+
                 {new_acc, new_cp} =
                   if entry.is_checkpoint and from_checkpoint? do
                     {[], entry.lsn}
@@ -401,7 +441,7 @@ defmodule Fact.WriteAheadLog do
                     {[entry | acc], last_cp}
                   end
 
-                read_loop(fd, new_acc, new_cp, from_checkpoint?)
+                read_loop(fd, new_acc, new_cp, from_checkpoint?, state)
 
               {:error, _} ->
                 {Enum.reverse(acc), last_cp}

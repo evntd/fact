@@ -68,6 +68,7 @@ defmodule Fact.IndexCheckpointFile do
     """
     use Fact.Seam.FileWriter.Adapter,
       context: :index_checkpoint_file_writer,
+      allowed_impls: [{:standard, 1}],
       fixed_options: %{
         {:standard, 1} => %{
           access: :write,
@@ -98,6 +99,7 @@ defmodule Fact.IndexCheckpointFile do
       decoded
     else
       {:error, :enoent} -> 0
+      {:error, {:decode, _}} -> 0
     end
   end
 
