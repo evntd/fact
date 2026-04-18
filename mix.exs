@@ -164,6 +164,7 @@ defmodule Fact.MixProject do
         Indexing: [
           Fact.EventDataIndexer,
           Fact.EventIndexer,
+          Fact.EventMetadataIndexer,
           Fact.EventStreamCategoryIndexer,
           Fact.EventStreamIndexer,
           Fact.EventStreamsByCategoryIndexer,
