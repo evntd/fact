@@ -23,7 +23,7 @@ Add `fact` to your dependencies:
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.4.0"},
+    {:fact, "~> 0.4.1"},
     {:jason, "~> 1.4"}  # required on Elixir 1.17 and earlier
   ]
 end
