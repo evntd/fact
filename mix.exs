@@ -2,6 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
+  @version "0.4.1"
   @codename "AESop"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
@@ -11,7 +12,7 @@ defmodule Fact.MixProject do
     [
       aliases: aliases(),
       app: :fact,
-      version: version(),
+      version: @version,
       codename: @codename,
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
@@ -346,12 +347,5 @@ defmodule Fact.MixProject do
         threshold: 80
       ]
     ]
-  end
-
-  defp version do
-    case System.cmd("git", ["describe", "--tags", "--abbrev=0"], stderr_to_stdout: true) do
-      {"v" <> version, 0} -> String.trim(version)
-      _ -> "0.0.0-dev"
-    end
   end
 end
