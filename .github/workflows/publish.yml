@@ -75,7 +75,7 @@ jobs:
         run: mix compile --warnings-as-errors
 
       - name: Run tests
-        run: mix test
+        run: mix test apps/fact/test/
   
   publish:
     name: Publish to hex.pm
@@ -99,15 +99,17 @@ jobs:
           mix deps.get
 
       - name: Match tag and version
+        working-directory: apps/fact
         run: |
           GIT_TAG_VERSION=${GITHUB_REF_NAME#v}
           MIX_VERSION=$(mix run -e 'IO.write(Mix.Project.config[:version])')
-          if [ "$GIT_TAG_VERSION" = "$MIX_VERSION" ]; then
+          if [ "$GIT_TAG_VERSION" != "$MIX_VERSION" ]; then
             echo "Error: Git tag ($GIT_TAG_VERSION) does not match mix.exs version ($MIX_VERSION)"
             exit 1
           fi
 
       - name: hex.publish
+        working-directory: apps/fact
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
         run: mix hex.publish --yes

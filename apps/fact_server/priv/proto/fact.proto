@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package fact.v1;
+
+// ─── Shared ──────────────────────────────────────────────────────────────────
+
+message Event {
+  string type = 1;
+  bytes data = 2;
+  bytes metadata = 3;
+  repeated string tags = 4;
+}
+
+message EventRecord {
+  string event_id = 1;
+  string event_type = 2;
+  bytes event_data = 3;
+  bytes event_metadata = 4;
+  repeated string event_tags = 5;
+  uint64 event_store_position = 6;
+  uint64 event_store_timestamp = 7;
+  string event_stream_id = 8;
+  uint64 event_stream_position = 9;
+  string record_id = 10;
+}
+
+message QueryItem {
+  repeated string types = 1;
+  repeated string tags = 2;
+}
+
+message Query {
+  repeated QueryItem items = 1;
+}
+
+// ─── Source ──────────────────────────────────────────────────────────────────
+
+message ReadSource {
+  oneof source {
+    bool all = 1;
+    string stream = 2;
+    IndexSource index = 3;
+    Query query = 4;
+  }
+}
+
+message IndexSource {
+  string indexer_id = 1;
+  string index_value = 2;
+}
+
+// ─── Append ──────────────────────────────────────────────────────────────────
+
+message AppendRequest {
+  string database_id = 1;
+  repeated Event events = 2;
+  optional AppendCondition condition = 3;
+}
+
+message AppendCondition {
+  Query fail_if_events_match = 1;
+  optional uint64 after_position = 2;
+}
+
+message AppendStreamRequest {
+  string database_id = 1;
+  repeated Event events = 2;
+  string stream_id = 3;
+  StreamExpectation expected = 4;
+}
+
+message StreamExpectation {
+  oneof value {
+    bool any = 1;
+    bool none = 2;
+    bool exists = 3;
+    uint64 position = 4;
+  }
+}
+
+message AppendResponse {
+  uint64 position = 1;
+}
+
+// ─── Read ────────────────────────────────────────────────────────────────────
+
+message ReadRequest {
+  string database_id = 1;
+  ReadSource source = 2;
+  ReadOptions options = 3;
+}
+
+message ReadOptions {
+  string direction = 1;
+  ReadPosition position = 2;
+  optional uint64 count = 3;
+}
+
+message ReadPosition {
+  oneof value {
+    bool start = 1;
+    bool from_end = 2;
+    uint64 position = 3;
+  }
+}
+
+// ─── Subscribe ───────────────────────────────────────────────────────────────
+
+message SubscribeRequest {
+  string database_id = 1;
+  ReadSource source = 2;
+  ReadPosition start_position = 3;
+}
+
+message SubscribeEvent {
+  oneof payload {
+    EventRecord record = 1;
+    bool caught_up = 2;
+  }
+}
+
+// ─── Service ─────────────────────────────────────────────────────────────────
+
+service FactService {
+  rpc Append(AppendRequest) returns (AppendResponse);
+  rpc AppendStream(AppendStreamRequest) returns (AppendResponse);
+  rpc Read(ReadRequest) returns (stream EventRecord);
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeEvent);
+}
