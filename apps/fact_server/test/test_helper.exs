@@ -17,7 +17,9 @@ defmodule TestHelper do
 
   def rm_rf(path) do
     case File.rm_rf(path) do
-      {:ok, _} -> :ok
+      {:ok, _} ->
+        :ok
+
       {:error, reason, _} ->
         Logger.warning("failed to clean up database reason=#{reason} path=#{path}")
         :ok

@@ -31,6 +31,7 @@ defmodule FactServer.ServerTest do
   setup do
     path = TestHelper.create_db("fact_server_test_")
     {:ok, db} = Fact.open(path)
+    :persistent_term.put({FactServer, :database_id}, db)
     on_exit(fn -> Fact.close(db) end)
     on_exit(fn -> TestHelper.rm_rf(path) end)
     %{db: db}
@@ -59,22 +60,22 @@ defmodule FactServer.ServerTest do
   # ─── Append ────────────────────────────────────────────────────────────────
 
   describe "Append" do
-    test "appends events and returns the last position", %{channel: channel, db: db} do
+    test "appends events and returns the last position", %{channel: channel} do
       events = [
         %Event{type: "order_placed", data: Jason.encode!(%{item: "pizza"}), tags: ["orders"]},
         %Event{type: "order_confirmed"}
       ]
 
       {:ok, %AppendResponse{position: pos}} =
-        FactService.Stub.append(channel, %AppendRequest{database_id: db, events: events})
+        FactService.Stub.append(channel, %AppendRequest{events: events})
 
       # genesis event at 1, two user events at 2 and 3
       assert pos == 3
     end
 
-    test "appending an empty list is a no-op", %{channel: channel, db: db} do
+    test "appending an empty list is a no-op", %{channel: channel} do
       {:ok, %AppendResponse{position: pos}} =
-        FactService.Stub.append(channel, %AppendRequest{database_id: db, events: []})
+        FactService.Stub.append(channel, %AppendRequest{events: []})
 
       assert pos == 1
     end
@@ -83,7 +84,7 @@ defmodule FactServer.ServerTest do
       event = %Event{type: "something_happened"}
 
       {:ok, _} =
-        FactService.Stub.append(channel, %AppendRequest{database_id: db, events: [event]})
+        FactService.Stub.append(channel, %AppendRequest{events: [event]})
 
       TestHelper.subscribe_and_wait(db, 2)
 
@@ -93,7 +94,6 @@ defmodule FactServer.ServerTest do
 
       {:error, %GRPC.RPCError{status: status}} =
         FactService.Stub.append(channel, %AppendRequest{
-          database_id: db,
           events: [event],
           condition: condition
         })
@@ -105,12 +105,11 @@ defmodule FactServer.ServerTest do
   # ─── AppendStream ──────────────────────────────────────────────────────────
 
   describe "AppendStream" do
-    test "appends to a stream and returns the stream position", %{channel: channel, db: db} do
+    test "appends to a stream and returns the stream position", %{channel: channel} do
       event = %Event{type: "widget_created", tags: ["widgets"]}
 
       {:ok, %AppendResponse{position: pos}} =
         FactService.Stub.append_stream(channel, %AppendStreamRequest{
-          database_id: db,
           events: [event],
           stream_id: "widget-1",
           expected: %StreamExpectation{value: {:none, true}}
@@ -119,12 +118,11 @@ defmodule FactServer.ServerTest do
       assert pos == 1
     end
 
-    test "returns FAILED_PRECONDITION when stream expectation fails", %{channel: channel, db: db} do
+    test "returns FAILED_PRECONDITION when stream expectation fails", %{channel: channel} do
       event = %Event{type: "widget_created"}
 
       {:ok, _} =
         FactService.Stub.append_stream(channel, %AppendStreamRequest{
-          database_id: db,
           events: [event],
           stream_id: "widget-2",
           expected: %StreamExpectation{value: {:any, true}}
@@ -132,7 +130,6 @@ defmodule FactServer.ServerTest do
 
       {:error, %GRPC.RPCError{status: status}} =
         FactService.Stub.append_stream(channel, %AppendStreamRequest{
-          database_id: db,
           events: [event],
           stream_id: "widget-2",
           expected: %StreamExpectation{value: {:none, true}}
@@ -157,10 +154,9 @@ defmodule FactServer.ServerTest do
       :ok
     end
 
-    test "reads all events from the ledger", %{channel: channel, db: db} do
+    test "reads all events from the ledger", %{channel: channel} do
       {:ok, stream} =
         FactService.Stub.read(channel, %ReadRequest{
-          database_id: db,
           source: %ReadSource{source: {:all, true}}
         })
 
@@ -169,10 +165,9 @@ defmodule FactServer.ServerTest do
       assert [%EventRecord{} | _] = records
     end
 
-    test "reads events by type query", %{channel: channel, db: db} do
+    test "reads events by type query", %{channel: channel} do
       {:ok, stream} =
         FactService.Stub.read(channel, %ReadRequest{
-          database_id: db,
           source: %ReadSource{
             source: {:query, %Query{items: [%QueryItem{types: ["item_added"]}]}}
           }
@@ -182,10 +177,9 @@ defmodule FactServer.ServerTest do
       assert record.event_type == "item_added"
     end
 
-    test "reads events by tag index", %{channel: channel, db: db} do
+    test "reads events by tag index", %{channel: channel} do
       {:ok, stream} =
         FactService.Stub.read(channel, %ReadRequest{
-          database_id: db,
           source: %ReadSource{
             source: {:index, %Fact.V1.IndexSource{indexer_id: "tags", index_value: "catalog"}}
           }
@@ -196,10 +190,9 @@ defmodule FactServer.ServerTest do
       assert Enum.all?(records, &("catalog" in &1.event_tags))
     end
 
-    test "respects count option", %{channel: channel, db: db} do
+    test "respects count option", %{channel: channel} do
       {:ok, stream} =
         FactService.Stub.read(channel, %ReadRequest{
-          database_id: db,
           source: %ReadSource{source: {:all, true}},
           options: %ReadOptions{count: 2}
         })
@@ -207,10 +200,9 @@ defmodule FactServer.ServerTest do
       assert length(unwrap_stream(stream)) == 2
     end
 
-    test "reads backward from end", %{channel: channel, db: db} do
+    test "reads backward from end", %{channel: channel} do
       {:ok, stream} =
         FactService.Stub.read(channel, %ReadRequest{
-          database_id: db,
           source: %ReadSource{source: {:all, true}},
           options: %ReadOptions{
             direction: "backward",
@@ -223,10 +215,9 @@ defmodule FactServer.ServerTest do
       assert last.event_type == "order_placed"
     end
 
-    test "event_record fields are populated", %{channel: channel, db: db} do
+    test "event_record fields are populated", %{channel: channel} do
       {:ok, stream} =
         FactService.Stub.read(channel, %ReadRequest{
-          database_id: db,
           source: %ReadSource{source: {:all, true}},
           options: %ReadOptions{count: 1}
         })
@@ -249,12 +240,10 @@ defmodule FactServer.ServerTest do
   describe "Subscribe" do
     test "subscribe from end delivers caught_up then live events", %{
       channel: channel,
-      port: port,
-      db: db
+      port: port
     } do
       sub_pid =
         subscribe_async(port, %SubscribeRequest{
-          database_id: db,
           source: %ReadSource{source: {:all, true}},
           start_position: %ReadPosition{value: {:from_end, true}}
         })
@@ -263,7 +252,6 @@ defmodule FactServer.ServerTest do
 
       {:ok, _} =
         FactService.Stub.append(channel, %AppendRequest{
-          database_id: db,
           events: [%Event{type: "live_event"}]
         })
 
@@ -287,7 +275,6 @@ defmodule FactServer.ServerTest do
 
       sub_pid =
         subscribe_async(port, %SubscribeRequest{
-          database_id: db,
           source: %ReadSource{source: {:all, true}},
           start_position: %ReadPosition{value: {:position, pre_pos}}
         })
@@ -303,7 +290,6 @@ defmodule FactServer.ServerTest do
 
       {:ok, _} =
         FactService.Stub.append(channel, %AppendRequest{
-          database_id: db,
           events: [%Event{type: "live_event"}]
         })
 
@@ -326,7 +312,6 @@ defmodule FactServer.ServerTest do
 
       sub_pid =
         subscribe_async(port, %SubscribeRequest{
-          database_id: db,
           source: %ReadSource{
             source: {:query, %Query{items: [%QueryItem{types: ["widget_shipped"]}]}}
           },
@@ -337,7 +322,6 @@ defmodule FactServer.ServerTest do
 
       {:ok, _} =
         FactService.Stub.append(channel, %AppendRequest{
-          database_id: db,
           events: [
             %Event{type: "widget_shipped"},
             %Event{type: "other_event"}
@@ -352,7 +336,10 @@ defmodule FactServer.ServerTest do
                      5_000
 
       refute_received {:stream_item,
-                       {:ok, %SubscribeEvent{payload: {:record, %EventRecord{event_type: "other_event"}}}}}
+                       {:ok,
+                        %SubscribeEvent{
+                          payload: {:record, %EventRecord{event_type: "other_event"}}
+                        }}}
 
       Process.exit(sub_pid, :kill)
     end

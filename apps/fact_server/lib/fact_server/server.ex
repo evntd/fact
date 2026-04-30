@@ -7,15 +7,14 @@ defmodule FactServer.Server do
     SubscribeEvent
   }
 
-  def append(%Fact.V1.AppendRequest{database_id: db, events: events, condition: condition}, _stream) do
+  def append(%Fact.V1.AppendRequest{events: events, condition: condition}, _stream) do
     fact_events = Enum.map(events, &to_fact_event/1)
     fact_condition = to_fact_condition(condition)
-    handle_append_result(Fact.append(db, fact_events, fact_condition))
+    handle_append_result(Fact.append(database_id(), fact_events, fact_condition))
   end
 
   def append_stream(
         %Fact.V1.AppendStreamRequest{
-          database_id: db,
           events: events,
           stream_id: stream_id,
           expected: expected
@@ -24,7 +23,10 @@ defmodule FactServer.Server do
       ) do
     fact_events = Enum.map(events, &to_fact_event/1)
     fact_expectation = to_fact_expectation(expected)
-    handle_append_result(Fact.append_stream(db, fact_events, stream_id, fact_expectation))
+
+    handle_append_result(
+      Fact.append_stream(database_id(), fact_events, stream_id, fact_expectation)
+    )
   end
 
   defp handle_append_result({:ok, position}), do: %AppendResponse{position: position}
@@ -41,7 +43,8 @@ defmodule FactServer.Server do
       message: "append failed: #{inspect(reason)}"
   end
 
-  def read(%Fact.V1.ReadRequest{database_id: db, source: source, options: opts}, stream) do
+  def read(%Fact.V1.ReadRequest{source: source, options: opts}, stream) do
+    db = database_id()
     fact_source = to_fact_source(source)
     fact_opts = to_fact_read_opts(opts)
     schema = Fact.Event.Schema.get(db)
@@ -57,12 +60,12 @@ defmodule FactServer.Server do
 
   def subscribe(
         %Fact.V1.SubscribeRequest{
-          database_id: db,
           source: source,
           start_position: start_pos
         },
         stream
       ) do
+    db = database_id()
     fact_source = to_fact_source(source)
     fact_pos = to_fact_position(start_pos)
 
@@ -91,10 +94,12 @@ defmodule FactServer.Server do
     end
   end
 
+  defp database_id, do: :persistent_term.get({FactServer, :database_id})
+
   defp to_fact_event(%Fact.V1.Event{type: type, data: data, metadata: metadata, tags: tags}) do
     %{type: type}
-    |> maybe_put(:data, data, &Jason.decode!/1, "")
-    |> maybe_put(:metadata, metadata, &Jason.decode!/1, "")
+    |> maybe_put(:data, data, &JSON.decode!/1, "")
+    |> maybe_put(:metadata, metadata, &JSON.decode!/1, "")
     |> maybe_put(:tags, tags, & &1, [])
   end
 
@@ -103,7 +108,10 @@ defmodule FactServer.Server do
 
   defp to_fact_condition(nil), do: nil
 
-  defp to_fact_condition(%Fact.V1.AppendCondition{fail_if_events_match: query, after_position: after_pos}) do
+  defp to_fact_condition(%Fact.V1.AppendCondition{
+         fail_if_events_match: query,
+         after_position: after_pos
+       }) do
     fact_query = to_fact_query(query)
 
     case after_pos do
@@ -122,7 +130,9 @@ defmodule FactServer.Server do
   defp to_fact_source(%Fact.V1.ReadSource{source: {:all, _}}), do: :all
   defp to_fact_source(%Fact.V1.ReadSource{source: {:stream, id}}), do: {:stream, id}
 
-  defp to_fact_source(%Fact.V1.ReadSource{source: {:index, %Fact.V1.IndexSource{indexer_id: id, index_value: v}}}) do
+  defp to_fact_source(%Fact.V1.ReadSource{
+         source: {:index, %Fact.V1.IndexSource{indexer_id: id, index_value: v}}
+       }) do
     {:index, to_fact_indexer_id(id), v}
   end
 
@@ -184,8 +194,8 @@ defmodule FactServer.Server do
       record_id: record_id,
       event_id: Map.get(event_record, schema.event_id, ""),
       event_type: Map.get(event_record, schema.event_type, ""),
-      event_data: Jason.encode!(Map.get(event_record, schema.event_data, %{})),
-      event_metadata: Jason.encode!(Map.get(event_record, schema.event_metadata, %{})),
+      event_data: JSON.encode!(Map.get(event_record, schema.event_data, %{})),
+      event_metadata: JSON.encode!(Map.get(event_record, schema.event_metadata, %{})),
       event_tags: Map.get(event_record, schema.event_tags, []),
       event_store_position: Map.get(event_record, schema.event_store_position, 0),
       event_store_timestamp: Map.get(event_record, schema.event_store_timestamp, 0),

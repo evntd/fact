@@ -1,21 +1,16 @@
 defmodule FactServer.Application do
   @moduledoc """
-  Starts the Fact gRPC server and opens configured databases.
+  Starts the Fact gRPC server and opens a configured database.
 
-  Add to your supervision tree:
-
-      children = [
-        FactServer.Application
-      ]
-
-  Or configure via application environment:
+  Configure via application environment:
 
       config :fact, :fact_server,
         port: 50051,
-        databases: [
-          %{path: "/data/my_db"},
-          %{path: "/data/other_db", opts: [cache: [max_size: 1000]]}
-        ]
+        database: {"path/to/db", cache: [max_size: 64 * 1024 * 1024]}
+
+  The `database` value can also be a plain path string with no options.
+  When `database` is `nil` (e.g. in test environments), only `Fact.Supervisor`
+  is started; the gRPC server and database open are skipped.
   """
   use Application
 
@@ -23,17 +18,39 @@ defmodule FactServer.Application do
 
   def start(_type, _args) do
     config = Application.get_env(:fact, :fact_server, [])
-    port = Keyword.get(config, :port, @default_port)
-    databases = Keyword.get(config, :databases, [])
 
-    Enum.each(databases, fn %{path: path} = db ->
-      {:ok, _} = Fact.open(path, Map.get(db, :opts, []))
-    end)
+    case Keyword.get(config, :database) do
+      nil ->
+        Supervisor.start_link(
+          [{Fact.Supervisor, []}],
+          strategy: :one_for_one,
+          name: FactServer.Supervisor
+        )
 
-    children = [
-      {GRPC.Server.Supervisor, endpoint: FactServer.Endpoint, port: port, start_server: true}
-    ]
+      database ->
+        port = Keyword.get(config, :port, @default_port)
+        {path, db_opts} = normalize_database(database)
+        database_name = Path.basename(path)
 
-    Supervisor.start_link(children, strategy: :one_for_one, name: FactServer.Supervisor)
+        children = [
+          {Fact.Supervisor, [databases: [{path, db_opts}]]},
+          {GRPC.Server.Supervisor, endpoint: FactServer.Endpoint, port: port, start_server: true}
+        ]
+
+        {:ok, sup} =
+          Supervisor.start_link(children, strategy: :one_for_one, name: FactServer.Supervisor)
+
+        {:ok, _} = Fact.when_ready(database_name, [])
+
+        receive do
+          {:database_ready, %{database_id: database_id}} ->
+            :persistent_term.put({FactServer, :database_id}, database_id)
+        end
+
+        {:ok, sup}
+    end
   end
+
+  defp normalize_database({path, opts}), do: {path, opts}
+  defp normalize_database(path) when is_binary(path), do: {path, []}
 end

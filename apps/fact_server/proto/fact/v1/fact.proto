@@ -52,9 +52,8 @@ message IndexSource {
 // ─── Append ──────────────────────────────────────────────────────────────────
 
 message AppendRequest {
-  string database_id = 1;
-  repeated Event events = 2;
-  optional AppendCondition condition = 3;
+  repeated Event events = 1;
+  optional AppendCondition condition = 2;
 }
 
 message AppendCondition {
@@ -63,10 +62,9 @@ message AppendCondition {
 }
 
 message AppendStreamRequest {
-  string database_id = 1;
-  repeated Event events = 2;
-  string stream_id = 3;
-  StreamExpectation expected = 4;
+  repeated Event events = 1;
+  string stream_id = 2;
+  StreamExpectation expected = 3;
 }
 
 message StreamExpectation {
@@ -85,9 +83,8 @@ message AppendResponse {
 // ─── Read ────────────────────────────────────────────────────────────────────
 
 message ReadRequest {
-  string database_id = 1;
-  ReadSource source = 2;
-  ReadOptions options = 3;
+  ReadSource source = 1;
+  ReadOptions options = 2;
 }
 
 message ReadOptions {
@@ -107,9 +104,8 @@ message ReadPosition {
 // ─── Subscribe ───────────────────────────────────────────────────────────────
 
 message SubscribeRequest {
-  string database_id = 1;
-  ReadSource source = 2;
-  ReadPosition start_position = 3;
+  ReadSource source = 1;
+  ReadPosition start_position = 2;
 }
 
 message SubscribeEvent {
