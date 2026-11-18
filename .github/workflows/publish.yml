@@ -84,10 +84,10 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Elixir
-        uses: erlef/setup-beam@v1.20.4
+        uses: erlef/setup-beam@v1
         with:
           elixir-version: 1.18.x
           otp-version: 27
@@ -97,12 +97,13 @@ jobs:
           mix local.hex --force
           mix local.rebar --force
           mix deps.get
+          mix compile
 
       - name: Match tag and version
         run: |
           GIT_TAG_VERSION=${GITHUB_REF_NAME#v}
           MIX_VERSION=$(mix run -e 'IO.write(Mix.Project.config[:version])')
-          if [ "$GIT_TAG_VERSION" = "$MIX_VERSION" ]; then
+          if [ "$GIT_TAG_VERSION" != "$MIX_VERSION" ]; then
             echo "Error: Git tag ($GIT_TAG_VERSION) does not match mix.exs version ($MIX_VERSION)"
             exit 1
           fi
