@@ -42,10 +42,6 @@ jobs:
             otp: 26
             check_format: false
 
-          - elixir: 1.13.x
-            otp: 25
-            check_format: false
-
     steps:
       - uses: actions/checkout@v5
 
