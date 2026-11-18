@@ -50,16 +50,15 @@ defmodule Fact.Database do
     end
   end
 
-  @doc """
-  Blocks until every indexer has indexed the ledger up to `position`.
-
-  Queries are evaluated against index files, which are written asynchronously after
-  a commit. Waiting here makes a query read a view of the indexes that includes
-  every event up to `position`.
-
-  Returns `{:error, :index_timeout}` if the indexers do not reach `position` within
-  `timeout` milliseconds.
-  """
+  # Blocks until every indexer has indexed the ledger up to `position`.
+  #
+  # Queries are evaluated against index files, which are written asynchronously after
+  # a commit. Waiting here makes a query read a view of the indexes that includes
+  # every event up to `position`.
+  #
+  # Returns `{:error, :index_timeout}` if the indexers do not reach `position` within
+  # `timeout` milliseconds.
+  @doc false
   @spec await_indexed(Fact.database_id(), Fact.event_position(), timeout()) ::
           :ok | {:error, :index_timeout}
   def await_indexed(database_id, position, timeout \\ 5000) do
