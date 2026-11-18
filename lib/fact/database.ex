@@ -27,7 +27,8 @@ defmodule Fact.Database do
     :database_id,
     :indexers,
     :lock,
-    :published_pos
+    :published_pos,
+    index_waiters: []
   ]
 
   @topic "#{__MODULE__}"
@@ -47,6 +48,27 @@ defmodule Fact.Database do
          event <- Fact.RecordFile.read_event(database_id, stream |> Enum.at(0)) do
       event[Schema.get(database_id).event_store_position]
     end
+  end
+
+  # Blocks until every indexer has indexed the ledger up to `position`.
+  #
+  # Queries are evaluated against index files, which are written asynchronously after
+  # a commit. Waiting here makes a query read a view of the indexes that includes
+  # every event up to `position`.
+  #
+  # Returns `{:error, :index_timeout}` if the indexers do not reach `position` within
+  # `timeout` milliseconds.
+  @doc false
+  @spec await_indexed(Fact.database_id(), Fact.event_position(), timeout()) ::
+          :ok | {:error, :index_timeout}
+  def await_indexed(database_id, position, timeout \\ 5000) do
+    GenServer.call(
+      Fact.Registry.via(database_id, __MODULE__),
+      {:await_indexed, position},
+      timeout
+    )
+  catch
+    :exit, {:timeout, _} -> {:error, :index_timeout}
   end
 
   defp publish_indexed(database_id, position) do
@@ -202,6 +224,15 @@ defmodule Fact.Database do
   end
 
   @impl true
+  def handle_call({:await_indexed, position}, from, %__MODULE__{} = state) do
+    if indexed_position(state.indexers) >= position do
+      {:reply, :ok, state}
+    else
+      {:noreply, %__MODULE__{state | index_waiters: [{position, from} | state.index_waiters]}}
+    end
+  end
+
+  @impl true
   def handle_call(
         {:start_indexer, child_spec},
         _from,
@@ -237,7 +268,7 @@ defmodule Fact.Database do
     # reply to all the waiters who are blocked 
     Enum.each(waiters, &GenServer.reply(&1, {:ok, indexer_id}))
 
-    {:noreply, %__MODULE__{state | indexers: indexers}}
+    {:noreply, release_index_waiters(%__MODULE__{state | indexers: indexers})}
   end
 
   @impl true
@@ -298,10 +329,27 @@ defmodule Fact.Database do
 
     if min_pos > published_pos do
       publish_indexed(database_id, min_pos)
-      {:noreply, %{state | indexers: new_indexers, published_pos: min_pos}}
+
+      {:noreply, release_index_waiters(%{state | indexers: new_indexers, published_pos: min_pos})}
     else
-      {:noreply, %{state | indexers: new_indexers}}
+      {:noreply, release_index_waiters(%{state | indexers: new_indexers})}
     end
+  end
+
+  # The position every indexer has reached. With no indexers there is nothing to wait for.
+  defp indexed_position(indexers) when map_size(indexers) == 0, do: :infinity
+
+  defp indexed_position(indexers) do
+    indexers |> Enum.map(fn {_, %{position: p}} -> p end) |> Enum.min()
+  end
+
+  defp release_index_waiters(%__MODULE__{index_waiters: []} = state), do: state
+
+  defp release_index_waiters(%__MODULE__{indexers: indexers, index_waiters: waiters} = state) do
+    indexed = indexed_position(indexers)
+    {ready, waiting} = Enum.split_with(waiters, fn {position, _} -> indexed >= position end)
+    Enum.each(ready, fn {_, from} -> GenServer.reply(from, :ok) end)
+    %__MODULE__{state | index_waiters: waiting}
   end
 
   @impl true

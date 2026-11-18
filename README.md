@@ -23,7 +23,7 @@ Add `fact` to your dependencies:
 ```elixir
 def deps do
   [
-    {:fact, "~> 0.4.1"},
+    {:fact, "~> 0.4.2"},
     {:jason, "~> 1.4"}  # required on Elixir 1.17 and earlier
   ]
 end
@@ -94,7 +94,7 @@ iex> Fact.read(db, {:stream, "turtle-1"})
 - **Pluggable architecture** — encoders, decoders, storage layouts, file strategies, and ID generation are all swappable via the [Seam Architecture](https://hexdocs.pm/fact/seam-architecture.html)
 - **Multiple database instances** for siloed isolation in multi-tenancy setups
 - **Backup & Restore** mix tasks
-- Supported on **Elixir 1.13+** and **OTP 25+**
+- Supported on **Elixir 1.14+** and **OTP 26+**
 
 ## Dynamic Consistency Boundaries
 
