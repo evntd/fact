@@ -2,7 +2,7 @@ defmodule Fact.MixProject do
   use Mix.Project
 
   @name "Fact"
-  @version "0.4.1"
+  @version "0.4.2"
   @codename "AESop"
   @source_url "https://github.com/evntd/fact"
   @maintainers ["Jake Bruun"]
