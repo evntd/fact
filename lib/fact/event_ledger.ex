@@ -163,11 +163,17 @@ defmodule Fact.EventLedger do
 
         GenServer.call(
           Fact.Registry.via(database_id, __MODULE__),
-          {:commit, events, condition: {fail_if_match, after_position}},
+          {:commit, events,
+           condition: {fail_if_match, after_position}, index_timeout: index_timeout(timeout)},
           timeout
         )
     end
   end
+
+  # Waiting on the indexers must give up before the caller's call does, so a stalled
+  # indexer is reported as an error rather than an exit in the caller.
+  defp index_timeout(:infinity), do: :infinity
+  defp index_timeout(timeout), do: max(div(timeout, 2), 1)
 
   @doc false
   @impl true
@@ -200,7 +206,12 @@ defmodule Fact.EventLedger do
   def handle_call({:commit, events, commit_opts}, _from, %{position: pos} = state) do
     if Enum.any?(events) do
       with {:ok, end_pos} <-
-             conditional_commit(events, Keyword.get(commit_opts, :condition), state) do
+             conditional_commit(
+               events,
+               Keyword.get(commit_opts, :condition),
+               Keyword.get(commit_opts, :index_timeout, 5000),
+               state
+             ) do
         {:reply, {:ok, end_pos}, %{state | position: end_pos}}
       else
         error -> {:reply, error, state}
@@ -210,14 +221,24 @@ defmodule Fact.EventLedger do
     end
   end
 
-  defp conditional_commit(events, condition, state)
-  defp conditional_commit(events, nil, state), do: do_commit(events, state)
+  defp conditional_commit(events, condition, index_timeout, state)
+  defp conditional_commit(events, nil, _index_timeout, state), do: do_commit(events, state)
 
-  defp conditional_commit(events, {_query, expected_pos}, %{position: position} = state)
+  defp conditional_commit(
+         events,
+         {_query, expected_pos},
+         _index_timeout,
+         %{position: position} = state
+       )
        when expected_pos == position,
        do: do_commit(events, state)
 
-  defp conditional_commit(events, {_query, expected_pos}, %{position: position} = state)
+  defp conditional_commit(
+         events,
+         {_query, expected_pos},
+         _index_timeout,
+         %{position: position} = state
+       )
        when expected_pos > position do
     Logger.warning(
       "expected position (#{expected_pos}) is greater than actual position (#{position})"
@@ -229,36 +250,43 @@ defmodule Fact.EventLedger do
   defp conditional_commit(
          events,
          {_condition, expected_pos} = condition,
+         index_timeout,
          %{position: position} = state
        )
        when expected_pos < position do
-    with :ok <- check_query_condition(state, condition) do
+    with :ok <- check_query_condition(state, condition, index_timeout) do
       do_commit(events, state)
     end
   end
 
-  defp check_query_condition(%{} = _state, {nil, _pos}) do
+  defp check_query_condition(%{} = _state, {nil, _pos}, _index_timeout) do
     :ok
   end
 
   defp check_query_condition(
-         %{database_id: database_id, schema: schema} = _state,
-         {query, expected_pos}
+         %{database_id: database_id, position: position, schema: schema} = _state,
+         {query, expected_pos},
+         index_timeout
        ) do
-    Fact.Database.read_query(database_id, query, position: expected_pos, result: :record)
-    |> Stream.take(-1)
-    |> Enum.at(0)
-    |> case do
-      nil ->
-        :ok
+    # The query is evaluated against index files, which are written asynchronously after
+    # each commit. Until every indexer reaches the ledger position, events committed since
+    # `expected_pos` may be missing from them, and a conflicting append would be accepted.
+    with :ok <- Fact.Database.await_indexed(database_id, position, index_timeout) do
+      Fact.Database.read_query(database_id, query, position: expected_pos, result: :record)
+      |> Stream.take(-1)
+      |> Enum.at(0)
+      |> case do
+        nil ->
+          :ok
 
-      {_, record} ->
-        {:error,
-         Fact.ConcurrencyError.exception(
-           source: :all,
-           expected: expected_pos,
-           actual: record[schema.event_store_position]
-         )}
+        {_, record} ->
+          {:error,
+           Fact.ConcurrencyError.exception(
+             source: :all,
+             expected: expected_pos,
+             actual: record[schema.event_store_position]
+           )}
+      end
     end
   end
 

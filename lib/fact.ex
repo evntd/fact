@@ -396,6 +396,12 @@ defmodule Fact do
   The function returns `{:ok, last_position}`, where `last_position` is the store
   position of the last appended event.
 
+  When an append condition is given, the append is rejected with
+  `{:error, %Fact.ConcurrencyError{}}` if a matching event was appended after the
+  given position. It may also return `{:error, :index_timeout}` if the indexers
+  do not catch up to the ledger within half the `:timeout`; nothing is appended,
+  and the append is safe to retry.
+
   ## Examples
 
   Append without conditions:
